@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 
-import { getProductTemplate } from "./api/product-templates.js";
+import { createConfigurationDocument } from "@creationflow/core";
+import type { DocumentId } from "@creationflow/schema";
+
+import type { ConfigurationDto } from "./api/configurations.js";
+import { createConfigurationFromTemplate, getProductTemplate } from "./api/product-templates.js";
 import type { ProductTemplateDto } from "./api/product-templates.js";
 
 const elementTools = ["Text", "Image", "Shape", "Variables"];
@@ -36,6 +40,9 @@ export function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [template, setTemplate] = useState<ProductTemplateDto | null>(null);
+  const [configurationCreating, setConfigurationCreating] = useState(false);
+  const [configurationError, setConfigurationError] = useState<string | null>(null);
+  const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
 
   useEffect(() => {
     if (!templateId) {
@@ -119,11 +126,13 @@ export function App() {
             </div>
             <div className="info-row">
               <span className="info-label">Configuration ID</span>
-              <span className="info-value info-placeholder">not set</span>
+              <span className="info-value">{configuration ? configuration.id : "not set"}</span>
             </div>
             <div className="info-row">
               <span className="info-label">Status</span>
-              <span className="info-value info-status">not loaded</span>
+              <span className="info-value info-status">
+                {configuration ? configuration.status : "not loaded"}
+              </span>
             </div>
           </div>
 
@@ -192,23 +201,80 @@ export function App() {
             {!template && !loading && (
               <p className="document-placeholder">No document loaded yet.</p>
             )}
-            {template && !loading && (
+            {template && !loading && !configuration && (
               <p className="document-placeholder">
                 Template loaded. Configuration not yet created.
               </p>
             )}
+            {configuration && (
+              <div className="template-info">
+                <div className="info-row">
+                  <span className="info-label">Configuration</span>
+                  <span className="info-value">{configuration.id}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Status</span>
+                  <span className="info-value">{configuration.status}</span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Template</span>
+                  <span className="info-value">{template?.id}</span>
+                </div>
+              </div>
+            )}
           </div>
+
+          {configurationError && (
+            <div className="property-card">
+              <h3>Configuration Error</h3>
+              <p className="template-status template-error">{configurationError}</p>
+            </div>
+          )}
 
           <button
             className="action-button"
             type="button"
-            disabled={!template || loading}
-            onClick={() => {
-              // TODO: Create configuration from template when ready.
-              // This will call createConfigurationFromTemplate() and POST /configurations.
+            disabled={!template || loading || configurationCreating}
+            onClick={async () => {
+              if (!template) {
+                return;
+              }
+
+              if (!template.workspaceId) {
+                setConfigurationError("Template has no workspaceId.");
+
+                return;
+              }
+
+              setConfigurationCreating(true);
+              setConfigurationError(null);
+
+              try {
+                const documentId = crypto.randomUUID() as DocumentId;
+
+                const configDocument = createConfigurationDocument({
+                  documentId,
+                  templateDocument: template.documentSchema,
+                });
+
+                const createdConfiguration = await createConfigurationFromTemplate(
+                  template.id,
+                  configDocument,
+                  template.workspaceId,
+                  "draft",
+                );
+
+                setConfiguration(createdConfiguration);
+              } catch (err) {
+                setConfigurationError(
+                  err instanceof Error ? err.message : "Failed to create configuration.",
+                );
+              } finally {
+                setConfigurationCreating(false);
+              }
             }}
           >
-            Create configuration from template
+            {configurationCreating ? "Creating..." : "Create configuration from template"}
           </button>
         </aside>
       </section>

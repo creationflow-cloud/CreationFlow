@@ -93,6 +93,9 @@ importers:
 
   apps/editor:
     dependencies:
+      '@creationflow/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@creationflow/schema':
         specifier: workspace:*
         version: link:../../packages/schema
