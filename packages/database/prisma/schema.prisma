@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Tenant {
+model Workspace {
   id        String   @id @default(cuid())
   name      String
   createdAt DateTime @default(now())
@@ -20,40 +20,40 @@ model Tenant {
 }
 
 model Product {
-  id         String   @id @default(cuid())
-  tenantId   String
-  externalId String?
-  name       String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(cuid())
+  workspaceId String
+  externalId  String?
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  tenant         Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   templates      ProductTemplate[]
   configurations Configuration[]
 
-  @@index([tenantId])
-  @@index([tenantId, externalId])
+  @@index([workspaceId])
+  @@index([workspaceId, externalId])
 }
 
 model ProductTemplate {
   id             String   @id @default(cuid())
-  tenantId       String
+  workspaceId    String
   productId      String?
   documentSchema Json
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  tenant         Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   product        Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   configurations Configuration[]
 
-  @@index([tenantId])
+  @@index([workspaceId])
   @@index([productId])
 }
 
 model Configuration {
   id         String              @id @default(cuid())
-  tenantId   String
+  workspaceId String
   productId  String?
   templateId String?
   document   Json
@@ -61,12 +61,12 @@ model Configuration {
   createdAt  DateTime            @default(now())
   updatedAt  DateTime            @updatedAt
 
-  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workspace  Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   product    Product?         @relation(fields: [productId], references: [id], onDelete: SetNull)
   template   ProductTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
   renderJobs RenderJob[]
 
-  @@index([tenantId])
+  @@index([workspaceId])
   @@index([productId])
   @@index([templateId])
   @@index([status])
@@ -74,7 +74,7 @@ model Configuration {
 
 model RenderJob {
   id              String          @id @default(cuid())
-  tenantId        String
+  workspaceId     String
   configurationId String?
   status          RenderJobStatus @default(PENDING)
   output          Json?
@@ -82,10 +82,10 @@ model RenderJob {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   configuration Configuration? @relation(fields: [configurationId], references: [id], onDelete: SetNull)
 
-  @@index([tenantId])
+  @@index([workspaceId])
   @@index([configurationId])
   @@index([status])
 }

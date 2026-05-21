@@ -8,6 +8,7 @@ export interface ApiConfig {
   readonly host: string;
   readonly port: number;
   readonly version: string;
+  readonly databaseUrl: string | undefined;
 }
 
 function readPackageVersion(): string {
@@ -22,5 +23,6 @@ export function getApiConfig(): ApiConfig {
     host: process.env.HOST ?? "127.0.0.1",
     port: Number(process.env.PORT ?? "3000"),
     version: readPackageVersion(),
+    databaseUrl: process.env.DATABASE_URL,
   };
 }
