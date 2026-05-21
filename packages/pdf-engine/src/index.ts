@@ -13,7 +13,7 @@ export function createPdfRenderPlan(document: CreationFlowDocument): PdfRenderPl
     document,
     pages: document.pages.map((page) => ({
       pageId: page.id,
-      surfaceCount: page.surfaces.length,
+      surfaceCount: page.surfaces?.length ?? 0,
     })),
   };
 }
