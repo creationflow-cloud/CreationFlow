@@ -5,6 +5,11 @@ export { addSurface, removeSurface, findSurface } from "./surfaces.js";
 export { addElement, removeElement, findElement, updateElement } from "./elements.js";
 export type {
   AddElementInput,
+  AddTextElementInput,
+  AddImageElementInput,
+  AddShapeElementInput,
+  AddGroupElementInput,
+  AddVariableElementInput,
   AddPageInput,
   AddSurfaceInput,
   CreateConfigurationDocumentInput,

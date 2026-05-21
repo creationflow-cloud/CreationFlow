@@ -6,6 +6,8 @@ import type {
   CreationFlowElement,
   DocumentId,
   ElementId,
+  PageId,
+  SurfaceId,
 } from "@creationflow/schema";
 
 import type { ConfigurationDto } from "./api/configurations.js";
@@ -14,6 +16,13 @@ import type { ProductTemplateDto } from "./api/product-templates.js";
 import { ElementProperties } from "./components/ElementProperties.js";
 import { SurfaceCanvas } from "./components/SurfaceCanvas.js";
 import { findElementById, findSurfaceById } from "./helpers/document-helpers.js";
+import {
+  bringForward,
+  deleteElement,
+  duplicateElement,
+  moveElement,
+  sendBackward,
+} from "./helpers/element-actions.js";
 import { selectElement, selectPage, selectSurface } from "./helpers/selection-helpers.js";
 import type { SelectionState } from "./helpers/selection-helpers.js";
 
@@ -104,6 +113,90 @@ export function App() {
       currentDocument,
       selection.selectedElementId as ElementId,
       patch,
+    );
+
+    setCurrentDocument(updatedDocument);
+  }
+
+  function handleDeleteElement() {
+    if (!currentDocument || !selection.selectedElementId) {
+      return;
+    }
+
+    const updatedDocument = deleteElement(
+      currentDocument,
+      selection.selectedElementId as ElementId,
+    );
+    setCurrentDocument(updatedDocument);
+    setSelection({ ...selection, selectedElementId: null });
+  }
+
+  function handleDuplicateElement() {
+    if (
+      !currentDocument ||
+      !selection.selectedElementId ||
+      !selection.selectedSurfaceId ||
+      !selection.selectedPageId
+    ) {
+      return;
+    }
+
+    const element = findElementById(currentDocument, selection.selectedElementId);
+    if (!element) {
+      return;
+    }
+
+    const result = duplicateElement(
+      currentDocument,
+      element,
+      selection.selectedPageId as PageId,
+      selection.selectedSurfaceId as SurfaceId,
+    );
+
+    setCurrentDocument(result.document);
+    setSelection({ ...selection, selectedElementId: result.newElementId });
+  }
+
+  function handleBringForward() {
+    if (!currentDocument || !selection.selectedElementId || !selectedElement) {
+      return;
+    }
+
+    const updatedDocument = bringForward(
+      currentDocument,
+      selection.selectedElementId as ElementId,
+      selectedElement.zIndex,
+    );
+
+    setCurrentDocument(updatedDocument);
+  }
+
+  function handleSendBackward() {
+    if (!currentDocument || !selection.selectedElementId || !selectedElement) {
+      return;
+    }
+
+    const updatedDocument = sendBackward(
+      currentDocument,
+      selection.selectedElementId as ElementId,
+      selectedElement.zIndex,
+    );
+
+    setCurrentDocument(updatedDocument);
+  }
+
+  function handleMoveElement(dx: number, dy: number) {
+    if (!currentDocument || !selection.selectedElementId || !selectedElement) {
+      return;
+    }
+
+    const updatedDocument = moveElement(
+      currentDocument,
+      selection.selectedElementId as ElementId,
+      selectedElement.x,
+      selectedElement.y,
+      dx,
+      dy,
     );
 
     setCurrentDocument(updatedDocument);
@@ -234,7 +327,15 @@ export function App() {
           <h2>Properties</h2>
 
           {selectedElement ? (
-            <ElementProperties element={selectedElement} onUpdate={handleUpdateElement} />
+            <ElementProperties
+              element={selectedElement}
+              onUpdate={handleUpdateElement}
+              onDelete={handleDeleteElement}
+              onDuplicate={handleDuplicateElement}
+              onBringForward={handleBringForward}
+              onSendBackward={handleSendBackward}
+              onMove={handleMoveElement}
+            />
           ) : (
             <div className="property-card">
               <p className="document-placeholder">No element selected</p>

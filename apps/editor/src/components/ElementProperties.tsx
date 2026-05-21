@@ -11,6 +11,11 @@ import { clamp, parseNumber } from "../helpers/element-properties.js";
 interface ElementPropertiesProps {
   readonly element: CreationFlowElement;
   readonly onUpdate: (patch: Partial<CreationFlowElement>) => void;
+  readonly onDelete: () => void;
+  readonly onDuplicate: () => void;
+  readonly onBringForward: () => void;
+  readonly onSendBackward: () => void;
+  readonly onMove: (dx: number, dy: number) => void;
 }
 
 function NumberInput({
@@ -133,7 +138,15 @@ function SelectInput<T extends string>({
   );
 }
 
-export function ElementProperties({ element, onUpdate }: ElementPropertiesProps) {
+export function ElementProperties({
+  element,
+  onUpdate,
+  onDelete,
+  onDuplicate,
+  onBringForward,
+  onSendBackward,
+  onMove,
+}: ElementPropertiesProps) {
   return (
     <div className="property-card">
       <h3>Element</h3>
@@ -203,6 +216,42 @@ export function ElementProperties({ element, onUpdate }: ElementPropertiesProps)
       {element.type === "shape" && (
         <ShapeElementProperties element={element as CreationFlowShapeElement} onUpdate={onUpdate} />
       )}
+
+      <div className="element-actions-section">
+        <h3>Actions</h3>
+        <div className="action-buttons-grid">
+          <button className="action-btn" type="button" onClick={onDuplicate}>
+            Duplicate
+          </button>
+          <button className="action-btn danger" type="button" onClick={onDelete}>
+            Delete
+          </button>
+          <button className="action-btn" type="button" onClick={onBringForward}>
+            Bring forward
+          </button>
+          <button className="action-btn" type="button" onClick={onSendBackward}>
+            Send backward
+          </button>
+        </div>
+      </div>
+
+      <div className="position-controls-section">
+        <h3>Quick Position</h3>
+        <div className="position-controls">
+          <button className="position-btn up" type="button" onClick={() => onMove(0, -5)}>
+            ↑
+          </button>
+          <button className="position-btn left" type="button" onClick={() => onMove(-5, 0)}>
+            ←
+          </button>
+          <button className="position-btn down" type="button" onClick={() => onMove(0, 5)}>
+            ↓
+          </button>
+          <button className="position-btn right" type="button" onClick={() => onMove(5, 0)}>
+            →
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

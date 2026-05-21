@@ -1,12 +1,14 @@
 import type {
+  AssetId,
   CreationFlowDocumentMetadata,
   CreationFlowElement,
-  CreationFlowElementType,
+  CreationFlowTextAlign,
   CreationFlowUnit,
   DocumentId,
   ElementId,
   PageId,
   SurfaceId,
+  VariableId,
 } from "@creationflow/schema";
 
 export interface CreateEmptyDocumentInput {
@@ -40,9 +42,8 @@ export interface AddSurfaceInput {
   readonly unit: CreationFlowUnit;
 }
 
-export interface AddElementInput {
+interface AddElementBaseInput {
   readonly id: ElementId;
-  readonly type: CreationFlowElementType;
   readonly name?: string;
   readonly x: number;
   readonly y: number;
@@ -54,6 +55,48 @@ export interface AddElementInput {
   readonly locked: boolean;
   readonly zIndex: number;
 }
+
+export interface AddTextElementInput extends AddElementBaseInput {
+  readonly type: "text";
+  readonly text: string;
+  readonly fontFamily: string;
+  readonly fontSize: number;
+  readonly fontWeight?: string;
+  readonly color: string;
+  readonly align: CreationFlowTextAlign;
+}
+
+export interface AddImageElementInput extends AddElementBaseInput {
+  readonly type: "image";
+  readonly assetId: AssetId;
+  readonly fit: "contain" | "cover" | "fill";
+}
+
+export interface AddShapeElementInput extends AddElementBaseInput {
+  readonly type: "shape";
+  readonly shapeType: "rect" | "ellipse" | "line";
+  readonly fill?: string;
+  readonly stroke?: string;
+  readonly strokeWidth?: number;
+}
+
+export interface AddGroupElementInput extends AddElementBaseInput {
+  readonly type: "group";
+  readonly children: readonly CreationFlowElement[];
+}
+
+export interface AddVariableElementInput extends AddElementBaseInput {
+  readonly type: "variable";
+  readonly variableId: VariableId;
+  readonly fallback?: string;
+}
+
+export type AddElementInput =
+  | AddTextElementInput
+  | AddImageElementInput
+  | AddShapeElementInput
+  | AddGroupElementInput
+  | AddVariableElementInput;
 
 export type ElementPatch = Partial<Omit<CreationFlowElement, "id" | "type">>;
 

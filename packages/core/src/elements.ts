@@ -102,20 +102,105 @@ export function addElement(
   target: { pageId: PageId; surfaceId: SurfaceId },
   input: AddElementInput,
 ): CreationFlowDocument {
-  const element: CreationFlowElement = {
-    id: input.id,
-    type: input.type,
-    name: input.name,
-    x: input.x,
-    y: input.y,
-    width: input.width,
-    height: input.height,
-    rotation: input.rotation,
-    opacity: input.opacity,
-    visible: input.visible,
-    locked: input.locked,
-    zIndex: input.zIndex,
-  } as CreationFlowElement;
+  let element: CreationFlowElement;
+
+  switch (input.type) {
+    case "text":
+      element = {
+        id: input.id,
+        type: "text",
+        name: input.name,
+        x: input.x,
+        y: input.y,
+        width: input.width,
+        height: input.height,
+        rotation: input.rotation,
+        opacity: input.opacity,
+        visible: input.visible,
+        locked: input.locked,
+        zIndex: input.zIndex,
+        text: input.text,
+        fontFamily: input.fontFamily,
+        fontSize: input.fontSize,
+        fontWeight: input.fontWeight,
+        color: input.color,
+        align: input.align,
+      };
+      break;
+    case "image":
+      element = {
+        id: input.id,
+        type: "image",
+        name: input.name,
+        x: input.x,
+        y: input.y,
+        width: input.width,
+        height: input.height,
+        rotation: input.rotation,
+        opacity: input.opacity,
+        visible: input.visible,
+        locked: input.locked,
+        zIndex: input.zIndex,
+        assetId: input.assetId,
+        fit: input.fit,
+      };
+      break;
+    case "shape":
+      element = {
+        id: input.id,
+        type: "shape",
+        name: input.name,
+        x: input.x,
+        y: input.y,
+        width: input.width,
+        height: input.height,
+        rotation: input.rotation,
+        opacity: input.opacity,
+        visible: input.visible,
+        locked: input.locked,
+        zIndex: input.zIndex,
+        shapeType: input.shapeType,
+        fill: input.fill,
+        stroke: input.stroke,
+        strokeWidth: input.strokeWidth,
+      };
+      break;
+    case "group":
+      element = {
+        id: input.id,
+        type: "group",
+        name: input.name,
+        x: input.x,
+        y: input.y,
+        width: input.width,
+        height: input.height,
+        rotation: input.rotation,
+        opacity: input.opacity,
+        visible: input.visible,
+        locked: input.locked,
+        zIndex: input.zIndex,
+        children: input.children,
+      };
+      break;
+    case "variable":
+      element = {
+        id: input.id,
+        type: "variable",
+        name: input.name,
+        x: input.x,
+        y: input.y,
+        width: input.width,
+        height: input.height,
+        rotation: input.rotation,
+        opacity: input.opacity,
+        visible: input.visible,
+        locked: input.locked,
+        zIndex: input.zIndex,
+        variableId: input.variableId,
+        fallback: input.fallback,
+      };
+      break;
+  }
 
   let pageFound = false;
   let surfaceFound = false;
