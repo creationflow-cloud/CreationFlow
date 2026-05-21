@@ -14,7 +14,27 @@ importers:
 
   adapters/woocommerce-plugin: {}
 
-  apps/admin: {}
+  apps/admin:
+    dependencies:
+      '@vitejs/plugin-react':
+        specifier: ^5.0.0
+        version: 5.2.0(vite@7.3.3(@types/node@22.19.19)(tsx@4.22.3))
+      react:
+        specifier: ^19.0.0
+        version: 19.2.6
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.6(react@19.2.6)
+      vite:
+        specifier: ^7.0.0
+        version: 7.3.3(@types/node@22.19.19)(tsx@4.22.3)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.15
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.3(@types/react@19.2.15)
 
   apps/api:
     dependencies:
