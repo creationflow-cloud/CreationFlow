@@ -41,3 +41,4 @@ docker compose --env-file deploy/docker/.env.example -f deploy/docker/docker-com
 - No license server logic is included.
 - No cloud services are required.
 - Postgres data is stored in the `creationflow-postgres-data` Docker volume.
+- `.env.example` includes a local `DATABASE_URL` placeholder for Prisma-based development.

@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products       Product[]
+  templates      ProductTemplate[]
+  configurations Configuration[]
+  renderJobs     RenderJob[]
+}
+
+model Product {
+  id         String   @id @default(cuid())
+  tenantId   String
+  externalId String?
+  name       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant         Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  templates      ProductTemplate[]
+  configurations Configuration[]
+
+  @@index([tenantId])
+  @@index([tenantId, externalId])
+}
+
+model ProductTemplate {
+  id             String   @id @default(cuid())
+  tenantId       String
+  productId      String?
+  documentSchema Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant         Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product        Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  configurations Configuration[]
+
+  @@index([tenantId])
+  @@index([productId])
+}
+
+model Configuration {
+  id         String              @id @default(cuid())
+  tenantId   String
+  productId  String?
+  templateId String?
+  document   Json
+  status     ConfigurationStatus @default(DRAFT)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product    Product?         @relation(fields: [productId], references: [id], onDelete: SetNull)
+  template   ProductTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  renderJobs RenderJob[]
+
+  @@index([tenantId])
+  @@index([productId])
+  @@index([templateId])
+  @@index([status])
+}
+
+model RenderJob {
+  id              String          @id @default(cuid())
+  tenantId        String
+  configurationId String?
+  status          RenderJobStatus @default(PENDING)
+  output          Json?
+  errorMessage    String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  configuration Configuration? @relation(fields: [configurationId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([configurationId])
+  @@index([status])
+}
+
+enum ConfigurationStatus {
+  DRAFT
+  READY
+  ARCHIVED
+}
+
+enum RenderJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
