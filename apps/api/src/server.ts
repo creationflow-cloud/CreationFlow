@@ -1,16 +1,16 @@
 import Fastify from "fastify";
 
 import type { ApiConfig } from "./config.js";
-import { registerHealthRoute } from "./routes/health.js";
-import { registerVersionRoute } from "./routes/version.js";
+import { registerOpenApi } from "./plugins/openapi.js";
+import { registerRoutes } from "./routes/index.js";
 
 export async function createServer(config: ApiConfig) {
   const server = Fastify({
     logger: true,
   });
 
-  await registerHealthRoute(server);
-  await registerVersionRoute(server, config.version);
+  await registerOpenApi(server, config);
+  await registerRoutes(server, config);
 
   return server;
 }
