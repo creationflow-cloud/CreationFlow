@@ -15,6 +15,8 @@ interface ElementPropertiesProps {
   readonly onDuplicate: () => void;
   readonly onBringForward: () => void;
   readonly onSendBackward: () => void;
+  readonly onBringToFront: () => void;
+  readonly onSendToBack: () => void;
   readonly onMove: (dx: number, dy: number) => void;
 }
 
@@ -145,6 +147,8 @@ export function ElementProperties({
   onDuplicate,
   onBringForward,
   onSendBackward,
+  onBringToFront,
+  onSendToBack,
   onMove,
 }: ElementPropertiesProps) {
   return (
@@ -231,6 +235,12 @@ export function ElementProperties({
           </button>
           <button className="action-btn" type="button" onClick={onSendBackward}>
             Send backward
+          </button>
+          <button className="action-btn" type="button" onClick={onBringToFront}>
+            Bring to front
+          </button>
+          <button className="action-btn" type="button" onClick={onSendToBack}>
+            Send to back
           </button>
         </div>
       </div>

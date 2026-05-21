@@ -1,12 +1,14 @@
 import type {
   CreationFlowDocument,
   CreationFlowElement,
+  CreationFlowSurface,
   ElementId,
   PageId,
   SurfaceId,
 } from "@creationflow/schema";
 import { addElement, removeElement, updateElement } from "@creationflow/core";
 import type { AddElementInput } from "@creationflow/core";
+import { flattenSurfaceElements } from "./document-helpers.js";
 
 export function duplicateElement(
   document: CreationFlowDocument,
@@ -131,17 +133,79 @@ export function deleteElement(
 export function bringForward(
   document: CreationFlowDocument,
   elementId: ElementId,
-  currentZIndex: number,
+  surface: CreationFlowSurface,
 ): CreationFlowDocument {
-  return updateElement(document, elementId, { zIndex: currentZIndex + 1 });
+  const allElements = flattenSurfaceElements(surface);
+  const selected = allElements.find((e) => e.id === elementId);
+  if (!selected) return document;
+
+  const higherElements = allElements.filter((e) => e.zIndex > selected.zIndex);
+
+  if (higherElements.length === 0) {
+    return document;
+  }
+
+  const nextHigher = higherElements.reduce((min, e) => (e.zIndex < min.zIndex ? e : min));
+
+  const doc1 = updateElement(document, elementId, { zIndex: nextHigher.zIndex });
+  return updateElement(doc1, nextHigher.id, { zIndex: selected.zIndex });
 }
 
 export function sendBackward(
   document: CreationFlowDocument,
   elementId: ElementId,
-  currentZIndex: number,
+  surface: CreationFlowSurface,
 ): CreationFlowDocument {
-  return updateElement(document, elementId, { zIndex: Math.max(0, currentZIndex - 1) });
+  const allElements = flattenSurfaceElements(surface);
+  const selected = allElements.find((e) => e.id === elementId);
+  if (!selected) return document;
+
+  const lowerElements = allElements.filter((e) => e.zIndex < selected.zIndex);
+
+  if (lowerElements.length === 0) {
+    return document;
+  }
+
+  const nextLower = lowerElements.reduce((max, e) => (e.zIndex > max.zIndex ? e : max));
+
+  const doc1 = updateElement(document, elementId, { zIndex: nextLower.zIndex });
+  return updateElement(doc1, nextLower.id, { zIndex: selected.zIndex });
+}
+
+export function bringToFront(
+  document: CreationFlowDocument,
+  elementId: ElementId,
+  surface: CreationFlowSurface,
+): CreationFlowDocument {
+  const allElements = flattenSurfaceElements(surface);
+  const selected = allElements.find((e) => e.id === elementId);
+  if (!selected) return document;
+
+  const maxZIndex = Math.max(...allElements.map((e) => e.zIndex));
+
+  if (selected.zIndex > maxZIndex) {
+    return document;
+  }
+
+  return updateElement(document, elementId, { zIndex: maxZIndex + 1 });
+}
+
+export function sendToBack(
+  document: CreationFlowDocument,
+  elementId: ElementId,
+  surface: CreationFlowSurface,
+): CreationFlowDocument {
+  const allElements = flattenSurfaceElements(surface);
+  const selected = allElements.find((e) => e.id === elementId);
+  if (!selected) return document;
+
+  const minZIndex = Math.min(...allElements.map((e) => e.zIndex));
+
+  if (selected.zIndex < minZIndex) {
+    return document;
+  }
+
+  return updateElement(document, elementId, { zIndex: minZIndex - 1 });
 }
 
 export function moveElement(

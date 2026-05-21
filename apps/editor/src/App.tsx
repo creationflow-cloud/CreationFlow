@@ -18,10 +18,12 @@ import { SurfaceCanvas } from "./components/SurfaceCanvas.js";
 import { findElementById, findSurfaceById } from "./helpers/document-helpers.js";
 import {
   bringForward,
+  bringToFront,
   deleteElement,
   duplicateElement,
   moveElement,
   sendBackward,
+  sendToBack,
 } from "./helpers/element-actions.js";
 import { selectElement, selectPage, selectSurface } from "./helpers/selection-helpers.js";
 import type { SelectionState } from "./helpers/selection-helpers.js";
@@ -158,31 +160,43 @@ export function App() {
   }
 
   function handleBringForward() {
-    if (!currentDocument || !selection.selectedElementId || !selectedElement) {
+    if (!currentDocument || !selection.selectedElementId || !selectedSurface) {
       return;
     }
 
-    const updatedDocument = bringForward(
-      currentDocument,
-      selection.selectedElementId as ElementId,
-      selectedElement.zIndex,
+    setCurrentDocument(
+      bringForward(currentDocument, selection.selectedElementId as ElementId, selectedSurface),
     );
-
-    setCurrentDocument(updatedDocument);
   }
 
   function handleSendBackward() {
-    if (!currentDocument || !selection.selectedElementId || !selectedElement) {
+    if (!currentDocument || !selection.selectedElementId || !selectedSurface) {
       return;
     }
 
-    const updatedDocument = sendBackward(
-      currentDocument,
-      selection.selectedElementId as ElementId,
-      selectedElement.zIndex,
+    setCurrentDocument(
+      sendBackward(currentDocument, selection.selectedElementId as ElementId, selectedSurface),
     );
+  }
 
-    setCurrentDocument(updatedDocument);
+  function handleBringToFront() {
+    if (!currentDocument || !selection.selectedElementId || !selectedSurface) {
+      return;
+    }
+
+    setCurrentDocument(
+      bringToFront(currentDocument, selection.selectedElementId as ElementId, selectedSurface),
+    );
+  }
+
+  function handleSendToBack() {
+    if (!currentDocument || !selection.selectedElementId || !selectedSurface) {
+      return;
+    }
+
+    setCurrentDocument(
+      sendToBack(currentDocument, selection.selectedElementId as ElementId, selectedSurface),
+    );
   }
 
   function handleMoveElement(dx: number, dy: number) {
@@ -334,6 +348,8 @@ export function App() {
               onDuplicate={handleDuplicateElement}
               onBringForward={handleBringForward}
               onSendBackward={handleSendBackward}
+              onBringToFront={handleBringToFront}
+              onSendToBack={handleSendToBack}
               onMove={handleMoveElement}
             />
           ) : (
