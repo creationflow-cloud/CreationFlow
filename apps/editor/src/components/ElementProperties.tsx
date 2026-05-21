@@ -191,6 +191,11 @@ export function ElementProperties({
         step={1}
       />
       <NumberInput
+        label="Z-Index"
+        value={element.zIndex}
+        onChange={(zIndex) => onUpdate({ zIndex })}
+      />
+      <NumberInput
         label="Opacity"
         value={element.opacity}
         onChange={(opacity) => onUpdate({ opacity })}
