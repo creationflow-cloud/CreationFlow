@@ -1,0 +1,77 @@
+name: creationflow
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: creationflow-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-creationflow}
+      POSTGRES_USER: ${POSTGRES_USER:-creationflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-creationflow_dev_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - creationflow-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: creationflow-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: node:22-alpine
+    container_name: creationflow-api
+    command: ["sh", "-c", "node -e \"console.log('CreationFlow API placeholder service')\" && tail -f /dev/null"]
+    ports:
+      - "${API_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  editor:
+    image: node:22-alpine
+    container_name: creationflow-editor
+    command: ["sh", "-c", "node -e \"console.log('CreationFlow Editor placeholder service')\" && tail -f /dev/null"]
+    ports:
+      - "${EDITOR_PORT:-3001}:3001"
+
+  admin:
+    image: node:22-alpine
+    container_name: creationflow-admin
+    command: ["sh", "-c", "node -e \"console.log('CreationFlow Admin placeholder service')\" && tail -f /dev/null"]
+    ports:
+      - "${ADMIN_PORT:-3002}:3002"
+
+  renderer:
+    image: node:22-alpine
+    container_name: creationflow-renderer
+    command: ["sh", "-c", "node -e \"console.log('CreationFlow Renderer placeholder service')\" && tail -f /dev/null"]
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker:
+    image: node:22-alpine
+    container_name: creationflow-worker
+    command: ["sh", "-c", "node -e \"console.log('CreationFlow Worker placeholder service')\" && tail -f /dev/null"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  creationflow-postgres-data:
