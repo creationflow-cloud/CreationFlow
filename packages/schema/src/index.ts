@@ -1,6 +1,6 @@
 type Brand<TValue, TBrand extends string> = TValue & { readonly __brand: TBrand };
 
-export type TenantId = Brand<string, "TenantId">;
+export type WorkspaceId = Brand<string, "WorkspaceId">;
 export type ProductId = Brand<string, "ProductId">;
 export type ConfigurationId = Brand<string, "ConfigurationId">;
 export type SurfaceId = Brand<string, "SurfaceId">;
@@ -10,7 +10,7 @@ export type AssetId = Brand<string, "AssetId">;
 export type CreationFlowDocumentUnit = "mm" | "pt" | "px";
 
 export interface CreationFlowDocumentMetadata {
-  readonly tenantId: TenantId;
+  readonly workspaceId: WorkspaceId;
   readonly productId: ProductId;
   readonly configurationId: ConfigurationId;
   readonly createdAt: string;

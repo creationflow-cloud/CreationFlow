@@ -3,11 +3,11 @@ import type {
   CreationFlowDocument,
   ProductId,
   SurfaceId,
-  TenantId,
+  WorkspaceId,
 } from "@creationflow/schema";
 
 export interface CreateEmptyDocumentInput {
-  readonly tenantId: TenantId;
+  readonly workspaceId: WorkspaceId;
   readonly productId: ProductId;
   readonly configurationId: ConfigurationId;
   readonly now?: string;
@@ -18,7 +18,7 @@ export function createEmptyDocument(input: CreateEmptyDocumentInput): CreationFl
 
   return {
     metadata: {
-      tenantId: input.tenantId,
+      workspaceId: input.workspaceId,
       productId: input.productId,
       configurationId: input.configurationId,
       createdAt: timestamp,
