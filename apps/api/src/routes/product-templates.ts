@@ -13,7 +13,7 @@ const productTemplateSchema = {
     id: { type: "string" },
     workspaceId: { type: "string" },
     productId: { type: "string" },
-    documentSchema: { type: "object" },
+    documentSchema: {},
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" },
   },

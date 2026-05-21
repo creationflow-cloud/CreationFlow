@@ -16,7 +16,7 @@ const configurationSchema = {
     workspaceId: { type: "string" },
     productId: { type: "string" },
     templateId: { type: "string" },
-    document: { type: "object" },
+    document: {},
     status: {
       type: "string",
       enum: ["draft", "cart", "ordered", "archived"],

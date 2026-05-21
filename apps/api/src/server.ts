@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 
 import type { ApiConfig } from "./config.js";
@@ -19,6 +20,10 @@ export async function createServer(config: ApiConfig) {
   });
 
   server.decorate("config", config);
+
+  await server.register(cors, {
+    origin: true,
+  });
 
   await server.register(multipart, {
     limits: {
