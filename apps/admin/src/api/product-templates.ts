@@ -28,3 +28,7 @@ export async function listProductTemplates(
 
   return get<ProductTemplateDto[]>(path);
 }
+
+export async function getProductTemplate(id: string): Promise<ProductTemplateDto> {
+  return get<ProductTemplateDto>(`/product-templates/${id}`);
+}

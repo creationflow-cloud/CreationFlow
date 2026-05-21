@@ -215,6 +215,91 @@ button {
   font-size: 0.85rem;
 }
 
+.template-status {
+  margin: 0;
+  color: #607086;
+  font-size: 0.85rem;
+}
+
+.template-error {
+  color: #c0392b;
+}
+
+.template-info {
+  font-size: 0.8rem;
+}
+
+.page-list {
+  display: grid;
+  gap: 12px;
+}
+
+.page-item {
+  display: grid;
+  gap: 6px;
+}
+
+.page-name {
+  font-weight: 600;
+  color: #1d2738;
+  font-size: 0.85rem;
+}
+
+.surface-list {
+  margin: 0;
+  padding-left: 16px;
+  list-style: none;
+}
+
+.surface-item {
+  padding: 4px 0;
+}
+
+.surface-name {
+  color: #5f6d82;
+  font-size: 0.8rem;
+}
+
+.element-list {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  list-style: none;
+}
+
+.element-item {
+  padding: 2px 0;
+  font-size: 0.78rem;
+  color: #607086;
+}
+
+.element-type {
+  font-weight: 500;
+  color: #1d2738;
+}
+
+.element-name {
+  color: #607086;
+}
+
+.action-button {
+  margin-top: 18px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #d9dee8;
+  border-radius: 12px;
+  color: #ffffff;
+  background: #243b68;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.action-button:disabled {
+  color: #a0aec0;
+  background: #eef1f6;
+  border-color: #d9dee8;
+  cursor: not-allowed;
+}
+
 .surface-bar {
   display: flex;
   gap: 10px;

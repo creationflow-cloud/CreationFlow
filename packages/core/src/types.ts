@@ -3,6 +3,7 @@ import type {
   CreationFlowElement,
   CreationFlowElementType,
   CreationFlowUnit,
+  DocumentId,
   ElementId,
   PageId,
   SurfaceId,
@@ -13,6 +14,12 @@ export interface CreateEmptyDocumentInput {
   readonly workspaceId: string;
   readonly productId?: string;
   readonly configurationId?: string;
+  readonly now?: string;
+}
+
+export interface CreateConfigurationDocumentInput {
+  readonly documentId: DocumentId;
+  readonly templateDocument: Record<string, unknown>;
   readonly now?: string;
 }
 
