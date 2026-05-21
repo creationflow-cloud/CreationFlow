@@ -7,7 +7,6 @@ build/
 coverage/
 
 # Environment files
-.AGENTS.md
 .env
 .env.*
 !.env.example
@@ -31,3 +30,4 @@ yarn-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
+/AGENTS.md
