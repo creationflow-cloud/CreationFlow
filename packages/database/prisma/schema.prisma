@@ -17,6 +17,7 @@ model Workspace {
   templates      ProductTemplate[]
   configurations Configuration[]
   renderJobs     RenderJob[]
+  assets         Asset[]
 }
 
 model Product {
@@ -102,4 +103,30 @@ enum RenderJobStatus {
   PROCESSING
   DONE
   FAILED
+}
+
+enum AssetType {
+  IMAGE
+  FONT
+  VECTOR
+  PDF
+}
+
+model Asset {
+  id          String    @id @default(cuid())
+  workspaceId String
+  type        AssetType
+  name        String
+  source      String
+  mimeType    String?
+  width       Int?
+  height      Int?
+  sizeBytes   BigInt?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([type])
 }
