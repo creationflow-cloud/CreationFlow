@@ -193,24 +193,15 @@ export function ElementProperties({ element, onUpdate }: ElementPropertiesProps)
       />
 
       {element.type === "text" && (
-        <TextElementProperties
-          element={element as CreationFlowTextElement}
-          onUpdate={onUpdate}
-        />
+        <TextElementProperties element={element as CreationFlowTextElement} onUpdate={onUpdate} />
       )}
 
       {element.type === "image" && (
-        <ImageElementProperties
-          element={element as CreationFlowImageElement}
-          onUpdate={onUpdate}
-        />
+        <ImageElementProperties element={element as CreationFlowImageElement} onUpdate={onUpdate} />
       )}
 
       {element.type === "shape" && (
-        <ShapeElementProperties
-          element={element as CreationFlowShapeElement}
-          onUpdate={onUpdate}
-        />
+        <ShapeElementProperties element={element as CreationFlowShapeElement} onUpdate={onUpdate} />
       )}
     </div>
   );
@@ -233,16 +224,12 @@ function TextElementProperties({
       <TextInput
         label="Font Family"
         value={element.fontFamily}
-        onChange={(fontFamily) =>
-          onUpdate({ fontFamily } as Partial<CreationFlowTextElement>)
-        }
+        onChange={(fontFamily) => onUpdate({ fontFamily } as Partial<CreationFlowTextElement>)}
       />
       <NumberInput
         label="Font Size"
         value={element.fontSize}
-        onChange={(fontSize) =>
-          onUpdate({ fontSize } as Partial<CreationFlowTextElement>)
-        }
+        onChange={(fontSize) => onUpdate({ fontSize } as Partial<CreationFlowTextElement>)}
         min={1}
       />
       <TextInput

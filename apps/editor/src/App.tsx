@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 
 import { createConfigurationDocument, updateElement } from "@creationflow/core";
-import type { CreationFlowDocument, CreationFlowElement, DocumentId, ElementId } from "@creationflow/schema";
+import type {
+  CreationFlowDocument,
+  CreationFlowElement,
+  DocumentId,
+  ElementId,
+} from "@creationflow/schema";
 
 import type { ConfigurationDto } from "./api/configurations.js";
 import { createConfigurationFromTemplate, getProductTemplate } from "./api/product-templates.js";
@@ -254,10 +259,7 @@ export function App() {
           <h2>Properties</h2>
 
           {selectedElement ? (
-            <ElementProperties
-              element={selectedElement}
-              onUpdate={handleUpdateElement}
-            />
+            <ElementProperties element={selectedElement} onUpdate={handleUpdateElement} />
           ) : (
             <div className="property-card">
               <p className="document-placeholder">No element selected</p>
