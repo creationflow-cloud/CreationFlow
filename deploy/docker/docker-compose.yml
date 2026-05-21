@@ -32,7 +32,12 @@ services:
   api:
     image: node:22-alpine
     container_name: creationflow-api
-    command: ["sh", "-c", "node -e \"console.log('CreationFlow API placeholder service')\" && tail -f /dev/null"]
+    command:
+      [
+        "sh",
+        "-c",
+        'node -e "console.log(''CreationFlow API placeholder service'')" && tail -f /dev/null',
+      ]
     ports:
       - "${API_PORT:-3000}:3000"
     depends_on:
@@ -44,21 +49,36 @@ services:
   editor:
     image: node:22-alpine
     container_name: creationflow-editor
-    command: ["sh", "-c", "node -e \"console.log('CreationFlow Editor placeholder service')\" && tail -f /dev/null"]
+    command:
+      [
+        "sh",
+        "-c",
+        'node -e "console.log(''CreationFlow Editor placeholder service'')" && tail -f /dev/null',
+      ]
     ports:
       - "${EDITOR_PORT:-3001}:3001"
 
   admin:
     image: node:22-alpine
     container_name: creationflow-admin
-    command: ["sh", "-c", "node -e \"console.log('CreationFlow Admin placeholder service')\" && tail -f /dev/null"]
+    command:
+      [
+        "sh",
+        "-c",
+        'node -e "console.log(''CreationFlow Admin placeholder service'')" && tail -f /dev/null',
+      ]
     ports:
       - "${ADMIN_PORT:-3002}:3002"
 
   renderer:
     image: node:22-alpine
     container_name: creationflow-renderer
-    command: ["sh", "-c", "node -e \"console.log('CreationFlow Renderer placeholder service')\" && tail -f /dev/null"]
+    command:
+      [
+        "sh",
+        "-c",
+        'node -e "console.log(''CreationFlow Renderer placeholder service'')" && tail -f /dev/null',
+      ]
     depends_on:
       redis:
         condition: service_healthy
@@ -66,7 +86,12 @@ services:
   worker:
     image: node:22-alpine
     container_name: creationflow-worker
-    command: ["sh", "-c", "node -e \"console.log('CreationFlow Worker placeholder service')\" && tail -f /dev/null"]
+    command:
+      [
+        "sh",
+        "-c",
+        'node -e "console.log(''CreationFlow Worker placeholder service'')" && tail -f /dev/null',
+      ]
     depends_on:
       postgres:
         condition: service_healthy

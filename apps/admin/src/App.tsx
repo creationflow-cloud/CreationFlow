@@ -27,7 +27,11 @@ export function App() {
         <div className="brand-mark">CF</div>
         <nav className="nav-list">
           {navigationItems.map((item) => (
-            <button className={item === "Dashboard" ? "nav-item active" : "nav-item"} key={item} type="button">
+            <button
+              className={item === "Dashboard" ? "nav-item active" : "nav-item"}
+              key={item}
+              type="button"
+            >
               {item}
             </button>
           ))}
@@ -49,7 +53,10 @@ export function App() {
               <p className="eyebrow">Dashboard</p>
               <h2 id="dashboard-heading">Workspace overview</h2>
             </div>
-            <p>Static foundation for product templates, configurations, render jobs, and production data.</p>
+            <p>
+              Static foundation for product templates, configurations, render jobs, and production
+              data.
+            </p>
           </div>
 
           <div className="card-grid">
