@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 
-import { createConfigurationDocument } from "@creationflow/core";
-import type { CreationFlowDocument, DocumentId } from "@creationflow/schema";
+import { createConfigurationDocument, updateElement } from "@creationflow/core";
+import type { CreationFlowDocument, CreationFlowElement, DocumentId, ElementId } from "@creationflow/schema";
 
 import type { ConfigurationDto } from "./api/configurations.js";
 import { createConfigurationFromTemplate, getProductTemplate } from "./api/product-templates.js";
 import type { ProductTemplateDto } from "./api/product-templates.js";
+import { ElementProperties } from "./components/ElementProperties.js";
 import {
   findElementById,
   findSurfaceById,
@@ -93,6 +94,20 @@ export function App() {
 
   const documentName =
     (currentDocument?.metadata as { name?: string } | undefined)?.name ?? "Untitled document";
+
+  function handleUpdateElement(patch: Partial<CreationFlowElement>) {
+    if (!currentDocument || !selection.selectedElementId) {
+      return;
+    }
+
+    const updatedDocument = updateElement(
+      currentDocument,
+      selection.selectedElementId as ElementId,
+      patch,
+    );
+
+    setCurrentDocument(updatedDocument);
+  }
 
   return (
     <main className="editor-shell">
@@ -239,55 +254,10 @@ export function App() {
           <h2>Properties</h2>
 
           {selectedElement ? (
-            <div className="property-card">
-              <h3>Element</h3>
-              <div className="info-row">
-                <span className="info-label">ID</span>
-                <span className="info-value">{selectedElement.id}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Type</span>
-                <span className="info-value">{selectedElement.type}</span>
-              </div>
-              {selectedElement.name && (
-                <div className="info-row">
-                  <span className="info-label">Name</span>
-                  <span className="info-value">{selectedElement.name}</span>
-                </div>
-              )}
-              <div className="info-row">
-                <span className="info-label">X</span>
-                <span className="info-value">{selectedElement.x}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Y</span>
-                <span className="info-value">{selectedElement.y}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Width</span>
-                <span className="info-value">{selectedElement.width}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Height</span>
-                <span className="info-value">{selectedElement.height}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Rotation</span>
-                <span className="info-value">{selectedElement.rotation}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Opacity</span>
-                <span className="info-value">{selectedElement.opacity}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Visible</span>
-                <span className="info-value">{selectedElement.visible ? "yes" : "no"}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Locked</span>
-                <span className="info-value">{selectedElement.locked ? "yes" : "no"}</span>
-              </div>
-            </div>
+            <ElementProperties
+              element={selectedElement}
+              onUpdate={handleUpdateElement}
+            />
           ) : (
             <div className="property-card">
               <p className="document-placeholder">No element selected</p>

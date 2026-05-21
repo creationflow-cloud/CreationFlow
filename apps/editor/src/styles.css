@@ -199,6 +199,31 @@ button {
   word-break: break-all;
 }
 
+.info-input,
+.info-select {
+  width: 140px;
+  padding: 4px 8px;
+  border: 1px solid #d9dee8;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1d2738;
+  font-size: 0.82rem;
+  text-align: right;
+}
+
+.info-input:focus,
+.info-select:focus {
+  outline: none;
+  border-color: #243b68;
+  box-shadow: 0 0 0 2px rgba(36, 59, 104, 0.15);
+}
+
+.info-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
 .info-placeholder {
   color: #aeb8c8;
   font-style: italic;
