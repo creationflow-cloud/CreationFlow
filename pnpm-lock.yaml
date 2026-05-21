@@ -84,7 +84,14 @@ importers:
         specifier: ^4.0.0
         version: 4.22.3
 
-  apps/worker: {}
+  apps/worker:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.19
+      tsx:
+        specifier: ^4.0.0
+        version: 4.22.3
 
   packages/core:
     dependencies:
