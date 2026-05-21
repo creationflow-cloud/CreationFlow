@@ -7,6 +7,7 @@ build/
 coverage/
 
 # Environment files
+.AGENTS.md
 .env
 .env.*
 !.env.example
