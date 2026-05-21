@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 
 import type { ApiConfig } from "../config.js";
+import { registerConfigurationRoutes } from "./configurations.js";
 import { registerHealthDbRoute } from "./health-db.js";
 import { registerHealthRoute } from "./health.js";
 import { registerVersionRoute } from "./version.js";
@@ -11,11 +12,11 @@ export async function registerRoutes(server: FastifyInstance, config: ApiConfig)
   await registerHealthDbRoute(server);
   await registerVersionRoute(server, config.version);
   await registerWorkspaceRoutes(server);
+  await registerConfigurationRoutes(server);
 
   // Future API groups:
   // - /products
   // - /templates
-  // - /configurations
   // - /render-jobs
   // - /orders
 }

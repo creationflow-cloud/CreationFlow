@@ -92,7 +92,8 @@ model RenderJob {
 
 enum ConfigurationStatus {
   DRAFT
-  READY
+  CART
+  ORDERED
   ARCHIVED
 }
 

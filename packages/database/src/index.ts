@@ -1,6 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, ConfigurationStatus } from "@prisma/client";
 
-export { PrismaClient };
+export { PrismaClient, ConfigurationStatus };
 export type { Prisma } from "@prisma/client";
 
 export function createPrismaClient(): PrismaClient {
