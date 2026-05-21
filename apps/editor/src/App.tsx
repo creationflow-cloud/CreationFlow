@@ -11,6 +11,7 @@ import type {
 } from "@creationflow/schema";
 
 import type { ConfigurationDto } from "./api/configurations.js";
+import { getConfiguration } from "./api/configurations.js";
 import { createConfigurationFromTemplate, getProductTemplate } from "./api/product-templates.js";
 import type { ProductTemplateDto } from "./api/product-templates.js";
 import { ElementProperties } from "./components/ElementProperties.js";
@@ -38,13 +39,11 @@ function getQueryParam(param: string): string | null {
   return params.get(param);
 }
 
-function toDocument(schema: Record<string, unknown>): CreationFlowDocument {
-  return schema as unknown as CreationFlowDocument;
-}
-
 export function App() {
   const templateId = getQueryParam("templateId");
+  const configurationId = getQueryParam("configurationId");
   const [loading, setLoading] = useState(false);
+  const [configurationLoading, setConfigurationLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [template, setTemplate] = useState<ProductTemplateDto | null>(null);
   const [configurationCreating, setConfigurationCreating] = useState(false);
@@ -58,13 +57,49 @@ export function App() {
   });
 
   useEffect(() => {
-    if (!templateId) {
+    if (!configurationId) {
       return;
     }
 
     let cancelled = false;
 
-    async function loadTemplate() {
+    async function loadConfiguration() {
+      setConfigurationLoading(true);
+      setError(null);
+
+      try {
+        const config = await getConfiguration(configurationId as string);
+
+        if (!cancelled) {
+          setConfiguration(config);
+          setCurrentDocument(config.document as unknown as CreationFlowDocument);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load configuration.");
+        }
+      } finally {
+        if (!cancelled) {
+          setConfigurationLoading(false);
+        }
+      }
+    }
+
+    void loadConfiguration();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [configurationId]);
+
+  useEffect(() => {
+    if (!templateId || configurationId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadTemplateAndCreateConfiguration() {
       setLoading(true);
       setError(null);
 
@@ -73,7 +108,34 @@ export function App() {
 
         if (!cancelled) {
           setTemplate(data);
-          setCurrentDocument(toDocument(data.documentSchema));
+
+          if (!data.workspaceId) {
+            setConfigurationError("Template has no workspaceId.");
+            setLoading(false);
+
+            return;
+          }
+
+          setConfigurationCreating(true);
+
+          const documentId = crypto.randomUUID() as DocumentId;
+
+          const configDocument = createConfigurationDocument({
+            documentId,
+            templateDocument: data.documentSchema,
+          });
+
+          const createdConfig = await createConfigurationFromTemplate(
+            data.id,
+            configDocument,
+            data.workspaceId,
+            "draft",
+          );
+
+          if (!cancelled) {
+            setConfiguration(createdConfig);
+            setCurrentDocument(createdConfig.document as unknown as CreationFlowDocument);
+          }
         }
       } catch (err) {
         if (!cancelled) {
@@ -82,16 +144,17 @@ export function App() {
       } finally {
         if (!cancelled) {
           setLoading(false);
+          setConfigurationCreating(false);
         }
       }
     }
 
-    void loadTemplate();
+    void loadTemplateAndCreateConfiguration();
 
     return () => {
       cancelled = true;
     };
-  }, [templateId]);
+  }, [templateId, configurationId]);
 
   const selectedSurface =
     currentDocument && selection.selectedSurfaceId
@@ -379,9 +442,9 @@ export function App() {
           {templateId && (
             <div className="property-card">
               <h3>Template</h3>
-              {loading && <p className="template-status">Loading template...</p>}
+              {(loading || configurationCreating) && <p className="template-status">Loading...</p>}
               {error && <p className="template-status template-error">{error}</p>}
-              {template && !loading && (
+              {template && !loading && !configurationCreating && (
                 <div className="template-info">
                   <div className="info-row">
                     <span className="info-label">ID</span>
@@ -404,13 +467,8 @@ export function App() {
 
           <div className="property-card">
             <h3>Current document</h3>
-            {!currentDocument && !loading && (
+            {!currentDocument && !loading && !configurationLoading && (
               <p className="document-placeholder">No document loaded yet.</p>
-            )}
-            {currentDocument && !configuration && (
-              <p className="document-placeholder">
-                Template loaded. Configuration not yet created.
-              </p>
             )}
             {configuration && (
               <div className="template-info">
@@ -436,55 +494,6 @@ export function App() {
               <p className="template-status template-error">{configurationError}</p>
             </div>
           )}
-
-          <button
-            className="action-button"
-            type="button"
-            disabled={!template || loading || configurationCreating}
-            onClick={async () => {
-              if (!template) {
-                return;
-              }
-
-              if (!template.workspaceId) {
-                setConfigurationError("Template has no workspaceId.");
-
-                return;
-              }
-
-              setConfigurationCreating(true);
-              setConfigurationError(null);
-
-              try {
-                const documentId = crypto.randomUUID() as DocumentId;
-
-                const configDocument = createConfigurationDocument({
-                  documentId,
-                  templateDocument: template.documentSchema,
-                });
-
-                const createdConfiguration = await createConfigurationFromTemplate(
-                  template.id,
-                  configDocument,
-                  template.workspaceId,
-                  "draft",
-                );
-
-                setConfiguration(createdConfiguration);
-                setCurrentDocument(
-                  createdConfiguration.document as unknown as CreationFlowDocument,
-                );
-              } catch (err) {
-                setConfigurationError(
-                  err instanceof Error ? err.message : "Failed to create configuration.",
-                );
-              } finally {
-                setConfigurationCreating(false);
-              }
-            }}
-          >
-            {configurationCreating ? "Creating..." : "Create configuration from template"}
-          </button>
         </aside>
       </section>
 
