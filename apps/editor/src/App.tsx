@@ -1,6 +1,8 @@
 const elementTools = ["Text", "Image", "Shape", "Variables"];
 const surfaces = ["Front", "Back", "Left sleeve", "Right sleeve"];
 
+const apiUrl = import.meta.env.VITE_CREATIONFLOW_API_URL ?? "http://localhost:3000";
+
 export function App() {
   return (
     <main className="editor-shell">
@@ -34,6 +36,27 @@ export function App() {
         <aside className="sidebar right-sidebar" aria-label="Properties sidebar">
           <h2>Properties</h2>
           <div className="property-card">Selected element placeholder</div>
+
+          <div className="property-card api-info-card">
+            <h3>API Connection</h3>
+            <div className="info-row">
+              <span className="info-label">API URL</span>
+              <span className="info-value">{apiUrl}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">Configuration ID</span>
+              <span className="info-value info-placeholder">not set</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">Status</span>
+              <span className="info-value info-status">not loaded</span>
+            </div>
+          </div>
+
+          <div className="property-card">
+            <h3>Current document</h3>
+            <p className="document-placeholder">No document loaded yet.</p>
+          </div>
         </aside>
       </section>
 

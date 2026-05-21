@@ -164,6 +164,57 @@ button {
   background: #ffffff;
 }
 
+.property-card h3 {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  letter-spacing: -0.01em;
+  color: #1d2738;
+}
+
+.api-info-card {
+  font-size: 0.8rem;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eef1f6;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  color: #5f6d82;
+  font-weight: 500;
+}
+
+.info-value {
+  color: #1d2738;
+  text-align: right;
+  word-break: break-all;
+}
+
+.info-placeholder {
+  color: #aeb8c8;
+  font-style: italic;
+}
+
+.info-status {
+  color: #a0aec0;
+  font-weight: 600;
+}
+
+.document-placeholder {
+  margin: 0;
+  color: #a0aec0;
+  font-size: 0.85rem;
+}
+
 .surface-bar {
   display: flex;
   gap: 10px;
