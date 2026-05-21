@@ -7,6 +7,7 @@ import {
   listAssets,
   updateAsset,
 } from "../services/assets.js";
+import { uploadAsset } from "../services/asset-upload.js";
 import type { ApiAssetType } from "../mappers/asset-type.js";
 
 const assetSchema = {
@@ -152,6 +153,101 @@ export async function registerAssetRoutes(server: FastifyInstance): Promise<void
         return reply.code(500).send({
           status: "error",
           message: "Unable to create asset.",
+        });
+      }
+    },
+  );
+
+  server.post<{ Body: { workspaceId: string; type: ApiAssetType } }>(
+    "/assets/upload",
+    {
+      schema: {
+        tags: ["Assets"],
+        summary: "Upload asset file",
+        consumes: ["multipart/form-data"],
+        body: {
+          type: "object",
+          required: ["workspaceId", "type", "file"],
+          properties: {
+            workspaceId: { type: "string" },
+            type: {
+              type: "string",
+              enum: ["image", "font", "vector", "pdf"],
+            },
+          },
+        },
+        response: {
+          201: assetSchema,
+          400: errorSchema,
+          500: errorSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const data = await request.file({
+          limits: {
+            fileSize: server.config.maxUploadBytes,
+          },
+        });
+
+        if (!data) {
+          return reply.code(400).send({
+            status: "error",
+            message: "No file uploaded.",
+          });
+        }
+
+        const workspaceId = request.body.workspaceId;
+        const type = request.body.type;
+
+        if (!workspaceId) {
+          return reply.code(400).send({
+            status: "error",
+            message: "workspaceId is required.",
+          });
+        }
+
+        if (!type) {
+          return reply.code(400).send({
+            status: "error",
+            message: "type is required.",
+          });
+        }
+
+        const fileBuffer = await data.toBuffer();
+
+        const asset = await uploadAsset(
+          server.db,
+          server.storage,
+          {
+            workspaceId,
+            type,
+            file: {
+              filename: data.filename,
+              mimetype: data.mimetype,
+              data: fileBuffer,
+            },
+          },
+          {
+            maxUploadBytes: server.config.maxUploadBytes,
+          },
+        );
+
+        return reply.code(201).send(asset);
+      } catch (error) {
+        server.log.error(error);
+
+        if (error instanceof Error && error.message.includes("File size exceeds")) {
+          return reply.code(400).send({
+            status: "error",
+            message: error.message,
+          });
+        }
+
+        return reply.code(500).send({
+          status: "error",
+          message: "Unable to upload asset.",
         });
       }
     },
