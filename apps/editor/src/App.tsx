@@ -12,11 +12,8 @@ import type { ConfigurationDto } from "./api/configurations.js";
 import { createConfigurationFromTemplate, getProductTemplate } from "./api/product-templates.js";
 import type { ProductTemplateDto } from "./api/product-templates.js";
 import { ElementProperties } from "./components/ElementProperties.js";
-import {
-  findElementById,
-  findSurfaceById,
-  getSurfaceElements,
-} from "./helpers/document-helpers.js";
+import { SurfaceCanvas } from "./components/SurfaceCanvas.js";
+import { findElementById, findSurfaceById } from "./helpers/document-helpers.js";
 import { selectElement, selectPage, selectSurface } from "./helpers/selection-helpers.js";
 import type { SelectionState } from "./helpers/selection-helpers.js";
 
@@ -94,8 +91,6 @@ export function App() {
     currentDocument && selection.selectedElementId
       ? findElementById(currentDocument, selection.selectedElementId)
       : undefined;
-
-  const surfaceElements = selectedSurface ? getSurfaceElements(selectedSurface) : [];
 
   const documentName =
     (currentDocument?.metadata as { name?: string } | undefined)?.name ?? "Untitled document";
@@ -206,46 +201,26 @@ export function App() {
 
         <section className="canvas-stage" aria-label="Canvas area">
           {selectedSurface ? (
-            <div className="canvas-surface">
+            <div className="canvas-scroll-wrapper">
               <div className="canvas-surface-header">
                 <h2>{selectedSurface.name}</h2>
                 <span className="surface-dimensions">
                   {selectedSurface.width} × {selectedSurface.height} {selectedSurface.unit}
                 </span>
               </div>
-              <div className="canvas-elements">
-                {surfaceElements.map((element) => (
-                  <div
-                    className={`canvas-element ${selection.selectedElementId === element.id ? "selected" : ""}`}
-                    key={element.id}
-                    onClick={() =>
-                      setSelection(
-                        selectElement(element.id, {
-                          selectedPageId: selection.selectedPageId,
-                          selectedSurfaceId: selection.selectedSurfaceId,
-                          selectedElementId: null,
-                        }),
-                      )
-                    }
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        setSelection(
-                          selectElement(element.id, {
-                            selectedPageId: selection.selectedPageId,
-                            selectedSurfaceId: selection.selectedSurfaceId,
-                            selectedElementId: null,
-                          }),
-                        );
-                      }
-                    }}
-                  >
-                    <span className="element-type-badge">{element.type}</span>
-                    <span className="element-name">{element.name ?? element.id.slice(0, 8)}</span>
-                  </div>
-                ))}
-              </div>
+              <SurfaceCanvas
+                surface={selectedSurface}
+                selectedElementId={selection.selectedElementId}
+                onSelectElement={(elementId) =>
+                  setSelection(
+                    selectElement(elementId, {
+                      selectedPageId: selection.selectedPageId,
+                      selectedSurfaceId: selection.selectedSurfaceId,
+                      selectedElementId: null,
+                    }),
+                  )
+                }
+              />
             </div>
           ) : (
             <div className="canvas-placeholder">
