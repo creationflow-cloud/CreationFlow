@@ -281,6 +281,123 @@ button {
   color: #607086;
 }
 
+.section-divider {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #d9dee8;
+}
+
+.document-tree {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.tree-group {
+  display: grid;
+  gap: 4px;
+}
+
+.tree-button {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #1d2738;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.tree-button:hover {
+  background: #f0f4f8;
+}
+
+.tree-button.selected {
+  border-color: #243b68;
+  background: #e8edf5;
+  font-weight: 600;
+}
+
+.tree-children {
+  margin: 4px 0 0 12px;
+  padding-left: 12px;
+  list-style: none;
+  border-left: 2px solid #d9dee8;
+}
+
+.tree-placeholder {
+  margin: 12px 0 0;
+  color: #a0aec0;
+  font-size: 0.82rem;
+}
+
+.canvas-surface {
+  display: grid;
+  gap: 16px;
+  width: min(620px, 100%);
+  padding: 20px;
+}
+
+.canvas-surface-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.canvas-surface-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+}
+
+.surface-dimensions {
+  color: #607086;
+  font-size: 0.8rem;
+}
+
+.canvas-elements {
+  display: grid;
+  gap: 10px;
+}
+
+.canvas-element {
+  padding: 12px;
+  border: 1px solid #d9dee8;
+  border-radius: 10px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.canvas-element:hover {
+  border-color: #aeb8c8;
+}
+
+.canvas-element.selected {
+  border-color: #243b68;
+  box-shadow: 0 0 0 2px rgba(36, 59, 104, 0.2);
+}
+
+.element-type-badge {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #eef1f6;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #5f6d82;
+  text-transform: uppercase;
+}
+
+.element-name {
+  color: #1d2738;
+  font-size: 0.85rem;
+}
+
 .action-button {
   margin-top: 18px;
   width: 100%;
