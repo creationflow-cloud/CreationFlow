@@ -1,0 +1,95 @@
+import type { PrismaClient, Prisma } from "@creationflow/database";
+
+export interface ProductTemplateDto {
+  readonly id: string;
+  readonly workspaceId: string;
+  readonly productId?: string;
+  readonly documentSchema: Record<string, unknown>;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface CreateProductTemplateInput {
+  readonly workspaceId: string;
+  readonly productId?: string;
+  readonly documentSchema: Record<string, unknown>;
+}
+
+function toDocumentSchema(doc: Prisma.JsonValue): Record<string, unknown> {
+  if (doc === null || Array.isArray(doc) || typeof doc !== "object") {
+    return {};
+  }
+
+  return doc as Record<string, unknown>;
+}
+
+function toProductTemplateDto(template: {
+  readonly id: string;
+  readonly workspaceId: string;
+  readonly productId: string | null;
+  readonly documentSchema: Prisma.JsonValue;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}): ProductTemplateDto {
+  return {
+    id: template.id,
+    workspaceId: template.workspaceId,
+    productId: template.productId ?? undefined,
+    documentSchema: toDocumentSchema(template.documentSchema),
+    createdAt: template.createdAt.toISOString(),
+    updatedAt: template.updatedAt.toISOString(),
+  };
+}
+
+export async function listProductTemplates(
+  db: PrismaClient,
+  workspaceId?: string,
+  productId?: string,
+): Promise<ProductTemplateDto[]> {
+  const where: { workspaceId?: string; productId?: string } = {};
+
+  if (workspaceId) {
+    where.workspaceId = workspaceId;
+  }
+
+  if (productId) {
+    where.productId = productId;
+  }
+
+  const templates = await db.productTemplate.findMany({
+    where: Object.keys(where).length > 0 ? where : undefined,
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  return templates.map(toProductTemplateDto);
+}
+
+export async function createProductTemplate(
+  db: PrismaClient,
+  input: CreateProductTemplateInput,
+): Promise<ProductTemplateDto> {
+  const template = await db.productTemplate.create({
+    data: {
+      workspaceId: input.workspaceId,
+      productId: input.productId,
+      documentSchema: input.documentSchema as Prisma.InputJsonValue,
+    },
+  });
+
+  return toProductTemplateDto(template);
+}
+
+export async function getProductTemplateById(
+  db: PrismaClient,
+  id: string,
+): Promise<ProductTemplateDto | null> {
+  const template = await db.productTemplate.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  return template ? toProductTemplateDto(template) : null;
+}

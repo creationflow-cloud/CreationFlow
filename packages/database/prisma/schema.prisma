@@ -99,7 +99,7 @@ enum ConfigurationStatus {
 
 enum RenderJobStatus {
   PENDING
-  RUNNING
-  COMPLETED
+  PROCESSING
+  DONE
   FAILED
 }
