@@ -323,16 +323,23 @@ function ImageElementProperties({
   onUpdate: (patch: Partial<CreationFlowElement>) => void;
 }) {
   return (
-    <SelectInput<"contain" | "cover" | "fill">
-      label="Fit"
-      value={element.fit}
-      options={[
-        { value: "contain", label: "Contain" },
-        { value: "cover", label: "Cover" },
-        { value: "fill", label: "Fill" },
-      ]}
-      onChange={(fit) => onUpdate({ fit } as Partial<CreationFlowImageElement>)}
-    />
+    <>
+      <TextInput
+        label="Asset ID"
+        value={element.assetId}
+        onChange={(assetId) => onUpdate({ assetId } as Partial<CreationFlowImageElement>)}
+      />
+      <SelectInput<"contain" | "cover" | "fill">
+        label="Fit"
+        value={element.fit}
+        options={[
+          { value: "contain", label: "Contain" },
+          { value: "cover", label: "Cover" },
+          { value: "fill", label: "Fill" },
+        ]}
+        onChange={(fit) => onUpdate({ fit } as Partial<CreationFlowImageElement>)}
+      />
+    </>
   );
 }
 

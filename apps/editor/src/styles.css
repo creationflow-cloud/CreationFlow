@@ -738,6 +738,68 @@ button {
   background: #f0f4f8;
 }
 
+.layer-list {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.layer-placeholder {
+  margin: 12px 0 0;
+  color: #a0aec0;
+  font-size: 0.82rem;
+}
+
+.layer-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 0.78rem;
+}
+
+.layer-item.selected {
+  border-color: #243b68;
+  background: #e8edf5;
+}
+
+.layer-select-btn {
+  flex: 1;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  color: #1d2738;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer-select-btn:hover {
+  background: #f0f4f8;
+}
+
+.layer-action-btn {
+  padding: 2px 6px;
+  border: 1px solid #d9dee8;
+  border-radius: 4px;
+  background: #ffffff;
+  font-size: 0.72rem;
+  cursor: pointer;
+  color: #5f6d82;
+  font-weight: 600;
+  transition: background 0.1s ease;
+}
+
+.layer-action-btn:hover {
+  background: #f0f4f8;
+}
+
 @media (max-width: 900px) {
   .editor-header {
     align-items: flex-start;

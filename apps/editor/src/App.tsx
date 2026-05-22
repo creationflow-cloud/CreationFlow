@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { addElement, createConfigurationDocument, updateElement } from "@creationflow/core";
-import type { AddTextElementInput } from "@creationflow/core";
 import type {
+  AddImageElementInput,
+  AddShapeElementInput,
+  AddTextElementInput,
+} from "@creationflow/core";
+import type {
+  AssetId,
   CreationFlowDocument,
   CreationFlowElement,
   DocumentId,
@@ -393,6 +398,93 @@ export function App() {
     });
   }
 
+  function getNextZIndex(): number {
+    if (!selectedSurface) return 0;
+    const elements = selectedSurface.elements;
+    if (elements.length === 0) return 0;
+    return Math.max(...elements.map((el) => el.zIndex)) + 1;
+  }
+
+  function handleAddShapeElement() {
+    if (!currentDocument || !selection.selectedPageId || !selection.selectedSurfaceId) {
+      return;
+    }
+
+    commitHistory(currentDocument);
+
+    const elementId = crypto.randomUUID() as ElementId;
+
+    const input: AddShapeElementInput = {
+      id: elementId,
+      type: "shape",
+      name: "Shape",
+      x: 80,
+      y: 80,
+      width: 160,
+      height: 100,
+      rotation: 0,
+      opacity: 1,
+      visible: true,
+      locked: false,
+      zIndex: getNextZIndex(),
+      shapeType: "rect",
+      fill: "#eef1f6",
+      stroke: "#243b68",
+      strokeWidth: 2,
+    };
+
+    const updatedDocument = addElement(currentDocument, {
+      pageId: selection.selectedPageId as PageId,
+      surfaceId: selection.selectedSurfaceId as SurfaceId,
+    }, input);
+
+    setCurrentDocument(updatedDocument);
+    setSelection({
+      selectedPageId: selection.selectedPageId,
+      selectedSurfaceId: selection.selectedSurfaceId,
+      selectedElementId: elementId,
+    });
+  }
+
+  function handleAddImageElement() {
+    if (!currentDocument || !selection.selectedPageId || !selection.selectedSurfaceId) {
+      return;
+    }
+
+    commitHistory(currentDocument);
+
+    const elementId = crypto.randomUUID() as ElementId;
+
+    const input: AddImageElementInput = {
+      id: elementId,
+      type: "image",
+      name: "Image",
+      x: 100,
+      y: 100,
+      width: 200,
+      height: 200,
+      rotation: 0,
+      opacity: 1,
+      visible: true,
+      locked: false,
+      zIndex: getNextZIndex(),
+      assetId: crypto.randomUUID() as AssetId,
+      fit: "contain",
+    };
+
+    const updatedDocument = addElement(currentDocument, {
+      pageId: selection.selectedPageId as PageId,
+      surfaceId: selection.selectedSurfaceId as SurfaceId,
+    }, input);
+
+    setCurrentDocument(updatedDocument);
+    setSelection({
+      selectedPageId: selection.selectedPageId,
+      selectedSurfaceId: selection.selectedSurfaceId,
+      selectedElementId: elementId,
+    });
+  }
+
   const handleUndo = useCallback(() => {
     if (!currentDocument) return;
     const result = undo(history, currentDocument);
@@ -653,19 +745,120 @@ export function App() {
 
           <h2 className="section-divider">Tools</h2>
           <nav className="tool-list" aria-label="Element tools">
-            <button
-              className="tool-button"
-              type="button"
-              onClick={handleAddTextElement}
-            >
-              Text
+            <button className="tool-button" type="button" onClick={handleAddTextElement}>
+              Add Text
             </button>
-            {elementTools.slice(1).map((tool) => (
-              <button className="tool-button" key={tool} type="button">
-                {tool}
-              </button>
-            ))}
+            <button className="tool-button" type="button" onClick={handleAddShapeElement}>
+              Add Shape
+            </button>
+            <button className="tool-button" type="button" onClick={handleAddImageElement}>
+              Add Image
+            </button>
           </nav>
+
+          <h2 className="section-divider">Layers</h2>
+          {selectedSurface ? (
+            selectedSurface.elements.length === 0 ? (
+              <p className="layer-placeholder">No layers yet. Add an element above.</p>
+            ) : (
+              <div className="layer-list">
+                {[...selectedSurface.elements]
+                  .sort((a, b) => b.zIndex - a.zIndex)
+                  .map((el) => (
+                    <div
+                      className={`layer-item ${selection.selectedElementId === el.id ? "selected" : ""}`}
+                      key={el.id}
+                    >
+                      <button
+                        className="layer-select-btn"
+                        type="button"
+                        onClick={() =>
+                          setSelection(
+                            selectElement(el.id, {
+                              selectedPageId: selection.selectedPageId,
+                              selectedSurfaceId: selection.selectedSurfaceId,
+                              selectedElementId: null,
+                            }),
+                          )
+                        }
+                      >
+                        [{el.type}] {el.name ?? el.id.slice(0, 8)}
+                      </button>
+                      <button
+                        className="layer-action-btn"
+                        type="button"
+                        title="Duplicate"
+                        onClick={() => {
+                          setSelection(
+                            selectElement(el.id, {
+                              selectedPageId: selection.selectedPageId,
+                              selectedSurfaceId: selection.selectedSurfaceId,
+                              selectedElementId: null,
+                            }),
+                          );
+                          handleDuplicateElement();
+                        }}
+                      >
+                        Dup
+                      </button>
+                      <button
+                        className="layer-action-btn"
+                        type="button"
+                        title="Delete"
+                        onClick={() => {
+                          setSelection(
+                            selectElement(el.id, {
+                              selectedPageId: selection.selectedPageId,
+                              selectedSurfaceId: selection.selectedSurfaceId,
+                              selectedElementId: null,
+                            }),
+                          );
+                          handleDeleteElement();
+                        }}
+                      >
+                        Del
+                      </button>
+                      <button
+                        className="layer-action-btn"
+                        type="button"
+                        title="Bring to front"
+                        onClick={() => {
+                          setSelection(
+                            selectElement(el.id, {
+                              selectedPageId: selection.selectedPageId,
+                              selectedSurfaceId: selection.selectedSurfaceId,
+                              selectedElementId: null,
+                            }),
+                          );
+                          handleBringToFront();
+                        }}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        className="layer-action-btn"
+                        type="button"
+                        title="Send to back"
+                        onClick={() => {
+                          setSelection(
+                            selectElement(el.id, {
+                              selectedPageId: selection.selectedPageId,
+                              selectedSurfaceId: selection.selectedSurfaceId,
+                              selectedElementId: null,
+                            }),
+                          );
+                          handleSendToBack();
+                        }}
+                      >
+                        ↓
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            )
+          ) : (
+            <p className="layer-placeholder">Select a surface to see layers.</p>
+          )}
         </aside>
 
         <section className="canvas-stage" aria-label="Canvas area">
