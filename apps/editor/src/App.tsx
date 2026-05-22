@@ -26,6 +26,12 @@ import type { ConfigurationDto } from "./api/configurations.js";
 import { getConfiguration, updateConfiguration } from "./api/configurations.js";
 import { createConfigurationFromTemplate, getProductTemplate } from "./api/product-templates.js";
 import type { ProductTemplateDto } from "./api/product-templates.js";
+import {
+  createRenderJob,
+  getRenderJobPdfOutput,
+  renderRenderJob,
+} from "./api/render-jobs.js";
+import type { RenderJobDto } from "./api/render-jobs.js";
 import { ElementProperties } from "./components/ElementProperties.js";
 import { SurfaceCanvas } from "./components/SurfaceCanvas.js";
 import { findElementById, findSurfaceById } from "./helpers/document-helpers.js";
@@ -78,6 +84,9 @@ export function App() {
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [rendering, setRendering] = useState(false);
+  const [renderJob, setRenderJob] = useState<RenderJobDto | null>(null);
+  const [renderError, setRenderError] = useState<string | null>(null);
 
   const dirty =
     currentDocument && lastSavedSnapshot
@@ -240,6 +249,7 @@ export function App() {
 
   const documentName =
     (currentDocument?.metadata as { name?: string } | undefined)?.name ?? "Untitled document";
+  const pdfOutput = getRenderJobPdfOutput(renderJob);
 
   function commitHistory(doc: CreationFlowDocument) {
     setHistory((prev) => pushHistory(prev, doc));
@@ -594,6 +604,39 @@ export function App() {
       setSaving(false);
     }
   }, [configuration, currentDocument]);
+
+  const handleRenderPdf = useCallback(async () => {
+    if (!configuration) {
+      return;
+    }
+
+    if (dirty) {
+      setRenderError("Save your changes before rendering the PDF.");
+      return;
+    }
+
+    setRendering(true);
+    setRenderError(null);
+    setRenderJob(null);
+
+    try {
+      const createdJob = await createRenderJob({
+        workspaceId: configuration.workspaceId,
+        configurationId: configuration.id,
+      });
+      const renderedJob = await renderRenderJob(createdJob.id);
+
+      setRenderJob(renderedJob);
+
+      if (renderedJob.status === "failed") {
+        setRenderError(renderedJob.errorMessage ?? "PDF rendering failed.");
+      }
+    } catch (err) {
+      setRenderError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRendering(false);
+    }
+  }, [configuration, dirty]);
 
   const handleSaveRef = useRef(handleSave);
   const handleUndoRef = useRef(handleUndo);
@@ -1026,6 +1069,33 @@ export function App() {
                 {configuration ? configuration.status : "not loaded"}
               </span>
             </div>
+            {configuration && (
+              <div className="render-panel">
+                <button
+                  type="button"
+                  className="render-btn"
+                  disabled={rendering || dirty || saving}
+                  onClick={handleRenderPdf}
+                  title={dirty ? "Save changes before rendering" : "Render saved configuration to PDF"}
+                >
+                  {rendering ? "Rendering..." : "Render PDF"}
+                </button>
+                {dirty && (
+                  <p className="render-status render-warning">
+                    Save changes before rendering. PDFs use the saved configuration.
+                  </p>
+                )}
+                {renderJob?.status === "done" && pdfOutput && (
+                  <p className="render-status render-success">
+                    PDF ready: <a href={pdfOutput.downloadUrl}>{pdfOutput.filename}</a>
+                  </p>
+                )}
+                {renderJob?.status === "processing" && (
+                  <p className="render-status">Render job is processing...</p>
+                )}
+                {renderError && <p className="render-status render-error">{renderError}</p>}
+              </div>
+            )}
           </div>
 
           {templateId && (

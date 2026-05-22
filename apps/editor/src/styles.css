@@ -738,6 +738,52 @@ button {
   background: #f0f4f8;
 }
 
+.render-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.render-btn {
+  padding: 8px 14px;
+  border: 1px solid #243b68;
+  border-radius: 10px;
+  background: #243b68;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.render-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.render-status {
+  margin: 0;
+  color: #607086;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.render-status a {
+  color: #243b68;
+  font-weight: 700;
+}
+
+.render-success {
+  color: #155724;
+}
+
+.render-warning {
+  color: #856404;
+}
+
+.render-error {
+  color: #c0392b;
+}
+
 .layer-list {
   display: grid;
   gap: 4px;
