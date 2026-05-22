@@ -596,6 +596,110 @@ button {
   background: #243b68;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dirty-indicator {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.dirty-indicator.dirty {
+  color: #856404;
+  background: #fef3cd;
+}
+
+.dirty-indicator.clean {
+  color: #536278;
+  background: #eef1f6;
+}
+
+.save-btn {
+  padding: 8px 20px;
+  border: 1px solid #243b68;
+  border-radius: 10px;
+  background: #243b68;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: #1d2f53;
+}
+
+.save-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.save-btn.saved {
+  border-color: #28a745;
+  background: #28a745;
+}
+
+.save-btn.error {
+  border-color: #c0392b;
+  background: #c0392b;
+}
+
+.status-banner {
+  border: 1px solid #d9dee8;
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin: 16px 24px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(31, 42, 68, 0.06);
+}
+
+.status-banner.status-error {
+  border-color: #e8c4c4;
+  background: rgba(248, 215, 218, 0.15);
+}
+
+.status-banner p {
+  margin: 0;
+  color: #721c24;
+  font-size: 0.9rem;
+}
+
+.status-banner code {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f0f4f8;
+  font-size: 0.82rem;
+  color: #243b68;
+}
+
+.retry-btn {
+  padding: 6px 14px;
+  border: 1px solid #e8c4c4;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #721c24;
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.retry-btn:hover {
+  background: #f8d7da;
+}
+
 @media (max-width: 900px) {
   .editor-header {
     align-items: flex-start;

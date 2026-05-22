@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { createConfigurationDocument, updateElement } from "@creationflow/core";
 import type {
@@ -11,7 +11,7 @@ import type {
 } from "@creationflow/schema";
 
 import type { ConfigurationDto } from "./api/configurations.js";
-import { getConfiguration } from "./api/configurations.js";
+import { getConfiguration, updateConfiguration } from "./api/configurations.js";
 import { createConfigurationFromTemplate, getProductTemplate } from "./api/product-templates.js";
 import type { ProductTemplateDto } from "./api/product-templates.js";
 import { ElementProperties } from "./components/ElementProperties.js";
@@ -30,8 +30,6 @@ import { selectElement, selectPage, selectSurface } from "./helpers/selection-he
 import type { SelectionState } from "./helpers/selection-helpers.js";
 
 const elementTools = ["Text", "Image", "Shape", "Variables"];
-
-const apiUrl = import.meta.env.VITE_CREATIONFLOW_API_URL ?? "http://localhost:3000";
 
 function getQueryParam(param: string): string | null {
   const params = new URLSearchParams(window.location.search);
@@ -56,6 +54,11 @@ export function App() {
     selectedElementId: null,
   });
 
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!configurationId) {
       return;
@@ -73,6 +76,7 @@ export function App() {
         if (!cancelled) {
           setConfiguration(config);
           setCurrentDocument(config.document as unknown as CreationFlowDocument);
+          setDirty(false);
         }
       } catch (err) {
         if (!cancelled) {
@@ -135,6 +139,10 @@ export function App() {
           if (!cancelled) {
             setConfiguration(createdConfig);
             setCurrentDocument(createdConfig.document as unknown as CreationFlowDocument);
+            setDirty(false);
+
+            const newUrl = `${window.location.pathname}?configurationId=${createdConfig.id}`;
+            window.history.replaceState(null, "", newUrl);
           }
         }
       } catch (err) {
@@ -169,6 +177,11 @@ export function App() {
   const documentName =
     (currentDocument?.metadata as { name?: string } | undefined)?.name ?? "Untitled document";
 
+  function markDirty() {
+    setDirty(true);
+    setSaveStatus("idle");
+  }
+
   function handleUpdateElement(patch: Partial<CreationFlowElement>) {
     if (!currentDocument || !selection.selectedElementId) {
       return;
@@ -181,6 +194,7 @@ export function App() {
     );
 
     setCurrentDocument(updatedDocument);
+    markDirty();
   }
 
   function handleDeleteElement() {
@@ -194,6 +208,7 @@ export function App() {
     );
     setCurrentDocument(updatedDocument);
     setSelection({ ...selection, selectedElementId: null });
+    markDirty();
   }
 
   function handleDuplicateElement() {
@@ -220,6 +235,7 @@ export function App() {
 
     setCurrentDocument(result.document);
     setSelection({ ...selection, selectedElementId: result.newElementId });
+    markDirty();
   }
 
   function handleBringForward() {
@@ -230,6 +246,7 @@ export function App() {
     setCurrentDocument(
       bringForward(currentDocument, selection.selectedElementId as ElementId, selectedSurface),
     );
+    markDirty();
   }
 
   function handleSendBackward() {
@@ -240,6 +257,7 @@ export function App() {
     setCurrentDocument(
       sendBackward(currentDocument, selection.selectedElementId as ElementId, selectedSurface),
     );
+    markDirty();
   }
 
   function handleBringToFront() {
@@ -250,6 +268,7 @@ export function App() {
     setCurrentDocument(
       bringToFront(currentDocument, selection.selectedElementId as ElementId, selectedSurface),
     );
+    markDirty();
   }
 
   function handleSendToBack() {
@@ -260,6 +279,7 @@ export function App() {
     setCurrentDocument(
       sendToBack(currentDocument, selection.selectedElementId as ElementId, selectedSurface),
     );
+    markDirty();
   }
 
   function handleMoveElement(dx: number, dy: number) {
@@ -277,7 +297,36 @@ export function App() {
     );
 
     setCurrentDocument(updatedDocument);
+    markDirty();
   }
+
+  const handleSave = useCallback(async () => {
+    if (!configuration || !currentDocument) {
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      await updateConfiguration(configuration.id, {
+        document: currentDocument as unknown as Record<string, unknown>,
+      });
+      setSaveStatus("saved");
+      setDirty(false);
+
+      setTimeout(() => {
+        setSaveStatus("idle");
+      }, 3000);
+    } catch (err) {
+      setSaveStatus("error");
+      setSaveError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }, [configuration, currentDocument]);
+
+  const noIdProvided = !templateId && !configurationId && !loading && !configurationLoading;
 
   return (
     <main className="editor-shell">
@@ -286,10 +335,59 @@ export function App() {
           <p className="eyebrow">CreationFlow Editor</p>
           <h1>{currentDocument ? documentName : "Untitled document"}</h1>
         </div>
-        <span className="document-pill">
-          {templateId ? `Template: ${templateId.slice(0, 8)}...` : "Project placeholder"}
-        </span>
+
+        <div className="header-actions">
+          {configuration && currentDocument && (
+            <>
+              <span
+                className={`dirty-indicator ${dirty ? "dirty" : "clean"}`}
+              >
+                {dirty ? "Unsaved changes" : saveStatus === "saved" ? "Saved" : "No changes"}
+              </span>
+              <button
+                type="button"
+                className={`save-btn ${saveStatus}`}
+                disabled={!dirty || saving}
+                onClick={handleSave}
+              >
+                {saving
+                  ? "Saving..."
+                  : saveStatus === "saved"
+                    ? "Saved ✓"
+                    : saveStatus === "error"
+                      ? "Save failed"
+                      : "Save"}
+              </button>
+            </>
+          )}
+          <span className="document-pill">
+            {configuration
+              ? `Config: ${configuration.id.slice(0, 8)}...`
+              : templateId
+                ? `Template: ${templateId.slice(0, 8)}...`
+                : "No document"}
+          </span>
+        </div>
       </header>
+
+      {noIdProvided && (
+        <section className="status-banner status-error">
+          <p>
+            No templateId or configurationId provided. Open with{" "}
+            <code>?templateId=&lt;id&gt;</code> or{" "}
+            <code>?configurationId=&lt;id&gt;</code>.
+          </p>
+        </section>
+      )}
+
+      {saveError && (
+        <section className="status-banner status-error">
+          <p>Save error: {saveError}</p>
+          <button type="button" className="retry-btn" onClick={() => setSaveError(null)}>
+            Dismiss
+          </button>
+        </section>
+      )}
 
       <section className="editor-workspace" aria-label="Editor workspace">
         <aside className="sidebar left-sidebar" aria-label="Document tree sidebar">
@@ -423,10 +521,6 @@ export function App() {
 
           <div className="property-card api-info-card">
             <h3>API Connection</h3>
-            <div className="info-row">
-              <span className="info-label">API URL</span>
-              <span className="info-value">{apiUrl}</span>
-            </div>
             <div className="info-row">
               <span className="info-label">Configuration ID</span>
               <span className="info-value">{configuration ? configuration.id : "not set"}</span>

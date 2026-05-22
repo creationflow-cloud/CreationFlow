@@ -23,6 +23,7 @@ export async function createServer(config: ApiConfig) {
 
   await server.register(cors, {
     origin: true,
+    methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   });
 
   await server.register(multipart, {
