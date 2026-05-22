@@ -9,10 +9,13 @@ const DEMO_TEMPLATE_NAME = "T-Shirt Front Template";
 function buildDemoDocumentSchema(): Record<string, unknown> {
   const documentId = randomUUID();
   const pageId = randomUUID();
-  const surfaceId = randomUUID();
-  const textElementId = randomUUID();
-  const rectElementId = randomUUID();
-  const circleElementId = randomUUID();
+  const frontSurfaceId = randomUUID();
+  const backSurfaceId = randomUUID();
+  const frontTextElementId = randomUUID();
+  const frontRectElementId = randomUUID();
+  const frontCircleElementId = randomUUID();
+  const backTextElementId = randomUUID();
+  const backRectElementId = randomUUID();
 
   return {
     id: documentId,
@@ -26,13 +29,13 @@ function buildDemoDocumentSchema(): Record<string, unknown> {
     pages: [
       {
         id: pageId,
-        name: "Front",
+        name: "T-Shirt",
         width: 500,
         height: 600,
         unit: "px",
         surfaces: [
           {
-            id: surfaceId,
+            id: frontSurfaceId,
             name: "Front",
             width: 500,
             height: 600,
@@ -40,7 +43,7 @@ function buildDemoDocumentSchema(): Record<string, unknown> {
             kind: "front",
             elements: [
               {
-                id: rectElementId,
+                id: frontRectElementId,
                 type: "shape",
                 name: "Decorative Frame",
                 x: 50,
@@ -58,7 +61,7 @@ function buildDemoDocumentSchema(): Record<string, unknown> {
                 strokeWidth: 2,
               },
               {
-                id: textElementId,
+                id: frontTextElementId,
                 type: "text",
                 name: "Title Text",
                 x: 100,
@@ -78,7 +81,7 @@ function buildDemoDocumentSchema(): Record<string, unknown> {
                 align: "center",
               },
               {
-                id: circleElementId,
+                id: frontCircleElementId,
                 type: "shape",
                 name: "Accent Circle",
                 x: 200,
@@ -94,6 +97,54 @@ function buildDemoDocumentSchema(): Record<string, unknown> {
                 fill: "#eef1f6",
                 stroke: "#d9dee8",
                 strokeWidth: 1,
+              },
+            ],
+          },
+          {
+            id: backSurfaceId,
+            name: "Back",
+            width: 500,
+            height: 600,
+            unit: "px",
+            kind: "back",
+            elements: [
+              {
+                id: backRectElementId,
+                type: "shape",
+                name: "Back Frame",
+                x: 50,
+                y: 50,
+                width: 400,
+                height: 500,
+                rotation: 0,
+                opacity: 1,
+                visible: true,
+                locked: false,
+                zIndex: 0,
+                shapeType: "rect",
+                fill: undefined,
+                stroke: "#28a745",
+                strokeWidth: 2,
+              },
+              {
+                id: backTextElementId,
+                type: "text",
+                name: "Back Text",
+                x: 100,
+                y: 250,
+                width: 300,
+                height: 60,
+                rotation: 0,
+                opacity: 1,
+                visible: true,
+                locked: false,
+                zIndex: 1,
+                text: "Back Design",
+                fontFamily: "Inter, sans-serif",
+                fontSize: 24,
+                fontWeight: "700",
+                color: "#28a745",
+                align: "center",
               },
             ],
           },

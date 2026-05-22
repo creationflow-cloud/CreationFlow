@@ -42,8 +42,10 @@ import {
   sendBackward,
   sendToBack,
 } from "./helpers/element-actions.js";
-import { selectElement, selectPage, selectSurface } from "./helpers/selection-helpers.js";
+import { selectElement, selectFirstSurface, selectPage, selectSurface } from "./helpers/selection-helpers.js";
 import type { SelectionState } from "./helpers/selection-helpers.js";
+
+import { PageSurfaceSwitcher } from "./components/PageSurfaceSwitcher.js";
 
 const elementTools = ["Text", "Image", "Shape", "Variables"];
 
@@ -198,6 +200,16 @@ export function App() {
       }
     }
   }, [currentDocument, selection.selectedElementId]);
+
+  useEffect(() => {
+    if (!currentDocument) return;
+    if (selection.selectedPageId && selection.selectedSurfaceId) return;
+
+    const first = selectFirstSurface(currentDocument);
+    if (first.selectedPageId !== selection.selectedPageId || first.selectedSurfaceId !== selection.selectedSurfaceId) {
+      setSelection(first);
+    }
+  }, [currentDocument]);
 
   const selectedSurface =
     currentDocument && selection.selectedSurfaceId
@@ -491,6 +503,14 @@ export function App() {
     const result = await uploadAsset(file, configuration.workspaceId);
     return result.id;
   }, [configuration]);
+
+  const handleSelectPage = useCallback((pageId: string) => {
+    setSelection(selectPage(pageId));
+  }, []);
+
+  const handleSelectSurface = useCallback((surfaceId: string) => {
+    setSelection((prev) => selectSurface(surfaceId, prev));
+  }, []);
 
   const handleUndo = useCallback(() => {
     if (!currentDocument) return;
@@ -997,16 +1017,15 @@ export function App() {
         </aside>
       </section>
 
-      <footer className="surface-bar" aria-label="Product surfaces">
-        {(currentDocument
-          ? currentDocument.pages.flatMap((page) => page.surfaces ?? []).map((s) => s.name)
-          : ["Front", "Back", "Left sleeve", "Right sleeve"]
-        ).map((surface, index) => (
-          <button className="surface-tab" key={`${surface}-${index}`} type="button">
-            {surface}
-          </button>
-        ))}
-      </footer>
+      {currentDocument && (
+        <PageSurfaceSwitcher
+          document={currentDocument}
+          selectedPageId={selection.selectedPageId}
+          selectedSurfaceId={selection.selectedSurfaceId}
+          onSelectPage={handleSelectPage}
+          onSelectSurface={handleSelectSurface}
+        />
+      )}
     </main>
   );
 }

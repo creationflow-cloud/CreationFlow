@@ -850,3 +850,69 @@ button {
 .upload-status.upload-error {
   color: #c0392b;
 }
+
+.page-surface-switcher {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 24px;
+  border-top: 1px solid #d9dee8;
+  background: #ffffff;
+}
+
+.page-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.page-tab {
+  padding: 6px 14px;
+  border: 1px solid #d9dee8;
+  border-radius: 8px 8px 0 0;
+  background: #f8fafc;
+  color: #5f6d82;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.page-tab:hover {
+  background: #eef1f6;
+  color: #1d2738;
+}
+
+.page-tab.active {
+  background: #243b68;
+  color: #ffffff;
+  border-color: #243b68;
+}
+
+.surface-tabs {
+  display: flex;
+  gap: 4px;
+  padding-left: 8px;
+}
+
+.surface-tab-item {
+  padding: 4px 12px;
+  border: 1px solid #d9dee8;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #607086;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.surface-tab-item:hover {
+  background: #f0f4f8;
+  color: #1d2738;
+}
+
+.surface-tab-item.active {
+  background: #e8edf5;
+  color: #243b68;
+  border-color: #243b68;
+  font-weight: 600;
+}
