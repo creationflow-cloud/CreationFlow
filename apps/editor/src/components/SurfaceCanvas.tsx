@@ -20,6 +20,7 @@ interface SurfaceCanvasProps {
   readonly selectedElementId: string | null;
   readonly onSelectElement: (elementId: string) => void;
   readonly onUpdateElement: (elementId: string, patch: Partial<CreationFlowElement>) => void;
+  readonly onDragStart?: () => void;
   readonly previewScale?: number;
 }
 
@@ -28,6 +29,7 @@ export function SurfaceCanvas({
   selectedElementId,
   onSelectElement,
   onUpdateElement,
+  onDragStart,
   previewScale = 1,
 }: SurfaceCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -59,6 +61,8 @@ export function SurfaceCanvas({
       const element = surface.elements.find((el) => el.id === elementId);
       if (!element) return;
 
+      onDragStart?.();
+
       const coords = getDocCoords(e.clientX, e.clientY);
 
       setDragState({
@@ -72,7 +76,7 @@ export function SurfaceCanvas({
         mode: "move",
       });
     },
-    [surface.elements, getDocCoords],
+    [surface.elements, getDocCoords, onDragStart],
   );
 
   const handleResizeMouseDown = useCallback(
@@ -83,6 +87,8 @@ export function SurfaceCanvas({
 
       const element = surface.elements.find((el) => el.id === elementId);
       if (!element) return;
+
+      onDragStart?.();
 
       const coords = getDocCoords(e.clientX, e.clientY);
 
@@ -97,7 +103,7 @@ export function SurfaceCanvas({
         mode: "resize",
       });
     },
-    [surface.elements, getDocCoords],
+    [surface.elements, getDocCoords, onDragStart],
   );
 
   const handleMouseMove = useCallback(

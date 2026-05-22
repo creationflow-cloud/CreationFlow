@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { addElement, createConfigurationDocument, updateElement } from "@creationflow/core";
 import type { AddTextElementInput } from "@creationflow/core";
@@ -18,6 +18,15 @@ import type { ProductTemplateDto } from "./api/product-templates.js";
 import { ElementProperties } from "./components/ElementProperties.js";
 import { SurfaceCanvas } from "./components/SurfaceCanvas.js";
 import { findElementById, findSurfaceById } from "./helpers/document-helpers.js";
+import {
+  canRedo,
+  canUndo,
+  documentsEqual,
+  pushHistory,
+  redo,
+  undo,
+} from "./helpers/document-history.js";
+import type { HistoryState } from "./helpers/document-history.js";
 import {
   bringForward,
   bringToFront,
@@ -55,10 +64,16 @@ export function App() {
     selectedElementId: null,
   });
 
-  const [dirty, setDirty] = useState(false);
+  const [history, setHistory] = useState<HistoryState>({ undoStack: [], redoStack: [] });
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const dirty =
+    currentDocument && lastSavedSnapshot
+      ? JSON.stringify(currentDocument) !== lastSavedSnapshot
+      : false;
 
   useEffect(() => {
     if (!configurationId) {
@@ -76,8 +91,10 @@ export function App() {
 
         if (!cancelled) {
           setConfiguration(config);
-          setCurrentDocument(config.document as unknown as CreationFlowDocument);
-          setDirty(false);
+          const doc = config.document as unknown as CreationFlowDocument;
+          setCurrentDocument(doc);
+          setHistory({ undoStack: [], redoStack: [] });
+          setLastSavedSnapshot(JSON.stringify(doc));
         }
       } catch (err) {
         if (!cancelled) {
@@ -139,8 +156,10 @@ export function App() {
 
           if (!cancelled) {
             setConfiguration(createdConfig);
-            setCurrentDocument(createdConfig.document as unknown as CreationFlowDocument);
-            setDirty(false);
+            const doc = createdConfig.document as unknown as CreationFlowDocument;
+            setCurrentDocument(doc);
+            setHistory({ undoStack: [], redoStack: [] });
+            setLastSavedSnapshot(JSON.stringify(doc));
 
             const newUrl = `${window.location.pathname}?configurationId=${createdConfig.id}`;
             window.history.replaceState(null, "", newUrl);
@@ -165,6 +184,15 @@ export function App() {
     };
   }, [templateId, configurationId]);
 
+  useEffect(() => {
+    if (selection.selectedElementId && currentDocument) {
+      const exists = findElementById(currentDocument, selection.selectedElementId);
+      if (!exists) {
+        setSelection((prev) => ({ ...prev, selectedElementId: null }));
+      }
+    }
+  }, [currentDocument, selection.selectedElementId]);
+
   const selectedSurface =
     currentDocument && selection.selectedSurfaceId
       ? findSurfaceById(currentDocument, selection.selectedSurfaceId)
@@ -178,15 +206,16 @@ export function App() {
   const documentName =
     (currentDocument?.metadata as { name?: string } | undefined)?.name ?? "Untitled document";
 
-  function markDirty() {
-    setDirty(true);
-    setSaveStatus("idle");
+  function commitHistory(doc: CreationFlowDocument) {
+    setHistory((prev) => pushHistory(prev, doc));
   }
 
   function handleUpdateElement(patch: Partial<CreationFlowElement>) {
     if (!currentDocument || !selection.selectedElementId) {
       return;
     }
+
+    commitHistory(currentDocument);
 
     const updatedDocument = updateElement(
       currentDocument,
@@ -195,7 +224,6 @@ export function App() {
     );
 
     setCurrentDocument(updatedDocument);
-    markDirty();
   }
 
   function handleUpdateElementById(elementId: string, patch: Partial<CreationFlowElement>) {
@@ -210,7 +238,6 @@ export function App() {
     );
 
     setCurrentDocument(updatedDocument);
-    markDirty();
   }
 
   function handleDeleteElement() {
@@ -218,13 +245,14 @@ export function App() {
       return;
     }
 
+    commitHistory(currentDocument);
+
     const updatedDocument = deleteElement(
       currentDocument,
       selection.selectedElementId as ElementId,
     );
     setCurrentDocument(updatedDocument);
     setSelection({ ...selection, selectedElementId: null });
-    markDirty();
   }
 
   function handleDuplicateElement() {
@@ -242,6 +270,8 @@ export function App() {
       return;
     }
 
+    commitHistory(currentDocument);
+
     const result = duplicateElement(
       currentDocument,
       element,
@@ -251,7 +281,6 @@ export function App() {
 
     setCurrentDocument(result.document);
     setSelection({ ...selection, selectedElementId: result.newElementId });
-    markDirty();
   }
 
   function handleBringForward() {
@@ -259,10 +288,11 @@ export function App() {
       return;
     }
 
+    commitHistory(currentDocument);
+
     setCurrentDocument(
       bringForward(currentDocument, selection.selectedElementId as ElementId, selectedSurface),
     );
-    markDirty();
   }
 
   function handleSendBackward() {
@@ -270,10 +300,11 @@ export function App() {
       return;
     }
 
+    commitHistory(currentDocument);
+
     setCurrentDocument(
       sendBackward(currentDocument, selection.selectedElementId as ElementId, selectedSurface),
     );
-    markDirty();
   }
 
   function handleBringToFront() {
@@ -281,10 +312,11 @@ export function App() {
       return;
     }
 
+    commitHistory(currentDocument);
+
     setCurrentDocument(
       bringToFront(currentDocument, selection.selectedElementId as ElementId, selectedSurface),
     );
-    markDirty();
   }
 
   function handleSendToBack() {
@@ -292,16 +324,19 @@ export function App() {
       return;
     }
 
+    commitHistory(currentDocument);
+
     setCurrentDocument(
       sendToBack(currentDocument, selection.selectedElementId as ElementId, selectedSurface),
     );
-    markDirty();
   }
 
   function handleMoveElement(dx: number, dy: number) {
     if (!currentDocument || !selection.selectedElementId || !selectedElement) {
       return;
     }
+
+    commitHistory(currentDocument);
 
     const updatedDocument = moveElement(
       currentDocument,
@@ -313,13 +348,14 @@ export function App() {
     );
 
     setCurrentDocument(updatedDocument);
-    markDirty();
   }
 
   function handleAddTextElement() {
     if (!currentDocument || !selection.selectedPageId || !selection.selectedSurfaceId) {
       return;
     }
+
+    commitHistory(currentDocument);
 
     const elementId = crypto.randomUUID() as ElementId;
 
@@ -355,8 +391,25 @@ export function App() {
       selectedSurfaceId: selection.selectedSurfaceId,
       selectedElementId: elementId,
     });
-    markDirty();
   }
+
+  const handleUndo = useCallback(() => {
+    if (!currentDocument) return;
+    const result = undo(history, currentDocument);
+    if (!result.previous) return;
+
+    setHistory({ undoStack: result.undoStack, redoStack: result.redoStack });
+    setCurrentDocument(result.previous);
+  }, [history, currentDocument]);
+
+  const handleRedo = useCallback(() => {
+    if (!currentDocument) return;
+    const result = redo(history, currentDocument);
+    if (!result.next) return;
+
+    setHistory({ undoStack: result.undoStack, redoStack: result.redoStack });
+    setCurrentDocument(result.next);
+  }, [history, currentDocument]);
 
   const handleSave = useCallback(async () => {
     if (!configuration || !currentDocument) {
@@ -371,7 +424,7 @@ export function App() {
         document: currentDocument as unknown as Record<string, unknown>,
       });
       setSaveStatus("saved");
-      setDirty(false);
+      setLastSavedSnapshot(JSON.stringify(currentDocument));
 
       setTimeout(() => {
         setSaveStatus("idle");
@@ -383,6 +436,71 @@ export function App() {
       setSaving(false);
     }
   }, [configuration, currentDocument]);
+
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+
+  const handleUndoRef = useRef(handleUndo);
+  handleUndoRef.current = handleUndo;
+
+  const handleRedoRef = useRef(handleRedo);
+  handleRedoRef.current = handleRedo;
+
+  const handleDeleteRef = useRef(handleDeleteElement);
+  handleDeleteRef.current = handleDeleteElement;
+
+  const handleDuplicateRef = useRef(handleDuplicateElement);
+  handleDuplicateRef.current = handleDuplicateElement;
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      const isInput =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT" ||
+        target.isContentEditable;
+
+      const mod = e.ctrlKey || e.metaKey;
+
+      if (mod && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        handleUndoRef.current();
+        return;
+      }
+
+      if (mod && (e.key === "y" || (e.key === "z" && e.shiftKey))) {
+        e.preventDefault();
+        handleRedoRef.current();
+        return;
+      }
+
+      if (mod && e.key === "s") {
+        e.preventDefault();
+        handleSaveRef.current();
+        return;
+      }
+
+      if (mod && e.key === "d") {
+        e.preventDefault();
+        handleDuplicateRef.current();
+        return;
+      }
+
+      if (
+        (e.key === "Delete" || e.key === "Backspace") &&
+        !isInput &&
+        selection.selectedElementId
+      ) {
+        e.preventDefault();
+        handleDeleteRef.current();
+        return;
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selection.selectedElementId]);
 
   const noIdProvided = !templateId && !configurationId && !loading && !configurationLoading;
 
@@ -397,6 +515,24 @@ export function App() {
         <div className="header-actions">
           {configuration && currentDocument && (
             <>
+              <button
+                type="button"
+                className="history-btn"
+                disabled={!canUndo(history)}
+                onClick={handleUndo}
+                title="Undo (Ctrl+Z)"
+              >
+                Undo
+              </button>
+              <button
+                type="button"
+                className="history-btn"
+                disabled={!canRedo(history)}
+                onClick={handleRedo}
+                title="Redo (Ctrl+Y)"
+              >
+                Redo
+              </button>
               <span
                 className={`dirty-indicator ${dirty ? "dirty" : "clean"}`}
               >
@@ -554,6 +690,9 @@ export function App() {
                   )
                 }
                 onUpdateElement={handleUpdateElementById}
+                onDragStart={() => {
+                  if (currentDocument) commitHistory(currentDocument);
+                }}
               />
             </div>
           ) : (
