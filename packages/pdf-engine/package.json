@@ -14,10 +14,16 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "check": "tsc -p tsconfig.json --noEmit"
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@creationflow/core": "workspace:*",
-    "@creationflow/schema": "workspace:*"
+    "@creationflow/schema": "workspace:*",
+    "pdfkit": "^0.18.0"
+  },
+  "devDependencies": {
+    "@types/pdfkit": "^0.17.6",
+    "vitest": "^4.1.7"
   }
 }

@@ -58,6 +58,8 @@ interface ListRenderJobsQuery {
 }
 
 export async function registerRenderJobRoutes(server: FastifyInstance): Promise<void> {
+  // TODO: Execute render jobs with @creationflow/pdf-engine/renderDocumentToPdf once the worker
+  // owns job processing and PDF output storage.
   server.get<{ Querystring: ListRenderJobsQuery }>(
     "/render-jobs",
     {
