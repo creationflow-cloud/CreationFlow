@@ -1,5 +1,3 @@
-import type { CreationFlowDocument } from "@creationflow/schema";
-
 import { get, post, put } from "./client.js";
 
 export type ConfigurationStatus = "draft" | "cart" | "ordered" | "archived";
@@ -19,12 +17,12 @@ export interface CreateConfigurationInput {
   readonly workspaceId: string;
   readonly productId?: string;
   readonly templateId?: string;
-  readonly document: CreationFlowDocument;
+  readonly document: Record<string, unknown>;
   readonly status?: ConfigurationStatus;
 }
 
 export interface UpdateConfigurationInput {
-  readonly document?: CreationFlowDocument;
+  readonly document?: Record<string, unknown>;
   readonly status?: ConfigurationStatus;
 }
 

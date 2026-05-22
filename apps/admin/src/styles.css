@@ -414,3 +414,97 @@ button {
     align-items: flex-start;
   }
 }
+
+/* --- Create forms --- */
+.create-toggle-btn {
+  padding: 8px 18px;
+  border: 1px solid #94f3c4;
+  border-radius: 10px;
+  background: rgba(148, 243, 196, 0.1);
+  color: #111827;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.create-toggle-btn:hover {
+  background: rgba(148, 243, 196, 0.25);
+}
+
+.create-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid #dbe1ea;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.form-label {
+  display: block;
+  color: #607089;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.form-input,
+.form-select {
+  padding: 8px 12px;
+  border: 1px solid #dbe1ea;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #202938;
+  font-size: 0.9rem;
+  font-family: inherit;
+  min-width: 200px;
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: #94f3c4;
+  box-shadow: 0 0 0 2px rgba(148, 243, 196, 0.2);
+}
+
+.form-input::placeholder {
+  color: #a0aec0;
+}
+
+.create-submit-btn {
+  padding: 8px 22px;
+  border: 1px solid #94f3c4;
+  border-radius: 10px;
+  background: #94f3c4;
+  color: #111827;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.create-submit-btn:hover:not(:disabled) {
+  background: #7ae8b0;
+}
+
+.create-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .create-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-input,
+  .form-select {
+    min-width: unset;
+  }
+}
