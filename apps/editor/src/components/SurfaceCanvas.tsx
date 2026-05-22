@@ -147,10 +147,9 @@ export function SurfaceCanvas({
     }
   }, [dragState, handleMouseMove, handleMouseUp]);
 
-  const selectedElement =
-    selectedElementId
-      ? surface.elements.find((el) => el.id === selectedElementId)
-      : undefined;
+  const selectedElement = selectedElementId
+    ? surface.elements.find((el) => el.id === selectedElementId)
+    : undefined;
 
   return (
     <div
@@ -168,7 +167,6 @@ export function SurfaceCanvas({
           isSelected={selectedElementId === element.id}
           onSelect={() => onSelectElement(element.id)}
           onMouseDown={(e) => handleElementMouseDown(element.id, e)}
-          previewScale={previewScale}
         />
       ))}
 

@@ -85,25 +85,3 @@ function findElementInGroup(
 
   return undefined;
 }
-
-export function getSurfaceElements(surface: CreationFlowSurface): readonly CreationFlowElement[] {
-  return surface.elements;
-}
-
-export function flattenSurfaceElements(
-  surface: CreationFlowSurface,
-): readonly CreationFlowElement[] {
-  const result: CreationFlowElement[] = [];
-
-  function collect(elements: readonly CreationFlowElement[]) {
-    for (const element of elements) {
-      result.push(element);
-      if (element.type === "group") {
-        collect(element.children);
-      }
-    }
-  }
-
-  collect(surface.elements);
-  return result;
-}

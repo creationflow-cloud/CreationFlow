@@ -874,7 +874,9 @@ button {
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.1s ease, color 0.1s ease;
+  transition:
+    background 0.1s ease,
+    color 0.1s ease;
 }
 
 .page-tab:hover {
@@ -902,7 +904,9 @@ button {
   color: #607086;
   font-size: 0.78rem;
   cursor: pointer;
-  transition: background 0.1s ease, color 0.1s ease;
+  transition:
+    background 0.1s ease,
+    color 0.1s ease;
 }
 
 .surface-tab-item:hover {

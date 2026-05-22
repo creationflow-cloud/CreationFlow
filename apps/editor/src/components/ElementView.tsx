@@ -15,10 +15,9 @@ interface ElementViewProps {
   readonly isSelected: boolean;
   readonly onSelect: () => void;
   readonly onMouseDown: (e: React.MouseEvent) => void;
-  readonly previewScale?: number;
 }
 
-export function ElementView({ element, isSelected, onSelect, onMouseDown, previewScale = 1 }: ElementViewProps) {
+export function ElementView({ element, isSelected, onSelect, onMouseDown }: ElementViewProps) {
   const rotation = element.rotation ?? 0;
   const opacity = element.visible ? element.opacity : 0.35;
 

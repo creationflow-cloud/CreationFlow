@@ -3,6 +3,14 @@ export { createConfigurationDocument } from "./createConfigurationDocument.js";
 export { addPage, removePage, findPage } from "./pages.js";
 export { addSurface, removeSurface, findSurface } from "./surfaces.js";
 export { addElement, removeElement, findElement, updateElement } from "./elements.js";
+export {
+  bringForward,
+  bringToFront,
+  duplicateElementOnSurface,
+  flattenSurfaceElements,
+  sendBackward,
+  sendToBack,
+} from "./layers.js";
 export type {
   AddElementInput,
   AddTextElementInput,

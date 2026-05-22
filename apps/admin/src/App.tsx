@@ -94,25 +94,36 @@ function docToPages(doc: Record<string, unknown>): TemplateDetailPage[] {
   }));
 }
 
-function pagesToDoc(pages: TemplateDetailPage[], originalDoc: Record<string, unknown>): Record<string, unknown> {
+function pagesToDoc(
+  pages: TemplateDetailPage[],
+  originalDoc: Record<string, unknown>,
+): Record<string, unknown> {
+  const originalPages = (originalDoc.pages as Record<string, unknown>[]) ?? [];
   return {
     ...originalDoc,
-    pages: pages.map((page) => ({
-      id: page.id,
-      name: page.name,
-      width: page.width,
-      height: page.height,
-      unit: page.unit,
-      surfaces: page.surfaces.map((s) => ({
-        id: s.id,
-        name: s.name,
-        kind: s.kind,
-        width: s.width,
-        height: s.height,
-        unit: s.unit,
-        elements: [],
-      })),
-    })),
+    pages: pages.map((page) => {
+      const originalPage = originalPages.find((p) => p.id === page.id);
+      const originalSurfaces = (originalPage?.surfaces as Record<string, unknown>[]) ?? [];
+      return {
+        id: page.id,
+        name: page.name,
+        width: page.width,
+        height: page.height,
+        unit: page.unit,
+        surfaces: page.surfaces.map((s) => {
+          const originalSurface = originalSurfaces.find((surface) => surface.id === s.id);
+          return {
+            id: s.id,
+            name: s.name,
+            kind: s.kind,
+            width: s.width,
+            height: s.height,
+            unit: s.unit,
+            elements: (originalSurface?.elements as unknown[]) ?? [],
+          };
+        }),
+      };
+    }),
   };
 }
 
@@ -176,7 +187,9 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    loadData();
+    queueMicrotask(() => {
+      void loadData();
+    });
   }, [loadData]);
 
   const openInEditor = (id: string, param: "templateId" | "configurationId") => {
@@ -303,9 +316,7 @@ export function App() {
         i === pageIndex
           ? {
               ...page,
-              surfaces: page.surfaces.map((s, j) =>
-                j === surfaceIndex ? { ...s, ...patch } : s,
-              ),
+              surfaces: page.surfaces.map((s, j) => (j === surfaceIndex ? { ...s, ...patch } : s)),
             }
           : page,
       ),
@@ -368,11 +379,7 @@ export function App() {
               <h1>{editingTemplate?.id.slice(0, 12) ?? "Loading..."}</h1>
             </div>
             <div className="header-actions">
-              <button
-                type="button"
-                className="back-btn"
-                onClick={closeTemplateDetail}
-              >
+              <button type="button" className="back-btn" onClick={closeTemplateDetail}>
                 ← Back
               </button>
               <button
@@ -381,11 +388,7 @@ export function App() {
                 disabled={detailSaving}
                 onClick={handleSaveTemplate}
               >
-                {detailSaving
-                  ? "Saving..."
-                  : detailSaveStatus === "saved"
-                    ? "Saved ✓"
-                    : "Save"}
+                {detailSaving ? "Saving..." : detailSaveStatus === "saved" ? "Saved ✓" : "Save"}
               </button>
             </div>
           </header>
@@ -399,7 +402,11 @@ export function App() {
           {detailError && (
             <section className="status-banner status-error">
               <p>Error: {detailError}</p>
-              <button type="button" className="retry-btn" onClick={() => openTemplateDetail(editingTemplateId)}>
+              <button
+                type="button"
+                className="retry-btn"
+                onClick={() => openTemplateDetail(editingTemplateId)}
+              >
                 Retry
               </button>
             </section>
@@ -546,9 +553,7 @@ export function App() {
             <p className="eyebrow">CreationFlow Admin</p>
             <h1>{pageTitle[activePage]}</h1>
           </div>
-          <span className="environment-pill">
-            {loading ? "Loading..." : `${workspaceLabel}`}
-          </span>
+          <span className="environment-pill">{loading ? "Loading..." : `${workspaceLabel}`}</span>
         </header>
 
         {loading && (
@@ -655,9 +660,7 @@ export function App() {
             )}
 
             {products.length === 0 && !showCreateProduct ? (
-              <p className="empty-state">
-                No products found. Create your first product above.
-              </p>
+              <p className="empty-state">No products found. Create your first product above.</p>
             ) : (
               <div className="data-table">
                 <table>
@@ -732,9 +735,7 @@ export function App() {
             )}
 
             {templates.length === 0 && !showCreateTemplate ? (
-              <p className="empty-state">
-                No templates found. Create your first template above.
-              </p>
+              <p className="empty-state">No templates found. Create your first template above.</p>
             ) : (
               <div className="data-table">
                 <table>
@@ -788,9 +789,7 @@ export function App() {
             <div className="section-heading">
               <div>
                 <p className="eyebrow">Configurations</p>
-                <h2 id="configurations-heading">
-                  All configurations ({configurations.length})
-                </h2>
+                <h2 id="configurations-heading">All configurations ({configurations.length})</h2>
               </div>
               <button
                 type="button"

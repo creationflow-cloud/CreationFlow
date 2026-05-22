@@ -14,10 +14,7 @@ export interface UploadAssetResponse {
   readonly updatedAt: string;
 }
 
-export async function uploadAsset(
-  file: File,
-  workspaceId: string,
-): Promise<UploadAssetResponse> {
+export async function uploadAsset(file: File, workspaceId: string): Promise<UploadAssetResponse> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("workspaceId", workspaceId);

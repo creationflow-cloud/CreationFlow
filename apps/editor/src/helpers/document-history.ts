@@ -11,15 +11,10 @@ export function createEmptyHistory(): HistoryState {
   return { undoStack: [], redoStack: [] };
 }
 
-export function pushHistory(
-  state: HistoryState,
-  document: CreationFlowDocument,
-): HistoryState {
+export function pushHistory(state: HistoryState, document: CreationFlowDocument): HistoryState {
   const nextUndo = [...state.undoStack, document];
   const trimmed =
-    nextUndo.length > MAX_HISTORY
-      ? nextUndo.slice(nextUndo.length - MAX_HISTORY)
-      : nextUndo;
+    nextUndo.length > MAX_HISTORY ? nextUndo.slice(nextUndo.length - MAX_HISTORY) : nextUndo;
 
   return {
     undoStack: trimmed,
@@ -27,7 +22,10 @@ export function pushHistory(
   };
 }
 
-export function undo(state: HistoryState, current: CreationFlowDocument): HistoryState & { previous: CreationFlowDocument | null } {
+export function undo(
+  state: HistoryState,
+  current: CreationFlowDocument,
+): HistoryState & { previous: CreationFlowDocument | null } {
   if (state.undoStack.length === 0) {
     return { ...state, previous: null };
   }
@@ -43,7 +41,10 @@ export function undo(state: HistoryState, current: CreationFlowDocument): Histor
   };
 }
 
-export function redo(state: HistoryState, current: CreationFlowDocument): HistoryState & { next: CreationFlowDocument | null } {
+export function redo(
+  state: HistoryState,
+  current: CreationFlowDocument,
+): HistoryState & { next: CreationFlowDocument | null } {
   if (state.redoStack.length === 0) {
     return { ...state, next: null };
   }

@@ -24,14 +24,7 @@ import type { ProductTemplateDto } from "./api/product-templates.js";
 import { ElementProperties } from "./components/ElementProperties.js";
 import { SurfaceCanvas } from "./components/SurfaceCanvas.js";
 import { findElementById, findSurfaceById } from "./helpers/document-helpers.js";
-import {
-  canRedo,
-  canUndo,
-  documentsEqual,
-  pushHistory,
-  redo,
-  undo,
-} from "./helpers/document-history.js";
+import { canRedo, canUndo, pushHistory, redo, undo } from "./helpers/document-history.js";
 import type { HistoryState } from "./helpers/document-history.js";
 import {
   bringForward,
@@ -42,12 +35,15 @@ import {
   sendBackward,
   sendToBack,
 } from "./helpers/element-actions.js";
-import { selectElement, selectFirstSurface, selectPage, selectSurface } from "./helpers/selection-helpers.js";
+import {
+  selectElement,
+  selectFirstSurface,
+  selectPage,
+  selectSurface,
+} from "./helpers/selection-helpers.js";
 import type { SelectionState } from "./helpers/selection-helpers.js";
 
 import { PageSurfaceSwitcher } from "./components/PageSurfaceSwitcher.js";
-
-const elementTools = ["Text", "Image", "Shape", "Variables"];
 
 function getQueryParam(param: string): string | null {
   const params = new URLSearchParams(window.location.search);
@@ -196,7 +192,13 @@ export function App() {
     if (selection.selectedElementId && currentDocument) {
       const exists = findElementById(currentDocument, selection.selectedElementId);
       if (!exists) {
-        setSelection((prev) => ({ ...prev, selectedElementId: null }));
+        queueMicrotask(() => {
+          setSelection((prev) =>
+            prev.selectedElementId === selection.selectedElementId
+              ? { ...prev, selectedElementId: null }
+              : prev,
+          );
+        });
       }
     }
   }, [currentDocument, selection.selectedElementId]);
@@ -206,10 +208,20 @@ export function App() {
     if (selection.selectedPageId && selection.selectedSurfaceId) return;
 
     const first = selectFirstSurface(currentDocument);
-    if (first.selectedPageId !== selection.selectedPageId || first.selectedSurfaceId !== selection.selectedSurfaceId) {
-      setSelection(first);
+    if (
+      first.selectedPageId !== selection.selectedPageId ||
+      first.selectedSurfaceId !== selection.selectedSurfaceId
+    ) {
+      queueMicrotask(() => {
+        setSelection((prev) =>
+          prev.selectedPageId === first.selectedPageId &&
+          prev.selectedSurfaceId === first.selectedSurfaceId
+            ? prev
+            : first,
+        );
+      });
     }
-  }, [currentDocument]);
+  }, [currentDocument, selection.selectedPageId, selection.selectedSurfaceId]);
 
   const selectedSurface =
     currentDocument && selection.selectedSurfaceId
@@ -249,41 +261,36 @@ export function App() {
       return;
     }
 
-    const updatedDocument = updateElement(
-      currentDocument,
-      elementId as ElementId,
-      patch,
-    );
+    const updatedDocument = updateElement(currentDocument, elementId as ElementId, patch);
 
     setCurrentDocument(updatedDocument);
   }
 
-  function handleDeleteElement() {
-    if (!currentDocument || !selection.selectedElementId) {
+  function handleDeleteElement(elementId = selection.selectedElementId) {
+    if (!currentDocument || !elementId) {
       return;
     }
 
     commitHistory(currentDocument);
 
-    const updatedDocument = deleteElement(
-      currentDocument,
-      selection.selectedElementId as ElementId,
-    );
+    const updatedDocument = deleteElement(currentDocument, elementId as ElementId);
     setCurrentDocument(updatedDocument);
-    setSelection({ ...selection, selectedElementId: null });
+    setSelection((prev) =>
+      prev.selectedElementId === elementId ? { ...prev, selectedElementId: null } : prev,
+    );
   }
 
-  function handleDuplicateElement() {
+  function handleDuplicateElement(elementId = selection.selectedElementId) {
     if (
       !currentDocument ||
-      !selection.selectedElementId ||
+      !elementId ||
       !selection.selectedSurfaceId ||
       !selection.selectedPageId
     ) {
       return;
     }
 
-    const element = findElementById(currentDocument, selection.selectedElementId);
+    const element = findElementById(currentDocument, elementId);
     if (!element) {
       return;
     }
@@ -292,60 +299,72 @@ export function App() {
 
     const result = duplicateElement(
       currentDocument,
-      element,
       selection.selectedPageId as PageId,
       selection.selectedSurfaceId as SurfaceId,
+      elementId as ElementId,
     );
 
     setCurrentDocument(result.document);
     setSelection({ ...selection, selectedElementId: result.newElementId });
   }
 
-  function handleBringForward() {
-    if (!currentDocument || !selection.selectedElementId || !selectedSurface) {
+  function handleBringForward(elementId = selection.selectedElementId) {
+    if (!currentDocument || !elementId || !selection.selectedSurfaceId) {
       return;
     }
 
     commitHistory(currentDocument);
 
     setCurrentDocument(
-      bringForward(currentDocument, selection.selectedElementId as ElementId, selectedSurface),
+      bringForward(
+        currentDocument,
+        elementId as ElementId,
+        selection.selectedSurfaceId as SurfaceId,
+      ),
     );
   }
 
-  function handleSendBackward() {
-    if (!currentDocument || !selection.selectedElementId || !selectedSurface) {
+  function handleSendBackward(elementId = selection.selectedElementId) {
+    if (!currentDocument || !elementId || !selection.selectedSurfaceId) {
       return;
     }
 
     commitHistory(currentDocument);
 
     setCurrentDocument(
-      sendBackward(currentDocument, selection.selectedElementId as ElementId, selectedSurface),
+      sendBackward(
+        currentDocument,
+        elementId as ElementId,
+        selection.selectedSurfaceId as SurfaceId,
+      ),
     );
   }
 
-  function handleBringToFront() {
-    if (!currentDocument || !selection.selectedElementId || !selectedSurface) {
+  function handleBringToFront(elementId = selection.selectedElementId) {
+    if (!currentDocument || !elementId || !selection.selectedSurfaceId) {
       return;
     }
 
     commitHistory(currentDocument);
 
     setCurrentDocument(
-      bringToFront(currentDocument, selection.selectedElementId as ElementId, selectedSurface),
+      bringToFront(
+        currentDocument,
+        elementId as ElementId,
+        selection.selectedSurfaceId as SurfaceId,
+      ),
     );
   }
 
-  function handleSendToBack() {
-    if (!currentDocument || !selection.selectedElementId || !selectedSurface) {
+  function handleSendToBack(elementId = selection.selectedElementId) {
+    if (!currentDocument || !elementId || !selection.selectedSurfaceId) {
       return;
     }
 
     commitHistory(currentDocument);
 
     setCurrentDocument(
-      sendToBack(currentDocument, selection.selectedElementId as ElementId, selectedSurface),
+      sendToBack(currentDocument, elementId as ElementId, selection.selectedSurfaceId as SurfaceId),
     );
   }
 
@@ -389,7 +408,7 @@ export function App() {
       opacity: 1,
       visible: true,
       locked: false,
-      zIndex: 999,
+      zIndex: getNextZIndex(),
       text: "Your text here",
       fontFamily: "Inter, sans-serif",
       fontSize: 20,
@@ -398,10 +417,14 @@ export function App() {
       align: "left",
     };
 
-    const updatedDocument = addElement(currentDocument, {
-      pageId: selection.selectedPageId as PageId,
-      surfaceId: selection.selectedSurfaceId as SurfaceId,
-    }, input);
+    const updatedDocument = addElement(
+      currentDocument,
+      {
+        pageId: selection.selectedPageId as PageId,
+        surfaceId: selection.selectedSurfaceId as SurfaceId,
+      },
+      input,
+    );
 
     setCurrentDocument(updatedDocument);
     setSelection({
@@ -446,10 +469,14 @@ export function App() {
       strokeWidth: 2,
     };
 
-    const updatedDocument = addElement(currentDocument, {
-      pageId: selection.selectedPageId as PageId,
-      surfaceId: selection.selectedSurfaceId as SurfaceId,
-    }, input);
+    const updatedDocument = addElement(
+      currentDocument,
+      {
+        pageId: selection.selectedPageId as PageId,
+        surfaceId: selection.selectedSurfaceId as SurfaceId,
+      },
+      input,
+    );
 
     setCurrentDocument(updatedDocument);
     setSelection({
@@ -485,10 +512,14 @@ export function App() {
       fit: "contain",
     };
 
-    const updatedDocument = addElement(currentDocument, {
-      pageId: selection.selectedPageId as PageId,
-      surfaceId: selection.selectedSurfaceId as SurfaceId,
-    }, input);
+    const updatedDocument = addElement(
+      currentDocument,
+      {
+        pageId: selection.selectedPageId as PageId,
+        surfaceId: selection.selectedSurfaceId as SurfaceId,
+      },
+      input,
+    );
 
     setCurrentDocument(updatedDocument);
     setSelection({
@@ -498,11 +529,14 @@ export function App() {
     });
   }
 
-  const handleUploadAsset = useCallback(async (file: File): Promise<string> => {
-    if (!configuration) throw new Error("No configuration loaded.");
-    const result = await uploadAsset(file, configuration.workspaceId);
-    return result.id;
-  }, [configuration]);
+  const handleUploadAsset = useCallback(
+    async (file: File): Promise<string> => {
+      if (!configuration) throw new Error("No configuration loaded.");
+      const result = await uploadAsset(file, configuration.workspaceId);
+      return result.id;
+    },
+    [configuration],
+  );
 
   const handleSelectPage = useCallback((pageId: string) => {
     setSelection(selectPage(pageId));
@@ -557,19 +591,18 @@ export function App() {
   }, [configuration, currentDocument]);
 
   const handleSaveRef = useRef(handleSave);
-  handleSaveRef.current = handleSave;
-
   const handleUndoRef = useRef(handleUndo);
-  handleUndoRef.current = handleUndo;
-
   const handleRedoRef = useRef(handleRedo);
-  handleRedoRef.current = handleRedo;
-
   const handleDeleteRef = useRef(handleDeleteElement);
-  handleDeleteRef.current = handleDeleteElement;
-
   const handleDuplicateRef = useRef(handleDuplicateElement);
-  handleDuplicateRef.current = handleDuplicateElement;
+
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+    handleUndoRef.current = handleUndo;
+    handleRedoRef.current = handleRedo;
+    handleDeleteRef.current = handleDeleteElement;
+    handleDuplicateRef.current = handleDuplicateElement;
+  });
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -652,9 +685,7 @@ export function App() {
               >
                 Redo
               </button>
-              <span
-                className={`dirty-indicator ${dirty ? "dirty" : "clean"}`}
-              >
+              <span className={`dirty-indicator ${dirty ? "dirty" : "clean"}`}>
                 {dirty ? "Unsaved changes" : saveStatus === "saved" ? "Saved" : "No changes"}
               </span>
               <button
@@ -686,9 +717,8 @@ export function App() {
       {noIdProvided && (
         <section className="status-banner status-error">
           <p>
-            No templateId or configurationId provided. Open with{" "}
-            <code>?templateId=&lt;id&gt;</code> or{" "}
-            <code>?configurationId=&lt;id&gt;</code>.
+            No templateId or configurationId provided. Open with <code>?templateId=&lt;id&gt;</code>{" "}
+            or <code>?configurationId=&lt;id&gt;</code>.
           </p>
         </section>
       )}
@@ -823,7 +853,7 @@ export function App() {
                               selectedElementId: null,
                             }),
                           );
-                          handleDuplicateElement();
+                          handleDuplicateElement(el.id);
                         }}
                       >
                         Dup
@@ -840,7 +870,7 @@ export function App() {
                               selectedElementId: null,
                             }),
                           );
-                          handleDeleteElement();
+                          handleDeleteElement(el.id);
                         }}
                       >
                         Del
@@ -857,7 +887,7 @@ export function App() {
                               selectedElementId: null,
                             }),
                           );
-                          handleBringToFront();
+                          handleBringToFront(el.id);
                         }}
                       >
                         ↑
@@ -874,7 +904,7 @@ export function App() {
                               selectedElementId: null,
                             }),
                           );
-                          handleSendToBack();
+                          handleSendToBack(el.id);
                         }}
                       >
                         ↓

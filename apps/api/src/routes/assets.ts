@@ -177,11 +177,13 @@ export async function registerAssetRoutes(server: FastifyInstance): Promise<void
         const parts = request.parts();
         let workspaceId: string | undefined;
         let type: ApiAssetType | undefined;
-        let fileData: {
-          filename: string;
-          mimetype: string;
-          data: Uint8Array;
-        } | undefined;
+        let fileData:
+          | {
+              filename: string;
+              mimetype: string;
+              data: Uint8Array;
+            }
+          | undefined;
 
         for await (const part of parts) {
           if (part.type === "file") {
