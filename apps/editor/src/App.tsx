@@ -198,6 +198,21 @@ export function App() {
     markDirty();
   }
 
+  function handleUpdateElementById(elementId: string, patch: Partial<CreationFlowElement>) {
+    if (!currentDocument) {
+      return;
+    }
+
+    const updatedDocument = updateElement(
+      currentDocument,
+      elementId as ElementId,
+      patch,
+    );
+
+    setCurrentDocument(updatedDocument);
+    markDirty();
+  }
+
   function handleDeleteElement() {
     if (!currentDocument || !selection.selectedElementId) {
       return;
@@ -538,6 +553,7 @@ export function App() {
                     }),
                   )
                 }
+                onUpdateElement={handleUpdateElementById}
               />
             </div>
           ) : (

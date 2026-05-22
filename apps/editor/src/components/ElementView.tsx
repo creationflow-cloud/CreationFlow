@@ -14,9 +14,11 @@ interface ElementViewProps {
   readonly element: CreationFlowElement;
   readonly isSelected: boolean;
   readonly onSelect: () => void;
+  readonly onMouseDown: (e: React.MouseEvent) => void;
+  readonly previewScale?: number;
 }
 
-export function ElementView({ element, isSelected, onSelect }: ElementViewProps) {
+export function ElementView({ element, isSelected, onSelect, onMouseDown, previewScale = 1 }: ElementViewProps) {
   const rotation = element.rotation ?? 0;
   const opacity = element.visible ? element.opacity : 0.35;
 
@@ -41,7 +43,12 @@ export function ElementView({ element, isSelected, onSelect }: ElementViewProps)
 
   if (element.type === "text") {
     return (
-      <div style={baseStyle} onClick={onSelect} className="canvas-element-absolute">
+      <div
+        style={baseStyle}
+        onClick={onSelect}
+        onMouseDown={onMouseDown}
+        className="canvas-element-absolute"
+      >
         <TextElementView element={element as CreationFlowTextElement} />
         {!element.visible && <span className="hidden-badge">hidden</span>}
       </div>
@@ -50,7 +57,12 @@ export function ElementView({ element, isSelected, onSelect }: ElementViewProps)
 
   if (element.type === "image") {
     return (
-      <div style={baseStyle} onClick={onSelect} className="canvas-element-absolute">
+      <div
+        style={baseStyle}
+        onClick={onSelect}
+        onMouseDown={onMouseDown}
+        className="canvas-element-absolute"
+      >
         <ImageElementView element={element as CreationFlowImageElement} />
         {!element.visible && <span className="hidden-badge">hidden</span>}
       </div>
@@ -59,7 +71,12 @@ export function ElementView({ element, isSelected, onSelect }: ElementViewProps)
 
   if (element.type === "shape") {
     return (
-      <div style={baseStyle} onClick={onSelect} className="canvas-element-absolute">
+      <div
+        style={baseStyle}
+        onClick={onSelect}
+        onMouseDown={onMouseDown}
+        className="canvas-element-absolute"
+      >
         <ShapeElementView element={element as CreationFlowShapeElement} />
         {!element.visible && <span className="hidden-badge">hidden</span>}
       </div>
@@ -68,7 +85,12 @@ export function ElementView({ element, isSelected, onSelect }: ElementViewProps)
 
   if (element.type === "group") {
     return (
-      <div style={baseStyle} onClick={onSelect} className="canvas-element-absolute canvas-group">
+      <div
+        style={baseStyle}
+        onClick={onSelect}
+        onMouseDown={onMouseDown}
+        className="canvas-element-absolute canvas-group"
+      >
         <span className="group-label">Group ({element.children.length})</span>
         {!element.visible && <span className="hidden-badge">hidden</span>}
       </div>
@@ -77,7 +99,12 @@ export function ElementView({ element, isSelected, onSelect }: ElementViewProps)
 
   if (element.type === "variable") {
     return (
-      <div style={baseStyle} onClick={onSelect} className="canvas-element-absolute">
+      <div
+        style={baseStyle}
+        onClick={onSelect}
+        onMouseDown={onMouseDown}
+        className="canvas-element-absolute"
+      >
         <span className="variable-label">
           Variable: {(element as CreationFlowVariableElement).variableId.slice(0, 8)}
         </span>
