@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import type {
   CreationFlowElement,
   CreationFlowTextAlign,
@@ -18,6 +20,7 @@ interface ElementPropertiesProps {
   readonly onBringToFront: () => void;
   readonly onSendToBack: () => void;
   readonly onMove: (dx: number, dy: number) => void;
+  readonly onUploadAsset?: (file: File) => Promise<string>;
 }
 
 function NumberInput({
@@ -150,6 +153,7 @@ export function ElementProperties({
   onBringToFront,
   onSendToBack,
   onMove,
+  onUploadAsset,
 }: ElementPropertiesProps) {
   return (
     <div className="property-card">
@@ -219,7 +223,11 @@ export function ElementProperties({
       )}
 
       {element.type === "image" && (
-        <ImageElementProperties element={element as CreationFlowImageElement} onUpdate={onUpdate} />
+        <ImageElementProperties
+          element={element as CreationFlowImageElement}
+          onUpdate={onUpdate}
+          onUploadAsset={onUploadAsset}
+        />
       )}
 
       {element.type === "shape" && (
@@ -318,10 +326,15 @@ function TextElementProperties({
 function ImageElementProperties({
   element,
   onUpdate,
+  onUploadAsset,
 }: {
   element: CreationFlowImageElement;
   onUpdate: (patch: Partial<CreationFlowElement>) => void;
+  onUploadAsset?: (file: File) => Promise<string>;
 }) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   return (
     <>
       <TextInput
@@ -339,6 +352,37 @@ function ImageElementProperties({
         ]}
         onChange={(fit) => onUpdate({ fit } as Partial<CreationFlowImageElement>)}
       />
+      {onUploadAsset && (
+        <div className="info-row">
+          <label className="info-label" htmlFor="image-upload-input">
+            Upload Image
+          </label>
+          <input
+            id="image-upload-input"
+            className="upload-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setUploading(true);
+              setUploadError(null);
+              try {
+                const assetId = await onUploadAsset(file);
+                onUpdate({ assetId } as Partial<CreationFlowImageElement>);
+              } catch (err) {
+                setUploadError(err instanceof Error ? err.message : String(err));
+              } finally {
+                setUploading(false);
+                e.target.value = "";
+              }
+            }}
+            disabled={uploading}
+          />
+        </div>
+      )}
+      {uploading && <p className="upload-status">Uploading...</p>}
+      {uploadError && <p className="upload-status upload-error">{uploadError}</p>}
     </>
   );
 }

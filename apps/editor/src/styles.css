@@ -825,3 +825,28 @@ button {
     padding: 20px;
   }
 }
+
+.upload-input {
+  width: 140px;
+  padding: 4px 8px;
+  border: 1px solid #d9dee8;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1d2738;
+  font-size: 0.78rem;
+}
+
+.upload-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.upload-status {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: #5f6d82;
+}
+
+.upload-status.upload-error {
+  color: #c0392b;
+}

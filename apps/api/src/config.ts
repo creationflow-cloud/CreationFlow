@@ -10,6 +10,7 @@ export interface ApiConfig {
   readonly version: string;
   readonly databaseUrl: string | undefined;
   readonly maxUploadBytes: number;
+  readonly uploadDir: string;
 }
 
 function readPackageVersion(): string {
@@ -26,5 +27,6 @@ export function getApiConfig(): ApiConfig {
     version: readPackageVersion(),
     databaseUrl: process.env.DATABASE_URL,
     maxUploadBytes: Number(process.env.MAX_UPLOAD_BYTES ?? "10485760"),
+    uploadDir: process.env.UPLOAD_DIR ?? "./uploads",
   };
 }

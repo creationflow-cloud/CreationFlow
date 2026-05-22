@@ -16,6 +16,7 @@ import type {
   SurfaceId,
 } from "@creationflow/schema";
 
+import { uploadAsset } from "./api/assets.js";
 import type { ConfigurationDto } from "./api/configurations.js";
 import { getConfiguration, updateConfiguration } from "./api/configurations.js";
 import { createConfigurationFromTemplate, getProductTemplate } from "./api/product-templates.js";
@@ -485,6 +486,12 @@ export function App() {
     });
   }
 
+  const handleUploadAsset = useCallback(async (file: File): Promise<string> => {
+    if (!configuration) throw new Error("No configuration loaded.");
+    const result = await uploadAsset(file, configuration.workspaceId);
+    return result.id;
+  }, [configuration]);
+
   const handleUndo = useCallback(() => {
     if (!currentDocument) return;
     const result = undo(history, currentDocument);
@@ -910,6 +917,7 @@ export function App() {
               onBringToFront={handleBringToFront}
               onSendToBack={handleSendToBack}
               onMove={handleMoveElement}
+              onUploadAsset={handleUploadAsset}
             />
           ) : (
             <div className="property-card">

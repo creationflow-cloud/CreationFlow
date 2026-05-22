@@ -158,24 +158,13 @@ export async function registerAssetRoutes(server: FastifyInstance): Promise<void
     },
   );
 
-  server.post<{ Body: { workspaceId: string; type: ApiAssetType } }>(
+  server.post(
     "/assets/upload",
     {
       schema: {
         tags: ["Assets"],
         summary: "Upload asset file",
         consumes: ["multipart/form-data"],
-        body: {
-          type: "object",
-          required: ["workspaceId", "type", "file"],
-          properties: {
-            workspaceId: { type: "string" },
-            type: {
-              type: "string",
-              enum: ["image", "font", "vector", "pdf"],
-            },
-          },
-        },
         response: {
           201: assetSchema,
           400: errorSchema,
@@ -185,21 +174,42 @@ export async function registerAssetRoutes(server: FastifyInstance): Promise<void
     },
     async (request, reply) => {
       try {
-        const data = await request.file({
-          limits: {
-            fileSize: server.config.maxUploadBytes,
-          },
-        });
+        const parts = request.parts();
+        let workspaceId: string | undefined;
+        let type: ApiAssetType | undefined;
+        let fileData: {
+          filename: string;
+          mimetype: string;
+          data: Uint8Array;
+        } | undefined;
 
-        if (!data) {
+        for await (const part of parts) {
+          if (part.type === "file") {
+            const chunks: Buffer[] = [];
+            for await (const chunk of part.file) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+            const buffer = Buffer.concat(chunks);
+            fileData = {
+              filename: part.filename,
+              mimetype: part.mimetype,
+              data: new Uint8Array(buffer),
+            };
+          } else if (part.type === "field") {
+            if (part.fieldname === "workspaceId") {
+              workspaceId = part.value as string;
+            } else if (part.fieldname === "type") {
+              type = part.value as ApiAssetType;
+            }
+          }
+        }
+
+        if (!fileData) {
           return reply.code(400).send({
             status: "error",
             message: "No file uploaded.",
           });
         }
-
-        const workspaceId = request.body.workspaceId;
-        const type = request.body.type;
 
         if (!workspaceId) {
           return reply.code(400).send({
@@ -215,19 +225,13 @@ export async function registerAssetRoutes(server: FastifyInstance): Promise<void
           });
         }
 
-        const fileBuffer = await data.toBuffer();
-
         const asset = await uploadAsset(
           server.db,
           server.storage,
           {
             workspaceId,
             type,
-            file: {
-              filename: data.filename,
-              mimetype: data.mimetype,
-              data: fileBuffer,
-            },
+            file: fileData,
           },
           {
             maxUploadBytes: server.config.maxUploadBytes,

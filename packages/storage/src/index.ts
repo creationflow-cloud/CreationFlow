@@ -12,3 +12,6 @@ export type {
 export type { StorageProvider } from "./storage-provider.js";
 
 export { MemoryStorageProvider } from "./memory-storage-provider.js";
+
+export { FileSystemStorageProvider } from "./file-system-storage-provider.js";
+export type { FileSystemStorageProviderOptions } from "./file-system-storage-provider.js";
