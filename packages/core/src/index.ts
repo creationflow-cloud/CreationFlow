@@ -8,6 +8,7 @@ export {
   bringToFront,
   duplicateElementOnSurface,
   flattenSurfaceElements,
+  getElementZIndex,
   sendBackward,
   sendToBack,
 } from "./layers.js";

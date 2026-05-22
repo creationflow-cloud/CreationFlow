@@ -5,6 +5,7 @@ import type {
   CreationFlowTextElement,
   CreationFlowVariableElement,
 } from "@creationflow/schema";
+import { getElementZIndex } from "@creationflow/core";
 
 import { ImageElementView } from "./ImageElementView.js";
 import { ShapeElementView } from "./ShapeElementView.js";
@@ -27,7 +28,7 @@ export function ElementView({ element, isSelected, onSelect, onMouseDown }: Elem
     top: `${element.y}px`,
     width: `${element.width}px`,
     height: `${element.height}px`,
-    zIndex: element.zIndex,
+    zIndex: getElementZIndex(element),
     opacity,
     transform: `rotate(${rotation}deg)`,
     transformOrigin: "center center",

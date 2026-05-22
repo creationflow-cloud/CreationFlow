@@ -1,4 +1,5 @@
 import type { CreationFlowDocument, CreationFlowElement } from "@creationflow/schema";
+import { getElementZIndex } from "@creationflow/core";
 
 import type { PdfRenderPlan, PdfRenderPlanElement, PdfRenderPlanPage } from "./types.js";
 
@@ -11,7 +12,7 @@ function toRenderPlanElement(element: CreationFlowElement): PdfRenderPlanElement
     width: element.width,
     height: element.height,
     rotation: element.rotation,
-    zIndex: element.zIndex,
+    zIndex: getElementZIndex(element),
     visible: element.visible,
   };
 }
@@ -37,7 +38,7 @@ export function createPdfRenderPlan(document: CreationFlowDocument): PdfRenderPl
     const surfaces = page.surfaces ?? [];
     const elements = surfaces.flatMap((surface) => collectElements(surface.elements));
 
-    elements.sort((a, b) => a.zIndex - b.zIndex);
+    elements.sort((a, b) => getElementZIndex(a) - getElementZIndex(b));
 
     return {
       pageId: page.id,

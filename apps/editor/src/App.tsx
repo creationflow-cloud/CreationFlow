@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { addElement, createConfigurationDocument, updateElement } from "@creationflow/core";
+import {
+  addElement,
+  createConfigurationDocument,
+  getElementZIndex,
+  updateElement,
+} from "@creationflow/core";
 import type {
   AddImageElementInput,
   AddShapeElementInput,
@@ -438,7 +443,7 @@ export function App() {
     if (!selectedSurface) return 0;
     const elements = selectedSurface.elements;
     if (elements.length === 0) return 0;
-    return Math.max(...elements.map((el) => el.zIndex)) + 1;
+    return Math.max(...elements.map(getElementZIndex)) + 1;
   }
 
   function handleAddShapeElement() {
@@ -820,7 +825,7 @@ export function App() {
             ) : (
               <div className="layer-list">
                 {[...selectedSurface.elements]
-                  .sort((a, b) => b.zIndex - a.zIndex)
+                  .sort((a, b) => getElementZIndex(b) - getElementZIndex(a))
                   .map((el) => (
                     <div
                       className={`layer-item ${selection.selectedElementId === el.id ? "selected" : ""}`}
@@ -891,6 +896,40 @@ export function App() {
                         }}
                       >
                         ↑
+                      </button>
+                      <button
+                        className="layer-action-btn"
+                        type="button"
+                        title="Bring forward"
+                        onClick={() => {
+                          setSelection(
+                            selectElement(el.id, {
+                              selectedPageId: selection.selectedPageId,
+                              selectedSurfaceId: selection.selectedSurfaceId,
+                              selectedElementId: null,
+                            }),
+                          );
+                          handleBringForward(el.id);
+                        }}
+                      >
+                        Fwd
+                      </button>
+                      <button
+                        className="layer-action-btn"
+                        type="button"
+                        title="Send backward"
+                        onClick={() => {
+                          setSelection(
+                            selectElement(el.id, {
+                              selectedPageId: selection.selectedPageId,
+                              selectedSurfaceId: selection.selectedSurfaceId,
+                              selectedElementId: null,
+                            }),
+                          );
+                          handleSendBackward(el.id);
+                        }}
+                      >
+                        Back
                       </button>
                       <button
                         className="layer-action-btn"

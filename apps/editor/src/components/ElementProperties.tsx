@@ -7,6 +7,7 @@ import type {
   CreationFlowImageElement,
   CreationFlowShapeElement,
 } from "@creationflow/schema";
+import { getElementZIndex } from "@creationflow/core";
 
 import { clamp, parseNumber } from "../helpers/element-properties.js";
 
@@ -196,7 +197,7 @@ export function ElementProperties({
       />
       <NumberInput
         label="Z-Index"
-        value={element.zIndex}
+        value={getElementZIndex(element)}
         onChange={(zIndex) => onUpdate({ zIndex })}
       />
       <NumberInput

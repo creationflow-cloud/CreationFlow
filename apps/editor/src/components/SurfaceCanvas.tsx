@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { CreationFlowElement, CreationFlowSurface } from "@creationflow/schema";
+import { getElementZIndex } from "@creationflow/core";
 
 import { ElementView } from "./ElementView.js";
 
@@ -35,7 +36,9 @@ export function SurfaceCanvas({
   const canvasRef = useRef<HTMLDivElement>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
 
-  const sortedElements = [...surface.elements].sort((a, b) => a.zIndex - b.zIndex);
+  const sortedElements = [...surface.elements].sort(
+    (a, b) => getElementZIndex(a) - getElementZIndex(b),
+  );
 
   const scaledWidth = surface.width * previewScale;
   const scaledHeight = surface.height * previewScale;

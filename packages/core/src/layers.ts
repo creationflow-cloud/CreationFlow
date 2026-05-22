@@ -9,6 +9,10 @@ import type {
 import { addElement, updateElement } from "./elements.js";
 import type { AddElementInput } from "./types.js";
 
+export function getElementZIndex(element: { readonly zIndex?: unknown }): number {
+  return typeof element.zIndex === "number" && Number.isFinite(element.zIndex) ? element.zIndex : 0;
+}
+
 export function flattenSurfaceElements(
   surface: CreationFlowSurface,
 ): readonly CreationFlowElement[] {
@@ -53,13 +57,16 @@ export function bringForward(
   const selected = allElements.find((e) => e.id === elementId);
   if (!selected) return document;
 
-  const higherElements = allElements.filter((e) => e.zIndex > selected.zIndex);
+  const selectedZIndex = getElementZIndex(selected);
+  const higherElements = allElements.filter((e) => getElementZIndex(e) > selectedZIndex);
   if (higherElements.length === 0) return document;
 
-  const nextHigher = higherElements.reduce((min, e) => (e.zIndex < min.zIndex ? e : min));
+  const nextHigher = higherElements.reduce((min, e) =>
+    getElementZIndex(e) < getElementZIndex(min) ? e : min,
+  );
 
-  const doc1 = updateElement(document, elementId, { zIndex: nextHigher.zIndex });
-  return updateElement(doc1, nextHigher.id, { zIndex: selected.zIndex });
+  const doc1 = updateElement(document, elementId, { zIndex: getElementZIndex(nextHigher) });
+  return updateElement(doc1, nextHigher.id, { zIndex: selectedZIndex });
 }
 
 export function sendBackward(
@@ -74,13 +81,16 @@ export function sendBackward(
   const selected = allElements.find((e) => e.id === elementId);
   if (!selected) return document;
 
-  const lowerElements = allElements.filter((e) => e.zIndex < selected.zIndex);
+  const selectedZIndex = getElementZIndex(selected);
+  const lowerElements = allElements.filter((e) => getElementZIndex(e) < selectedZIndex);
   if (lowerElements.length === 0) return document;
 
-  const nextLower = lowerElements.reduce((max, e) => (e.zIndex > max.zIndex ? e : max));
+  const nextLower = lowerElements.reduce((max, e) =>
+    getElementZIndex(e) > getElementZIndex(max) ? e : max,
+  );
 
-  const doc1 = updateElement(document, elementId, { zIndex: nextLower.zIndex });
-  return updateElement(doc1, nextLower.id, { zIndex: selected.zIndex });
+  const doc1 = updateElement(document, elementId, { zIndex: getElementZIndex(nextLower) });
+  return updateElement(doc1, nextLower.id, { zIndex: selectedZIndex });
 }
 
 export function bringToFront(
@@ -95,8 +105,9 @@ export function bringToFront(
   const selected = allElements.find((e) => e.id === elementId);
   if (!selected) return document;
 
-  const maxZIndex = Math.max(...allElements.map((e) => e.zIndex));
-  if (selected.zIndex > maxZIndex) return document;
+  const selectedZIndex = getElementZIndex(selected);
+  const maxZIndex = Math.max(...allElements.map(getElementZIndex));
+  if (selectedZIndex > maxZIndex) return document;
 
   return updateElement(document, elementId, { zIndex: maxZIndex + 1 });
 }
@@ -113,8 +124,9 @@ export function sendToBack(
   const selected = allElements.find((e) => e.id === elementId);
   if (!selected) return document;
 
-  const minZIndex = Math.min(...allElements.map((e) => e.zIndex));
-  if (selected.zIndex < minZIndex) return document;
+  const selectedZIndex = getElementZIndex(selected);
+  const minZIndex = Math.min(...allElements.map(getElementZIndex));
+  if (selectedZIndex < minZIndex) return document;
 
   return updateElement(document, elementId, { zIndex: minZIndex - 1 });
 }
@@ -154,7 +166,7 @@ export function duplicateElementOnSurface(
         opacity: element.opacity,
         visible: element.visible,
         locked: element.locked,
-        zIndex: element.zIndex + 1,
+        zIndex: getElementZIndex(element) + 1,
         text: element.text,
         fontFamily: element.fontFamily,
         fontSize: element.fontSize,
@@ -176,7 +188,7 @@ export function duplicateElementOnSurface(
         opacity: element.opacity,
         visible: element.visible,
         locked: element.locked,
-        zIndex: element.zIndex + 1,
+        zIndex: getElementZIndex(element) + 1,
         assetId: element.assetId,
         fit: element.fit,
       };
@@ -194,7 +206,7 @@ export function duplicateElementOnSurface(
         opacity: element.opacity,
         visible: element.visible,
         locked: element.locked,
-        zIndex: element.zIndex + 1,
+        zIndex: getElementZIndex(element) + 1,
         shapeType: element.shapeType,
         fill: element.fill,
         stroke: element.stroke,
@@ -214,7 +226,7 @@ export function duplicateElementOnSurface(
         opacity: element.opacity,
         visible: element.visible,
         locked: element.locked,
-        zIndex: element.zIndex + 1,
+        zIndex: getElementZIndex(element) + 1,
         children: element.children,
       };
       break;
@@ -231,7 +243,7 @@ export function duplicateElementOnSurface(
         opacity: element.opacity,
         visible: element.visible,
         locked: element.locked,
-        zIndex: element.zIndex + 1,
+        zIndex: getElementZIndex(element) + 1,
         variableId: element.variableId,
         fallback: element.fallback,
       };
