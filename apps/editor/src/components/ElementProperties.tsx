@@ -9,7 +9,7 @@ import type {
 } from "@creationflow/schema";
 import { getElementZIndex } from "@creationflow/core";
 
-import { clamp, parseNumber } from "../helpers/element-properties.js";
+import { clamp } from "../helpers/element-properties.js";
 
 interface ElementPropertiesProps {
   readonly element: CreationFlowElement;
@@ -46,14 +46,18 @@ function NumberInput({
       </label>
       <input
         id={`prop-${label}`}
+        key={`${label}-${value}`}
         className="info-input"
         type="number"
-        value={value}
+        defaultValue={value}
         min={min}
         max={max}
         step={step ?? 1}
         onChange={(e) => {
-          const parsed = parseNumber(e.target.value, value);
+          const parsed = Number(e.target.value);
+          if (!Number.isFinite(parsed)) {
+            return;
+          }
 
           onChange(min !== undefined && max !== undefined ? clamp(parsed, min, max) : parsed);
         }}
