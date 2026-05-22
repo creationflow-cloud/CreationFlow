@@ -23,7 +23,7 @@ export interface CreateRenderJobInput {
 export interface UpdateRenderJobInput {
   readonly status?: ApiRenderJobStatus;
   readonly output?: Record<string, unknown>;
-  readonly errorMessage?: string;
+  readonly errorMessage?: string | null;
 }
 
 function toOutputValue(value: Prisma.JsonValue): Record<string, unknown> | undefined {

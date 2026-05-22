@@ -6,7 +6,19 @@ import {
   listRenderJobs,
   updateRenderJob,
 } from "../services/render-jobs.js";
+import { RenderJobNotFoundError, renderRenderJobToPdf } from "../services/render-job-renderer.js";
 import type { ApiRenderJobStatus } from "../mappers/render-job-status.js";
+
+const renderJobOutputSchema = {
+  type: "object",
+  properties: {
+    assetId: { type: "string" },
+    downloadUrl: { type: "string" },
+    filename: { type: "string" },
+    mimeType: { type: "string", const: "application/pdf" },
+    sizeBytes: { type: "string" },
+  },
+} as const;
 
 const renderJobSchema = {
   type: "object",
@@ -19,7 +31,7 @@ const renderJobSchema = {
       type: "string",
       enum: ["pending", "processing", "done", "failed"],
     },
-    output: { type: "object" },
+    output: renderJobOutputSchema,
     errorMessage: { type: "string" },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" },
@@ -48,7 +60,7 @@ interface CreateRenderJobBody {
 interface UpdateRenderJobBody {
   readonly status?: ApiRenderJobStatus;
   readonly output?: Record<string, unknown>;
-  readonly errorMessage?: string;
+  readonly errorMessage?: string | null;
 }
 
 interface ListRenderJobsQuery {
@@ -58,8 +70,6 @@ interface ListRenderJobsQuery {
 }
 
 export async function registerRenderJobRoutes(server: FastifyInstance): Promise<void> {
-  // TODO: Execute render jobs with @creationflow/pdf-engine/renderDocumentToPdf once the worker
-  // owns job processing and PDF output storage.
   server.get<{ Querystring: ListRenderJobsQuery }>(
     "/render-jobs",
     {
@@ -145,6 +155,47 @@ export async function registerRenderJobRoutes(server: FastifyInstance): Promise<
     },
   );
 
+  server.post<{ Params: RenderJobParams }>(
+    "/render-jobs/:id/render",
+    {
+      schema: {
+        tags: ["RenderJobs"],
+        summary: "Render job to PDF",
+        params: {
+          type: "object",
+          required: ["id"],
+          properties: {
+            id: { type: "string", minLength: 1 },
+          },
+        },
+        response: {
+          200: renderJobSchema,
+          404: errorSchema,
+          500: errorSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        return await renderRenderJobToPdf(server.db, server.storage, request.params.id);
+      } catch (error) {
+        server.log.error(error);
+
+        if (error instanceof RenderJobNotFoundError) {
+          return reply.code(404).send({
+            status: "error",
+            message: "Render job not found.",
+          });
+        }
+
+        return reply.code(500).send({
+          status: "error",
+          message: "Unable to render job.",
+        });
+      }
+    },
+  );
+
   server.get<{ Params: RenderJobParams }>(
     "/render-jobs/:id",
     {
@@ -210,7 +261,7 @@ export async function registerRenderJobRoutes(server: FastifyInstance): Promise<
               enum: ["pending", "processing", "done", "failed"],
             },
             output: { type: "object" },
-            errorMessage: { type: "string" },
+            errorMessage: { type: ["string", "null"] },
           },
         },
         response: {

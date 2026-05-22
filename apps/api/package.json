@@ -8,10 +8,13 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "check": "tsc -p tsconfig.json --noEmit",
-    "seed": "tsx src/seed.ts"
+    "seed": "tsx src/seed.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@creationflow/database": "workspace:*",
+    "@creationflow/pdf-engine": "workspace:*",
+    "@creationflow/schema": "workspace:*",
     "@creationflow/storage": "workspace:*",
     "@fastify/cors": "^11.2.0",
     "@fastify/multipart": "^9.0.0",
@@ -22,6 +25,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "tsx": "^4.0.0"
+    "tsx": "^4.0.0",
+    "vitest": "^4.1.7"
   }
 }

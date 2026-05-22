@@ -2,6 +2,10 @@ import type { FastifyInstance } from "fastify";
 
 import { getAssetById } from "../services/assets.js";
 
+function toContentDispositionFilename(name: string): string {
+  return name.replace(/["\\\r\n]/g, "_");
+}
+
 interface AssetFileParams {
   readonly id: string;
 }
@@ -51,10 +55,18 @@ export async function registerAssetFileRoutes(server: FastifyInstance): Promise<
           key: asset.source,
         });
 
-        return reply
+        const response = reply
           .header("Content-Type", asset.mimeType ?? "application/octet-stream")
-          .header("Cache-Control", "public, max-age=31536000")
-          .send(object.body);
+          .header("Cache-Control", "public, max-age=31536000");
+
+        if (asset.type === "pdf") {
+          response.header(
+            "Content-Disposition",
+            `attachment; filename="${toContentDispositionFilename(asset.name)}"`,
+          );
+        }
+
+        return response.send(object.body);
       } catch (error) {
         server.log.error(error);
 
