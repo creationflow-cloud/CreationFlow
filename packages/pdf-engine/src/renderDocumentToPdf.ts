@@ -3,10 +3,13 @@ import { getElementZIndex } from "@creationflow/core";
 import type {
   CreationFlowDocument,
   CreationFlowElement,
+  CreationFlowImageElement,
   CreationFlowShapeElement,
   CreationFlowSurface,
   CreationFlowTextElement,
   CreationFlowUnit,
+  AssetId,
+  ElementId,
 } from "@creationflow/schema";
 
 const DEFAULT_PAGE_WIDTH = 595.28;
@@ -19,8 +22,28 @@ interface RgbColor {
   readonly b: number;
 }
 
+export interface ResolvedPdfAsset {
+  readonly data: Uint8Array | Buffer;
+  readonly mimeType?: string;
+}
+
+export interface RenderDocumentWarning {
+  readonly code:
+    | "image_resolver_missing"
+    | "image_not_found"
+    | "image_resolve_failed"
+    | "unsupported_image_type"
+    | "image_render_failed"
+    | "path_render_failed";
+  readonly elementId: ElementId;
+  readonly assetId?: AssetId;
+  readonly message: string;
+}
+
 export interface RenderDocumentToPdfOptions {
   readonly compress?: boolean;
+  readonly resolveAsset?: (assetId: AssetId) => Promise<ResolvedPdfAsset | null | undefined>;
+  readonly onWarning?: (warning: RenderDocumentWarning) => void;
 }
 
 export function toPdfUnits(value: number, unit: CreationFlowUnit | undefined): number {
@@ -38,14 +61,7 @@ export function toPdfUnits(value: number, unit: CreationFlowUnit | undefined): n
   }
 }
 
-export function toPdfTopLeftY(y: number, unit: CreationFlowUnit | undefined): number {
-  // PDFKit high-level drawing APIs use top-left coordinates, matching the Editor canvas.
-  // Do not convert to bottom-left coordinates here.
-  return toPdfUnits(y, unit);
-}
-
 export function convertTopLeftToPdfY(_pageHeight: number, y: number, _elementHeight: number): number {
-  // Backward-compatible alias. PDFKit rendering uses top-left coordinates, so y is unchanged.
   return y;
 }
 
@@ -96,6 +112,14 @@ function collectElements(elements: readonly CreationFlowElement[]): CreationFlow
   return collected;
 }
 
+function warn(options: RenderDocumentToPdfOptions, warning: RenderDocumentWarning): void {
+  options.onWarning?.(warning);
+}
+
+function isSupportedImageMimeType(mimeType: string | undefined): boolean {
+  return !mimeType || mimeType === "image/png" || mimeType === "image/jpeg" || mimeType === "image/jpg";
+}
+
 function setFillColor(doc: PDFKit.PDFDocument, color: string | undefined): boolean {
   const parsed = parseHexColor(color);
   if (!parsed) {
@@ -127,7 +151,7 @@ function renderTextElement(
   }
 
   const x = offset.x + toPdfUnits(element.x, unit);
-  const y = offset.y + toPdfTopLeftY(element.y, unit);
+  const y = offset.y + toPdfUnits(element.y, unit);
   const width = Math.max(toPdfUnits(element.width, unit), 1);
   const height = Math.max(toPdfUnits(element.height, unit), 1);
   const fontSize = Math.max(toPdfUnits(element.fontSize ?? DEFAULT_TEXT_SIZE, unit), 1);
@@ -152,7 +176,7 @@ function renderShapeElement(
   }
 
   const x = offset.x + toPdfUnits(element.x, unit);
-  const y = offset.y + toPdfTopLeftY(element.y, unit);
+  const y = offset.y + toPdfUnits(element.y, unit);
   const width = Math.max(toPdfUnits(element.width, unit), 1);
   const height = Math.max(toPdfUnits(element.height, unit), 1);
   const hasFill = setFillColor(doc, element.fill);
@@ -177,12 +201,96 @@ function renderShapeElement(
   }
 }
 
-function renderElement(
+async function renderImageElement(
+  doc: PDFKit.PDFDocument,
+  element: CreationFlowImageElement,
+  unit: CreationFlowUnit | undefined,
+  offset: { readonly x: number; readonly y: number },
+  options: RenderDocumentToPdfOptions,
+): Promise<void> {
+  if (!element.visible) {
+    return;
+  }
+
+  if (!options.resolveAsset) {
+    warn(options, {
+      code: "image_resolver_missing",
+      elementId: element.id,
+      assetId: element.assetId,
+      message: "Image element was skipped because no asset resolver was provided.",
+    });
+    return;
+  }
+
+  let asset: ResolvedPdfAsset | null | undefined;
+
+  try {
+    asset = await options.resolveAsset(element.assetId);
+  } catch (error) {
+    warn(options, {
+      code: "image_resolve_failed",
+      elementId: element.id,
+      assetId: element.assetId,
+      message: error instanceof Error ? error.message : "Image asset resolution failed.",
+    });
+    return;
+  }
+
+  if (!asset) {
+    warn(options, {
+      code: "image_not_found",
+      elementId: element.id,
+      assetId: element.assetId,
+      message: "Image asset was not found.",
+    });
+    return;
+  }
+
+  if (!isSupportedImageMimeType(asset.mimeType)) {
+    warn(options, {
+      code: "unsupported_image_type",
+      elementId: element.id,
+      assetId: element.assetId,
+      message: `Unsupported image MIME type: ${asset.mimeType}.`,
+    });
+    return;
+  }
+
+  const x = offset.x + toPdfUnits(element.x, unit);
+  const y = offset.y + toPdfUnits(element.y, unit);
+  const width = Math.max(toPdfUnits(element.width, unit), 1);
+  const height = Math.max(toPdfUnits(element.height, unit), 1);
+  const image = Buffer.from(asset.data);
+
+  try {
+    if (element.fit === "contain") {
+      doc.image(image, x, y, { fit: [width, height] });
+      return;
+    }
+
+    if (element.fit === "cover") {
+      doc.image(image, x, y, { cover: [width, height] });
+      return;
+    }
+
+    doc.image(image, x, y, { width, height });
+  } catch (error) {
+    warn(options, {
+      code: "image_render_failed",
+      elementId: element.id,
+      assetId: element.assetId,
+      message: error instanceof Error ? error.message : "Image rendering failed.",
+    });
+  }
+}
+
+async function renderElement(
   doc: PDFKit.PDFDocument,
   element: CreationFlowElement,
   unit: CreationFlowUnit | undefined,
   offset: { readonly x: number; readonly y: number },
-): void {
+  options: RenderDocumentToPdfOptions,
+): Promise<void> {
   switch (element.type) {
     case "text":
       renderTextElement(doc, element, unit, offset);
@@ -191,7 +299,7 @@ function renderElement(
       renderShapeElement(doc, element, unit, offset);
       break;
     case "image":
-      // TODO: Render images once the PDF engine receives asset bytes or a storage resolver for assetId.
+      await renderImageElement(doc, element, unit, offset, options);
       break;
     case "group":
     case "variable":
@@ -209,6 +317,108 @@ function getSurfaceOffset(
     x: toPdfUnits(positionedSurface.x ?? 0, unit),
     y: toPdfUnits(positionedSurface.y ?? 0, unit),
   };
+}
+
+function renderPathSurface(
+  doc: PDFKit.PDFDocument,
+  surface: CreationFlowSurface,
+  unit: CreationFlowUnit | undefined,
+  offset: { readonly x: number; readonly y: number },
+  options: RenderDocumentToPdfOptions,
+): void {
+  if (!surface.pathData || surface.shape !== "path") {
+    return;
+  }
+
+  const surfaceOffsetX = offset.x;
+  const surfaceOffsetY = offset.y;
+
+  try {
+    if (surface.role === "colorRegion" || surface.role === "overlay") {
+      const hasFill = setFillColor(doc, surface.fillColor);
+      
+      doc.save();
+      doc.translate(surfaceOffsetX, surfaceOffsetY);
+      
+      try {
+        const path = doc.path(surface.pathData);
+        
+        if (hasFill) {
+          path.fill();
+        } else {
+          path.stroke();
+        }
+      } catch (error) {
+        warn(options, {
+          code: "path_render_failed",
+          elementId: surface.id as unknown as ElementId,
+          message: error instanceof Error ? error.message : "Path rendering failed.",
+        });
+      }
+      
+      doc.restore();
+    }
+  } catch (error) {
+    warn(options, {
+      code: "path_render_failed",
+      elementId: surface.id as unknown as ElementId,
+      message: error instanceof Error ? error.message : "Path surface rendering failed.",
+    });
+  }
+}
+
+function clipToPath(
+  doc: PDFKit.PDFDocument,
+  surface: CreationFlowSurface,
+  unit: CreationFlowUnit | undefined,
+  offset: { readonly x: number; readonly y: number },
+  options: RenderDocumentToPdfOptions,
+): boolean {
+  if (!surface.pathData || surface.shape !== "path" || !surface.clipContent) {
+    return false;
+  }
+
+  const surfaceOffsetX = offset.x;
+  const surfaceOffsetY = offset.y;
+
+  try {
+    doc.save();
+    doc.translate(surfaceOffsetX, surfaceOffsetY);
+    
+    const path = doc.path(surface.pathData);
+    path.clip();
+    
+    return true;
+  } catch (error) {
+    warn(options, {
+      code: "path_render_failed",
+      elementId: surface.id as unknown as ElementId,
+      message: `Path clipping failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    });
+    return false;
+  }
+}
+
+function clipToRect(
+  doc: PDFKit.PDFDocument,
+  surface: CreationFlowSurface,
+  unit: CreationFlowUnit | undefined,
+  offset: { readonly x: number; readonly y: number },
+): boolean {
+  if (!surface.clipContent || surface.shape === "path") {
+    return false;
+  }
+
+  const x = offset.x;
+  const y = offset.y;
+  const width = toPdfUnits(surface.width, unit);
+  const height = toPdfUnits(surface.height, unit);
+
+  doc.save();
+  doc.rect(x, y, width, height);
+  doc.clip();
+  
+  return true;
 }
 
 export async function renderDocumentToPdf(
@@ -233,32 +443,55 @@ export async function renderDocumentToPdf(
     doc.on("error", reject);
     doc.on("end", () => resolve(Buffer.concat(chunks)));
 
-    if (pages.length === 0) {
-      doc.addPage({ size: [firstWidth, firstHeight], margin: 0 });
-      doc.end();
-      return;
-    }
+    void (async () => {
+      if (pages.length === 0) {
+        doc.addPage({ size: [firstWidth, firstHeight], margin: 0 });
+        doc.end();
+        return;
+      }
 
-    for (const page of pages) {
-      const unit = page.unit ?? "pt";
-      const width = toPositivePageSize(page.width, DEFAULT_PAGE_WIDTH, unit);
-      const height = toPositivePageSize(page.height, DEFAULT_PAGE_HEIGHT, unit);
+      for (const page of pages) {
+        const unit = page.unit ?? "pt";
+        const width = toPositivePageSize(page.width, DEFAULT_PAGE_WIDTH, unit);
+        const height = toPositivePageSize(page.height, DEFAULT_PAGE_HEIGHT, unit);
 
-      doc.addPage({ size: [width, height], margin: 0 });
+        doc.addPage({ size: [width, height], margin: 0 });
 
-      const elements = (page.surfaces ?? [])
-        .flatMap((surface) => {
+        const surfaces = page.surfaces ?? [];
+
+        for (const surface of surfaces) {
           const offset = getSurfaceOffset(surface, unit);
 
-          return collectElements(surface.elements).map((element) => ({ element, offset }));
-        })
-        .sort((a, b) => getElementZIndex(a.element) - getElementZIndex(b.element));
+          if (surface.shape === "path" && surface.pathData) {
+            renderPathSurface(doc, surface, unit, offset, options);
+          }
 
-      for (const { element, offset } of elements) {
-        renderElement(doc, element, unit, offset);
+          const elements = collectElements(surface.elements);
+          elements.sort((a, b) => getElementZIndex(a) - getElementZIndex(b));
+
+          let clipped = false;
+          if (surface.clipContent) {
+            if (surface.shape === "path" && surface.pathData) {
+              clipped = clipToPath(doc, surface, unit, offset, options);
+            } else {
+              clipped = clipToRect(doc, surface, unit, offset);
+            }
+          }
+
+          for (const element of elements) {
+            await renderElement(doc, element, unit, offset, options);
+          }
+
+          if (clipped) {
+            doc.restore();
+          }
+        }
       }
-    }
 
-    doc.end();
+      doc.end();
+    })().catch((error: unknown) => {
+      doc.destroy();
+      reject(error);
+    });
   });
 }

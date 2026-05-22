@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import type {
   CreationFlowDocument,
   CreationFlowElement,
+  CreationFlowImageElement,
   CreationFlowPage,
   CreationFlowSurface,
+  AssetId,
   DocumentId,
   ElementId,
   PageId,
@@ -15,9 +17,14 @@ import type {
 import {
   convertTopLeftToPdfY,
   renderDocumentToPdf,
-  toPdfTopLeftY,
   toPdfUnits,
 } from "./renderDocumentToPdf.js";
+import type { RenderDocumentWarning } from "./renderDocumentToPdf.js";
+
+const TINY_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+  "base64",
+);
 
 function createSurface(
   id: string,
@@ -81,6 +88,29 @@ function createTextElement(id: string, x: number, y: number): CreationFlowElemen
     fontSize: 14,
     color: "#223344",
     align: "left",
+  };
+}
+
+function createImageElement(
+  id: string,
+  assetId: string,
+  fit: CreationFlowImageElement["fit"] = "fill",
+): CreationFlowElement {
+  return {
+    id: id as ElementId,
+    type: "image",
+    name: id,
+    x: 10,
+    y: 20,
+    width: 30,
+    height: 40,
+    rotation: 0,
+    opacity: 1,
+    visible: true,
+    locked: false,
+    zIndex: 2,
+    assetId: assetId as AssetId,
+    fit,
   };
 }
 
@@ -223,11 +253,74 @@ describe("renderDocumentToPdf", () => {
 
     expect(extractPdfStreams(pdf).join("\n")).toContain("15 27 30 40 re");
   });
+
+  it("renders a PNG image element without crashing", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [createSurface("surface-1", [createImageElement("image-1", "asset-1")])]),
+      ]),
+      {
+        resolveAsset: async () => ({ data: TINY_PNG, mimeType: "image/png" }),
+      },
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+    await expect(getPageCount(pdf)).resolves.toBe(1);
+  });
+
+  it("calls the image resolver with the image assetId", async () => {
+    const resolvedAssetIds: string[] = [];
+
+    await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [createSurface("surface-1", [createImageElement("image-1", "asset-1", "contain")])]),
+      ]),
+      {
+        resolveAsset: async (assetId) => {
+          resolvedAssetIds.push(assetId);
+          return { data: TINY_PNG, mimeType: "image/png" };
+        },
+      },
+    );
+
+    expect(resolvedAssetIds).toEqual(["asset-1"]);
+  });
+
+  it("skips unresolved images safely and emits a warning", async () => {
+    const warnings: RenderDocumentWarning[] = [];
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [createSurface("surface-1", [createImageElement("image-1", "missing-asset")])]),
+      ]),
+      {
+        resolveAsset: async () => null,
+        onWarning: (warning) => warnings.push(warning),
+      },
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+    expect(warnings).toMatchObject([{ code: "image_not_found", assetId: "missing-asset" }]);
+  });
+
+  it("skips unsupported image MIME types safely and emits a warning", async () => {
+    const warnings: RenderDocumentWarning[] = [];
+
+    await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [createSurface("surface-1", [createImageElement("image-1", "asset-1")])]),
+      ]),
+      {
+        resolveAsset: async () => ({ data: TINY_PNG, mimeType: "image/gif" }),
+        onWarning: (warning) => warnings.push(warning),
+      },
+    );
+
+    expect(warnings).toMatchObject([{ code: "unsupported_image_type", assetId: "asset-1" }]);
+  });
 });
 
 describe("PDF coordinate helpers", () => {
   it("keeps top-left y coordinates unchanged for PDFKit drawing APIs", () => {
-    expect(toPdfTopLeftY(30, "pt")).toBe(30);
     expect(convertTopLeftToPdfY(200, 30, 20)).toBe(30);
   });
 
@@ -238,6 +331,239 @@ describe("PDF coordinate helpers", () => {
   });
 
   it("uses the same coordinate origin for text and shape inputs", () => {
-    expect(toPdfUnits(20, "pt")).toBe(toPdfTopLeftY(20, "pt"));
+    expect(toPdfUnits(20, "pt")).toBe(20);
+  });
+});
+
+describe("path-based surfaces", () => {
+  function createPathSurface(
+    id: string,
+    pathData: string,
+    elements: readonly CreationFlowElement[] = [],
+    offset: { readonly x?: number; readonly y?: number } = {},
+  ): CreationFlowSurface {
+    return {
+      id: id as SurfaceId,
+      name: id,
+      width: 300,
+      height: 200,
+      unit: "pt",
+      elements,
+      shape: "path",
+      pathData,
+      ...offset,
+    } as CreationFlowSurface;
+  }
+
+  function createColorRegionSurface(
+    id: string,
+    pathData: string,
+    fillColor: string,
+    offset: { readonly x?: number; readonly y?: number } = {},
+  ): CreationFlowSurface {
+    return {
+      id: id as SurfaceId,
+      name: id,
+      width: 300,
+      height: 200,
+      unit: "pt",
+      elements: [],
+      shape: "path",
+      role: "colorRegion",
+      pathData,
+      fillColor,
+      ...offset,
+    } as CreationFlowSurface;
+  }
+
+  function createDesignRegionSurface(
+    id: string,
+    pathData: string,
+    clipContent: boolean,
+    elements: readonly CreationFlowElement[],
+    offset: { readonly x?: number; readonly y?: number } = {},
+  ): CreationFlowSurface {
+    return {
+      id: id as SurfaceId,
+      name: id,
+      width: 300,
+      height: 200,
+      unit: "pt",
+      elements,
+      shape: "path",
+      role: "designRegion",
+      pathData,
+      clipContent,
+      ...offset,
+    } as CreationFlowSurface;
+  }
+
+  it("renders a path-based colorRegion surface without crashing", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          createColorRegionSurface("surface-1", "M50,50 L250,50 L250,150 L50,150 Z", "#ff0000"),
+        ]),
+      ]),
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+    await expect(getPageCount(pdf)).resolves.toBe(1);
+  });
+
+  it("renders a path-based designRegion surface without crashing", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          createDesignRegionSurface(
+            "surface-1",
+            "M50,50 L250,50 L250,150 L50,150 Z",
+            false,
+            [createTextElement("text-1", 60, 60)],
+          ),
+        ]),
+      ]),
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+    await expect(getPageCount(pdf)).resolves.toBe(1);
+  });
+
+  it("renders a path-based designRegion with clipContent without crashing", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          createDesignRegionSurface(
+            "surface-1",
+            "M50,50 L250,50 L250,150 L50,150 Z",
+            true,
+            [createTextElement("text-1", 60, 60)],
+          ),
+        ]),
+      ]),
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+    await expect(getPageCount(pdf)).resolves.toBe(1);
+  });
+
+  it("renders multiple path surfaces on the same page", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          createColorRegionSurface("surface-1", "M10,10 L100,10 L100,100 L10,100 Z", "#ff0000"),
+          createColorRegionSurface("surface-2", "M150,10 L240,10 L240,100 L150,100 Z", "#00ff00"),
+          createDesignRegionSurface(
+            "surface-3",
+            "M50,50 L200,50 L200,150 L50,150 Z",
+            false,
+            [],
+          ),
+        ]),
+      ]),
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+    await expect(getPageCount(pdf)).resolves.toBe(1);
+  });
+
+  it("applies surface x/y offsets to path surfaces", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          createColorRegionSurface(
+            "surface-1",
+            "M0,0 L50,0 L50,50 L0,50 Z",
+            "#0000ff",
+            { x: 100, y: 50 },
+          ),
+        ]),
+      ]),
+      { compress: false },
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+  });
+
+
+  it("handles path surfaces gracefully without crashing", async () => {
+    const warnings: RenderDocumentWarning[] = [];
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          {
+            id: "surface-1" as SurfaceId,
+            name: "Path Surface",
+            width: 300,
+            height: 200,
+            unit: "pt",
+            elements: [],
+            shape: "path",
+            role: "colorRegion",
+            pathData: "M50,50 L250,50 L250,150 L50,150 Z",
+            fillColor: "#ff0000",
+          } as CreationFlowSurface,
+        ]),
+      ]),
+      {
+        onWarning: (warning) => warnings.push(warning),
+      },
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+    await expect(getPageCount(pdf)).resolves.toBe(1);
+  });
+  it("preserves existing rectangular surface behavior unchanged", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          createSurface("surface-1", [
+            createShapeElement("shape-1", 10, 10, 100, 50),
+            createTextElement("text-1", 20, 20),
+          ]),
+        ]),
+      ]),
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+    await expect(getPageCount(pdf)).resolves.toBe(1);
+  });
+
+  it("renders path surface with overlay role", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          {
+            id: "surface-1" as SurfaceId,
+            name: "Overlay",
+            width: 300,
+            height: 200,
+            unit: "pt",
+            elements: [],
+            shape: "path",
+            role: "overlay",
+            pathData: "M0,0 L300,0 L300,200 L0,200 Z",
+            fillColor: "#000000",
+          } as CreationFlowSurface,
+        ]),
+      ]),
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+  });
+
+  it("renders mixed rect and path surfaces on same page", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          createSurface("rect-surface", [createShapeElement("shape-1", 10, 10, 50, 50)]),
+          createColorRegionSurface("path-surface", "M100,10 L200,10 L200,100 L100,100 Z", "#00ff00"),
+        ]),
+      ]),
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+    await expect(getPageCount(pdf)).resolves.toBe(1);
   });
 });

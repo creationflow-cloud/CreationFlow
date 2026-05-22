@@ -154,35 +154,109 @@ export function SurfaceCanvas({
     ? surface.elements.find((el) => el.id === selectedElementId)
     : undefined;
 
+  const isPathSurface = surface.shape === "path";
+  const surfaceRole = surface.role ?? "default";
+
+  const getSurfaceStyle = (): React.CSSProperties => {
+    const baseStyle: React.CSSProperties = {
+      position: "relative",
+      width: `${scaledWidth}px`,
+      height: `${scaledHeight}px`,
+      overflow: surface.clipContent ? "hidden" : "visible",
+    };
+
+    if (isPathSurface && surface.clipContent) {
+      // TODO: Implement proper SVG clip-path for path-based surfaces in editor
+      // For MVP, we use overflow: hidden as a fallback for rectangular clipping
+      // Full path-based clipping would require SVG <clipPath> or CSS clip-path with path()
+    }
+
+    return baseStyle;
+  };
+
+  const renderPathOverlay = () => {
+    if (!isPathSurface || !surface.pathData) {
+      return null;
+    }
+
+    const fillColor = surface.fillColor ?? "transparent";
+    const strokeColor = surface.role === "designRegion" ? "#243b68" : "none";
+    const strokeWidth = surface.role === "designRegion" ? 2 : 0;
+    const opacity = surface.role === "overlay" ? 0.5 : 0.3;
+
+    return (
+      <svg
+        className="surface-path-overlay"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      >
+        {surface.role === "colorRegion" || surface.role === "overlay" ? (
+          <path
+            d={surface.pathData}
+            fill={fillColor}
+            fillOpacity={opacity}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+          />
+        ) : (
+          <path
+            d={surface.pathData}
+            fill="none"
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            strokeDasharray="4 2"
+          />
+        )}
+      </svg>
+    );
+  };
+
   return (
     <div
       ref={canvasRef}
       className="surface-canvas"
-      style={{
-        width: `${scaledWidth}px`,
-        height: `${scaledHeight}px`,
-      }}
+      style={getSurfaceStyle()}
     >
-      {sortedElements.map((element) => (
-        <ElementView
-          key={element.id}
-          element={element}
-          isSelected={selectedElementId === element.id}
-          onSelect={() => onSelectElement(element.id)}
-          onMouseDown={(e) => handleElementMouseDown(element.id, e)}
-        />
-      ))}
+      {renderPathOverlay()}
+      
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 1,
+        }}
+      >
+        {sortedElements.map((element) => (
+          <ElementView
+            key={element.id}
+            element={element}
+            isSelected={selectedElementId === element.id}
+            onSelect={() => onSelectElement(element.id)}
+            onMouseDown={(e) => handleElementMouseDown(element.id, e)}
+          />
+        ))}
 
-      {selectedElement && selectedElementId && dragState?.mode !== "move" && (
-        <div
-          className="resize-handle"
-          style={{
-            left: `${selectedElement.x * previewScale + selectedElement.width * previewScale - 6}px`,
-            top: `${selectedElement.y * previewScale + selectedElement.height * previewScale - 6}px`,
-          }}
-          onMouseDown={(e) => handleResizeMouseDown(selectedElementId, e)}
-        />
-      )}
+        {selectedElement && selectedElementId && dragState?.mode !== "move" && (
+          <div
+            className="resize-handle"
+            style={{
+              left: `${selectedElement.x * previewScale + selectedElement.width * previewScale - 6}px`,
+              top: `${selectedElement.y * previewScale + selectedElement.height * previewScale - 6}px`,
+            }}
+            onMouseDown={(e) => handleResizeMouseDown(selectedElementId, e)}
+          />
+        )}
+      </div>
     </div>
   );
 }

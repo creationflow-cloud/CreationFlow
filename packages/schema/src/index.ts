@@ -38,6 +38,10 @@ export interface CreationFlowPrintArea {
 
 export type CreationFlowSurfaceKind = "front" | "back" | "left_sleeve" | "right_sleeve" | "custom";
 
+export type CreationFlowSurfaceShape = "rect" | "path";
+
+export type CreationFlowSurfaceRole = "default" | "colorRegion" | "designRegion" | "overlay";
+
 export interface CreationFlowPage {
   readonly id: PageId;
   readonly name: string;
@@ -57,6 +61,11 @@ export interface CreationFlowSurface {
   readonly unit: CreationFlowUnit;
   readonly printArea?: CreationFlowPrintArea;
   readonly elements: readonly CreationFlowElement[];
+  readonly shape?: CreationFlowSurfaceShape;
+  readonly role?: CreationFlowSurfaceRole;
+  readonly pathData?: string;
+  readonly fillColor?: string;
+  readonly clipContent?: boolean;
 }
 
 export type CreationFlowElementType = "text" | "image" | "shape" | "group" | "variable";

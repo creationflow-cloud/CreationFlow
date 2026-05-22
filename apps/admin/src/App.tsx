@@ -42,6 +42,11 @@ interface TemplateDetailSurface {
   width: number;
   height: number;
   unit: string;
+  shape?: "rect" | "path";
+  role?: "default" | "colorRegion" | "designRegion" | "overlay";
+  pathData?: string;
+  fillColor?: string;
+  clipContent?: boolean;
 }
 
 function buildDefaultPage(): TemplateDetailPage {
@@ -90,6 +95,11 @@ function docToPages(doc: Record<string, unknown>): TemplateDetailPage[] {
       width: (s.width as number) ?? 500,
       height: (s.height as number) ?? 600,
       unit: (s.unit as string) ?? "px",
+      shape: s.shape as "rect" | "path" | undefined,
+      role: s.role as "default" | "colorRegion" | "designRegion" | "overlay" | undefined,
+      pathData: s.pathData as string | undefined,
+      fillColor: s.fillColor as string | undefined,
+      clipContent: s.clipContent as boolean | undefined,
     })),
   }));
 }
@@ -119,6 +129,11 @@ function pagesToDoc(
             width: s.width,
             height: s.height,
             unit: s.unit,
+            shape: s.shape,
+            role: s.role,
+            pathData: s.pathData,
+            fillColor: s.fillColor,
+            clipContent: s.clipContent,
             elements: (originalSurface?.elements as unknown[]) ?? [],
           };
         }),
@@ -517,6 +532,70 @@ export function App() {
                           </label>
                           <span>{surface.unit}</span>
                         </div>
+                        <select
+                          className="surface-shape-select"
+                          value={surface.shape ?? "rect"}
+                          onChange={(e) =>
+                            handleUpdateSurface(pageIndex, surfaceIndex, {
+                              shape: e.target.value as "rect" | "path",
+                            })
+                          }
+                        >
+                          <option value="rect">Rect</option>
+                          <option value="path">Path</option>
+                        </select>
+                        <select
+                          className="surface-role-select"
+                          value={surface.role ?? "default"}
+                          onChange={(e) =>
+                            handleUpdateSurface(pageIndex, surfaceIndex, {
+                              role: e.target.value as "default" | "colorRegion" | "designRegion" | "overlay",
+                            })
+                          }
+                        >
+                          <option value="default">Default</option>
+                          <option value="colorRegion">Color Region</option>
+                          <option value="designRegion">Design Region</option>
+                          <option value="overlay">Overlay</option>
+                        </select>
+                        {surface.shape === "path" && (
+                          <textarea
+                            className="surface-path-textarea"
+                            value={surface.pathData ?? ""}
+                            onChange={(e) =>
+                              handleUpdateSurface(pageIndex, surfaceIndex, {
+                                pathData: e.target.value,
+                              })
+                            }
+                            placeholder="SVG path data (e.g., M10,10 L50,10 L50,50 Z)"
+                            rows={2}
+                          />
+                        )}
+                        {(surface.role === "colorRegion" || surface.role === "overlay") && (
+                          <input
+                            className="surface-fill-input"
+                            type="text"
+                            value={surface.fillColor ?? ""}
+                            onChange={(e) =>
+                              handleUpdateSurface(pageIndex, surfaceIndex, {
+                                fillColor: e.target.value,
+                              })
+                            }
+                            placeholder="Fill color (#RRGGBB)"
+                          />
+                        )}
+                        <label className="surface-clip-label">
+                          <input
+                            type="checkbox"
+                            checked={surface.clipContent ?? false}
+                            onChange={(e) =>
+                              handleUpdateSurface(pageIndex, surfaceIndex, {
+                                clipContent: e.target.checked,
+                              })
+                            }
+                          />
+                          Clip Content
+                        </label>
                       </div>
                     ))}
                   </div>

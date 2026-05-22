@@ -1,9 +1,11 @@
 import { renderDocumentToPdf } from "@creationflow/pdf-engine";
+import type { RenderDocumentWarning } from "@creationflow/pdf-engine";
 import type { PrismaClient } from "@creationflow/database";
 import type { StorageProvider } from "@creationflow/storage";
 import type { CreationFlowDocument } from "@creationflow/schema";
 
 import { createAsset } from "./assets.js";
+import { getAssetById } from "./assets.js";
 import { getConfigurationById } from "./configurations.js";
 import { getRenderJobById, updateRenderJob } from "./render-jobs.js";
 import type { RenderJobDto } from "./render-jobs.js";
@@ -80,7 +82,29 @@ export async function renderRenderJobToPdf(
       throw new Error("Configuration document is not renderable.");
     }
 
-    const pdf = await renderDocumentToPdf(configuration.document);
+    const renderWarnings: RenderDocumentWarning[] = [];
+    const pdf = await renderDocumentToPdf(configuration.document, {
+      resolveAsset: async (assetId) => {
+        const asset = await getAssetById(db, assetId);
+
+        if (!asset || asset.type !== "image") {
+          return null;
+        }
+
+        const object = await storage.getObject({
+          bucket: `assets/${asset.workspaceId}`,
+          key: asset.source,
+        });
+
+        return {
+          data: object.body,
+          mimeType: asset.mimeType,
+        };
+      },
+      onWarning: (warning) => {
+        renderWarnings.push(warning);
+      },
+    });
     const storageKey = crypto.randomUUID();
     const filename = getPdfFilename(configuration.id, job.id);
     const bucket = `assets/${job.workspaceId}`;
@@ -109,6 +133,7 @@ export async function renderRenderJobToPdf(
         filename,
         mimeType: "application/pdf",
         sizeBytes: pdf.byteLength.toString(),
+        ...(renderWarnings.length > 0 && { warnings: renderWarnings }),
       },
       errorMessage: null,
     });

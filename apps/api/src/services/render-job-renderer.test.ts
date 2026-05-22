@@ -4,7 +4,12 @@ import type { PrismaClient } from "@creationflow/database";
 
 import { renderRenderJobToPdf } from "./render-job-renderer.js";
 
-function createSampleDocument() {
+const TINY_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+  "base64",
+);
+
+function createSampleDocument(includeImage = false) {
   return {
     id: "doc-1",
     version: "0.0.0",
@@ -65,6 +70,26 @@ function createSampleDocument() {
                 color: "#1d2738",
                 align: "left",
               },
+              ...(includeImage
+                ? [
+                    {
+                      id: "image-1",
+                      type: "image",
+                      name: "Image",
+                      x: 80,
+                      y: 80,
+                      width: 40,
+                      height: 40,
+                      rotation: 0,
+                      opacity: 1,
+                      visible: true,
+                      locked: false,
+                      zIndex: 2,
+                      assetId: "input-image-asset",
+                      fit: "fill",
+                    },
+                  ]
+                : []),
             ],
           },
         ],
@@ -111,6 +136,19 @@ function createFakeDb(document: Record<string, unknown>) {
       createdAt: Date;
       updatedAt: Date;
     }>,
+    inputAsset: {
+      id: "input-image-asset",
+      workspaceId: "workspace-1",
+      type: "IMAGE",
+      name: "input.png",
+      source: "input-image-key",
+      mimeType: "image/png",
+      width: null,
+      height: null,
+      sizeBytes: BigInt(TINY_PNG.byteLength),
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+    },
   };
 
   const db = {
@@ -130,6 +168,8 @@ function createFakeDb(document: Record<string, unknown>) {
       findUnique: async () => state.configuration,
     },
     asset: {
+      findUnique: async ({ where }: { where: { id: string } }) =>
+        where.id === state.inputAsset.id ? state.inputAsset : null,
       create: async ({ data }: { data: Record<string, unknown> }) => {
         const asset = {
           id: "asset-1",
@@ -186,5 +226,25 @@ describe("renderRenderJobToPdf", () => {
     expect(result.status).toBe("failed");
     expect(result.errorMessage).toBe("Configuration document is not renderable.");
     expect(state.assets).toHaveLength(0);
+  });
+
+  it("renders a configuration containing an image asset", async () => {
+    const { db, state } = createFakeDb(createSampleDocument(true));
+    const storage = new MemoryStorageProvider();
+
+    await storage.putObject({
+      bucket: "assets/workspace-1",
+      key: "input-image-key",
+      body: TINY_PNG,
+      contentType: "image/png",
+    });
+
+    const result = await renderRenderJobToPdf(db, storage, "job-1");
+
+    expect(result.status).toBe("done");
+    expect(result.output?.assetId).toBe("asset-1");
+    expect(result.output?.warnings).toBeUndefined();
+    expect(state.assets).toHaveLength(1);
+    expect(state.assets[0].mimeType).toBe("application/pdf");
   });
 });
