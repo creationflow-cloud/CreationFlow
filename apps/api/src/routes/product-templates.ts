@@ -4,6 +4,7 @@ import {
   createProductTemplate,
   getProductTemplateById,
   listProductTemplates,
+  updateProductTemplate,
 } from "../services/product-templates.js";
 
 const productTemplateSchema = {
@@ -160,6 +161,58 @@ export async function registerProductTemplateRoutes(server: FastifyInstance): Pr
         return reply.code(500).send({
           status: "error",
           message: "Unable to get product template.",
+        });
+      }
+    },
+  );
+
+  server.put<{ Params: ProductTemplateParams; Body: { documentSchema: Record<string, unknown> } }>(
+    "/product-templates/:id",
+    {
+      schema: {
+        tags: ["ProductTemplates"],
+        summary: "Update product template",
+        params: {
+          type: "object",
+          required: ["id"],
+          properties: {
+            id: { type: "string", minLength: 1 },
+          },
+        },
+        body: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            documentSchema: { type: "object" },
+          },
+        },
+        response: {
+          200: productTemplateSchema,
+          404: errorSchema,
+          500: errorSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const template = await updateProductTemplate(server.db, request.params.id, {
+          documentSchema: request.body.documentSchema,
+        });
+
+        if (!template) {
+          return reply.code(404).send({
+            status: "error",
+            message: "Product template not found.",
+          });
+        }
+
+        return template;
+      } catch (error) {
+        server.log.error(error);
+
+        return reply.code(500).send({
+          status: "error",
+          message: "Unable to update product template.",
         });
       }
     },

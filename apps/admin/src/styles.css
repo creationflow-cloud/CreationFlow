@@ -508,3 +508,260 @@ button {
     min-width: unset;
   }
 }
+
+/* --- Template Detail Page --- */
+.template-detail-panel {
+  border: 1px solid #dbe1ea;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 18px 50px rgba(17, 24, 39, 0.06);
+  padding: 24px;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.detail-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+}
+
+.add-page-btn {
+  padding: 8px 18px;
+  border: 1px solid #94f3c4;
+  border-radius: 10px;
+  background: rgba(148, 243, 196, 0.1);
+  color: #111827;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.add-page-btn:hover {
+  background: rgba(148, 243, 196, 0.25);
+}
+
+.page-card {
+  border: 1px solid #dbe1ea;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.page-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.page-name-input {
+  padding: 6px 10px;
+  border: 1px solid #dbe1ea;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #202938;
+  font-size: 0.9rem;
+  font-weight: 600;
+  min-width: 160px;
+}
+
+.page-name-input:focus {
+  outline: none;
+  border-color: #94f3c4;
+  box-shadow: 0 0 0 2px rgba(148, 243, 196, 0.2);
+}
+
+.page-dims {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #607089;
+  font-size: 0.82rem;
+}
+
+.page-dims label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dim-input {
+  width: 60px;
+  padding: 4px 8px;
+  border: 1px solid #dbe1ea;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #202938;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.dim-input:focus {
+  outline: none;
+  border-color: #94f3c4;
+  box-shadow: 0 0 0 2px rgba(148, 243, 196, 0.2);
+}
+
+.add-surface-btn {
+  padding: 6px 14px;
+  border: 1px solid #dbe1ea;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #536278;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.add-surface-btn:hover {
+  background: #edf0f5;
+}
+
+.surface-empty {
+  color: #a0aec0;
+  font-style: italic;
+  font-size: 0.85rem;
+  padding: 8px 0;
+}
+
+.surface-list {
+  display: grid;
+  gap: 8px;
+}
+
+.surface-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid #dbe1ea;
+  border-radius: 10px;
+  background: #ffffff;
+  flex-wrap: wrap;
+}
+
+.surface-name-input {
+  padding: 4px 10px;
+  border: 1px solid #dbe1ea;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #202938;
+  font-size: 0.85rem;
+  min-width: 120px;
+}
+
+.surface-name-input:focus {
+  outline: none;
+  border-color: #94f3c4;
+  box-shadow: 0 0 0 2px rgba(148, 243, 196, 0.2);
+}
+
+.surface-kind-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef1f6;
+  color: #536278;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.surface-dims {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #607089;
+  font-size: 0.82rem;
+}
+
+.surface-dims label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.back-btn {
+  padding: 8px 18px;
+  border: 1px solid #dbe1ea;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #536278;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.back-btn:hover {
+  background: #edf0f5;
+}
+
+.save-btn {
+  padding: 8px 22px;
+  border: 1px solid #94f3c4;
+  border-radius: 10px;
+  background: #94f3c4;
+  color: #111827;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: #7ae8b0;
+}
+
+.save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.save-btn.saved {
+  border-color: #28a745;
+  background: #28a745;
+  color: #ffffff;
+}
+
+.save-btn.error {
+  border-color: #c0392b;
+  background: #c0392b;
+  color: #ffffff;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-structure-btn {
+  padding: 6px 14px;
+  border: 1px solid #dbe1ea;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #202938;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.edit-structure-btn:hover {
+  background: #edf0f5;
+}

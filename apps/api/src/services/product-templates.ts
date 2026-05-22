@@ -15,6 +15,10 @@ export interface CreateProductTemplateInput {
   readonly documentSchema: Record<string, unknown>;
 }
 
+export interface UpdateProductTemplateInput {
+  readonly documentSchema?: Record<string, unknown>;
+}
+
 function toDocumentSchema(doc: Prisma.JsonValue): Record<string, unknown> {
   if (doc === null || Array.isArray(doc) || typeof doc !== "object") {
     return {};
@@ -92,4 +96,35 @@ export async function getProductTemplateById(
   });
 
   return template ? toProductTemplateDto(template) : null;
+}
+
+export async function updateProductTemplate(
+  db: PrismaClient,
+  id: string,
+  input: UpdateProductTemplateInput,
+): Promise<ProductTemplateDto | null> {
+  const existing = await db.productTemplate.findUnique({
+    where: { id },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  const data: Record<string, unknown> = {};
+
+  if (input.documentSchema !== undefined) {
+    data.documentSchema = input.documentSchema as Prisma.InputJsonValue;
+  }
+
+  if (Object.keys(data).length === 0) {
+    return toProductTemplateDto(existing);
+  }
+
+  const updated = await db.productTemplate.update({
+    where: { id },
+    data,
+  });
+
+  return toProductTemplateDto(updated);
 }

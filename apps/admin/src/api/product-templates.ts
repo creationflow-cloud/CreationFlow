@@ -1,4 +1,4 @@
-import { get, post } from "./client.js";
+import { get, post, put } from "./client.js";
 
 export interface ProductTemplateDto {
   readonly id: string;
@@ -43,4 +43,11 @@ export async function createProductTemplate(
   input: CreateProductTemplateInput,
 ): Promise<ProductTemplateDto> {
   return post<ProductTemplateDto>("/product-templates", input);
+}
+
+export async function updateProductTemplate(
+  id: string,
+  input: { documentSchema: Record<string, unknown> },
+): Promise<ProductTemplateDto> {
+  return put<ProductTemplateDto>(`/product-templates/${id}`, input);
 }

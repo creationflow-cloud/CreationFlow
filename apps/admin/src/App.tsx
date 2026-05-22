@@ -3,6 +3,8 @@ import { listProducts, createProduct, type ProductDto } from "./api/products.js"
 import {
   listProductTemplates,
   createProductTemplate,
+  getProductTemplate,
+  updateProductTemplate,
   type ProductTemplateDto,
 } from "./api/product-templates.js";
 import {
@@ -23,6 +25,96 @@ const navigationItems: { key: Page; label: string }[] = [
 ];
 
 const editorBaseUrl = import.meta.env.VITE_EDITOR_URL ?? "http://localhost:5173";
+
+interface TemplateDetailPage {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  unit: string;
+  surfaces: TemplateDetailSurface[];
+}
+
+interface TemplateDetailSurface {
+  id: string;
+  name: string;
+  kind?: string;
+  width: number;
+  height: number;
+  unit: string;
+}
+
+function buildDefaultPage(): TemplateDetailPage {
+  return {
+    id: crypto.randomUUID(),
+    name: "Page 1",
+    width: 500,
+    height: 600,
+    unit: "px",
+    surfaces: [
+      {
+        id: crypto.randomUUID(),
+        name: "Front",
+        kind: "front",
+        width: 500,
+        height: 600,
+        unit: "px",
+      },
+    ],
+  };
+}
+
+function buildDefaultSurface(pageIndex: number): TemplateDetailSurface {
+  return {
+    id: crypto.randomUUID(),
+    name: `Surface ${pageIndex + 1}`,
+    kind: "custom",
+    width: 500,
+    height: 600,
+    unit: "px",
+  };
+}
+
+function docToPages(doc: Record<string, unknown>): TemplateDetailPage[] {
+  const pages = (doc.pages as Record<string, unknown>[]) ?? [];
+  return pages.map((page) => ({
+    id: (page.id as string) ?? crypto.randomUUID(),
+    name: (page.name as string) ?? "Untitled",
+    width: (page.width as number) ?? 500,
+    height: (page.height as number) ?? 600,
+    unit: (page.unit as string) ?? "px",
+    surfaces: ((page.surfaces as Record<string, unknown>[]) ?? []).map((s) => ({
+      id: (s.id as string) ?? crypto.randomUUID(),
+      name: (s.name as string) ?? "Untitled",
+      kind: s.kind as string | undefined,
+      width: (s.width as number) ?? 500,
+      height: (s.height as number) ?? 600,
+      unit: (s.unit as string) ?? "px",
+    })),
+  }));
+}
+
+function pagesToDoc(pages: TemplateDetailPage[], originalDoc: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...originalDoc,
+    pages: pages.map((page) => ({
+      id: page.id,
+      name: page.name,
+      width: page.width,
+      height: page.height,
+      unit: page.unit,
+      surfaces: page.surfaces.map((s) => ({
+        id: s.id,
+        name: s.name,
+        kind: s.kind,
+        width: s.width,
+        height: s.height,
+        unit: s.unit,
+        elements: [],
+      })),
+    })),
+  };
+}
 
 export function App() {
   const [activePage, setActivePage] = useState<Page>("dashboard");
@@ -45,6 +137,14 @@ export function App() {
   const [templateProductId, setTemplateProductId] = useState("");
   const [configTemplateId, setConfigTemplateId] = useState("");
   const [configProductId, setConfigProductId] = useState("");
+
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [detailPages, setDetailPages] = useState<TemplateDetailPage[]>([]);
+  const [detailDoc, setDetailDoc] = useState<Record<string, unknown>>({});
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailSaving, setDetailSaving] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [detailSaveStatus, setDetailSaveStatus] = useState<"idle" | "saved" | "error">("idle");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -150,6 +250,87 @@ export function App() {
     }
   };
 
+  const openTemplateDetail = async (id: string) => {
+    setEditingTemplateId(id);
+    setDetailLoading(true);
+    setDetailError(null);
+    try {
+      const tpl = await getProductTemplate(id);
+      setDetailDoc(tpl.documentSchema);
+      setDetailPages(docToPages(tpl.documentSchema));
+    } catch (err) {
+      setDetailError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const closeTemplateDetail = () => {
+    setEditingTemplateId(null);
+    setDetailPages([]);
+    setDetailDoc({});
+    setDetailError(null);
+    setDetailSaveStatus("idle");
+  };
+
+  const handleAddPage = () => {
+    setDetailPages((prev) => [...prev, buildDefaultPage()]);
+  };
+
+  const handleAddSurface = (pageIndex: number) => {
+    setDetailPages((prev) =>
+      prev.map((page, i) =>
+        i === pageIndex
+          ? { ...page, surfaces: [...page.surfaces, buildDefaultSurface(page.surfaces.length)] }
+          : page,
+      ),
+    );
+  };
+
+  const handleUpdatePage = (pageIndex: number, patch: Partial<TemplateDetailPage>) => {
+    setDetailPages((prev) =>
+      prev.map((page, i) => (i === pageIndex ? { ...page, ...patch } : page)),
+    );
+  };
+
+  const handleUpdateSurface = (
+    pageIndex: number,
+    surfaceIndex: number,
+    patch: Partial<TemplateDetailSurface>,
+  ) => {
+    setDetailPages((prev) =>
+      prev.map((page, i) =>
+        i === pageIndex
+          ? {
+              ...page,
+              surfaces: page.surfaces.map((s, j) =>
+                j === surfaceIndex ? { ...s, ...patch } : s,
+              ),
+            }
+          : page,
+      ),
+    );
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!editingTemplateId) return;
+    setDetailSaving(true);
+    setDetailError(null);
+    try {
+      const newDoc = pagesToDoc(detailPages, detailDoc);
+      await updateProductTemplate(editingTemplateId, { documentSchema: newDoc });
+      setDetailDoc(newDoc);
+      setDetailSaveStatus("saved");
+      await loadData();
+      setTimeout(() => setDetailSaveStatus("idle"), 3000);
+    } catch (err) {
+      setDetailError(err instanceof Error ? err.message : String(err));
+      setDetailSaveStatus("error");
+    } finally {
+      setDetailSaving(false);
+    }
+  };
+
   const pageTitle: Record<Page, string> = {
     dashboard: "Workspace overview",
     products: "Products",
@@ -158,6 +339,188 @@ export function App() {
   };
 
   const workspaceLabel = workspace ? workspace.name : "No workspace";
+
+  if (editingTemplateId) {
+    const editingTemplate = templates.find((t) => t.id === editingTemplateId);
+
+    return (
+      <main className="admin-shell">
+        <aside className="admin-nav" aria-label="Admin navigation">
+          <div className="brand-mark">CF</div>
+          <nav className="nav-list">
+            {navigationItems.map((item) => (
+              <button
+                className={activePage === item.key ? "nav-item active" : "nav-item"}
+                key={item.key}
+                type="button"
+                onClick={() => setActivePage(item.key)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <section className="admin-main">
+          <header className="admin-header">
+            <div>
+              <p className="eyebrow">Template Structure</p>
+              <h1>{editingTemplate?.id.slice(0, 12) ?? "Loading..."}</h1>
+            </div>
+            <div className="header-actions">
+              <button
+                type="button"
+                className="back-btn"
+                onClick={closeTemplateDetail}
+              >
+                ← Back
+              </button>
+              <button
+                type="button"
+                className={`save-btn ${detailSaveStatus}`}
+                disabled={detailSaving}
+                onClick={handleSaveTemplate}
+              >
+                {detailSaving
+                  ? "Saving..."
+                  : detailSaveStatus === "saved"
+                    ? "Saved ✓"
+                    : "Save"}
+              </button>
+            </div>
+          </header>
+
+          {detailLoading && (
+            <section className="status-banner status-loading">
+              <p>Loading template structure...</p>
+            </section>
+          )}
+
+          {detailError && (
+            <section className="status-banner status-error">
+              <p>Error: {detailError}</p>
+              <button type="button" className="retry-btn" onClick={() => openTemplateDetail(editingTemplateId)}>
+                Retry
+              </button>
+            </section>
+          )}
+
+          {!detailLoading && !detailError && (
+            <section className="template-detail-panel">
+              <div className="detail-header">
+                <h2>Pages & Surfaces</h2>
+                <button type="button" className="add-page-btn" onClick={handleAddPage}>
+                  + Add Page
+                </button>
+              </div>
+
+              {detailPages.length === 0 && (
+                <p className="empty-state">No pages yet. Add your first page above.</p>
+              )}
+
+              {detailPages.map((page, pageIndex) => (
+                <div key={page.id} className="page-card">
+                  <div className="page-card-header">
+                    <input
+                      className="page-name-input"
+                      type="text"
+                      value={page.name}
+                      onChange={(e) => handleUpdatePage(pageIndex, { name: e.target.value })}
+                      placeholder="Page name"
+                    />
+                    <div className="page-dims">
+                      <label>
+                        W
+                        <input
+                          className="dim-input"
+                          type="number"
+                          value={page.width}
+                          onChange={(e) =>
+                            handleUpdatePage(pageIndex, { width: Number(e.target.value) || 0 })
+                          }
+                        />
+                      </label>
+                      <span>×</span>
+                      <label>
+                        H
+                        <input
+                          className="dim-input"
+                          type="number"
+                          value={page.height}
+                          onChange={(e) =>
+                            handleUpdatePage(pageIndex, { height: Number(e.target.value) || 0 })
+                          }
+                        />
+                      </label>
+                      <span>{page.unit}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="add-surface-btn"
+                      onClick={() => handleAddSurface(pageIndex)}
+                    >
+                      + Add Surface
+                    </button>
+                  </div>
+
+                  {page.surfaces.length === 0 && (
+                    <p className="surface-empty">No surfaces. Add one above.</p>
+                  )}
+
+                  <div className="surface-list">
+                    {page.surfaces.map((surface, surfaceIndex) => (
+                      <div key={surface.id} className="surface-row">
+                        <input
+                          className="surface-name-input"
+                          type="text"
+                          value={surface.name}
+                          onChange={(e) =>
+                            handleUpdateSurface(pageIndex, surfaceIndex, { name: e.target.value })
+                          }
+                          placeholder="Surface name"
+                        />
+                        <span className="surface-kind-badge">{surface.kind ?? "custom"}</span>
+                        <div className="surface-dims">
+                          <label>
+                            W
+                            <input
+                              className="dim-input"
+                              type="number"
+                              value={surface.width}
+                              onChange={(e) =>
+                                handleUpdateSurface(pageIndex, surfaceIndex, {
+                                  width: Number(e.target.value) || 0,
+                                })
+                              }
+                            />
+                          </label>
+                          <span>×</span>
+                          <label>
+                            H
+                            <input
+                              className="dim-input"
+                              type="number"
+                              value={surface.height}
+                              onChange={(e) =>
+                                handleUpdateSurface(pageIndex, surfaceIndex, {
+                                  height: Number(e.target.value) || 0,
+                                })
+                              }
+                            />
+                          </label>
+                          <span>{surface.unit}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </section>
+          )}
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="admin-shell">
@@ -395,7 +758,14 @@ export function App() {
                           )}
                         </td>
                         <td>{formatDate(template.createdAt)}</td>
-                        <td>
+                        <td className="actions-cell">
+                          <button
+                            type="button"
+                            className="edit-structure-btn"
+                            onClick={() => openTemplateDetail(template.id)}
+                          >
+                            Edit structure
+                          </button>
                           <button
                             type="button"
                             className="editor-link-btn"
