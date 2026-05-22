@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "@types/pdfkit": "^0.17.6",
+    "pdf-lib": "^1.17.1",
     "vitest": "^4.1.7"
   }
 }

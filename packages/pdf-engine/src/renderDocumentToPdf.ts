@@ -4,6 +4,7 @@ import type {
   CreationFlowDocument,
   CreationFlowElement,
   CreationFlowShapeElement,
+  CreationFlowSurface,
   CreationFlowTextElement,
   CreationFlowUnit,
 } from "@creationflow/schema";
@@ -18,12 +19,11 @@ interface RgbColor {
   readonly b: number;
 }
 
-export function convertTopLeftToPdfY(pageHeight: number, y: number, elementHeight: number): number {
-  // CreationFlow UI coordinates start at the top-left. Raw PDF coordinates start at the bottom-left.
-  return pageHeight - y - elementHeight;
+export interface RenderDocumentToPdfOptions {
+  readonly compress?: boolean;
 }
 
-function unitToPoints(value: number, unit: CreationFlowUnit | undefined): number {
+export function toPdfUnits(value: number, unit: CreationFlowUnit | undefined): number {
   if (!Number.isFinite(value)) {
     return 0;
   }
@@ -38,12 +38,23 @@ function unitToPoints(value: number, unit: CreationFlowUnit | undefined): number
   }
 }
 
+export function toPdfTopLeftY(y: number, unit: CreationFlowUnit | undefined): number {
+  // PDFKit high-level drawing APIs use top-left coordinates, matching the Editor canvas.
+  // Do not convert to bottom-left coordinates here.
+  return toPdfUnits(y, unit);
+}
+
+export function convertTopLeftToPdfY(_pageHeight: number, y: number, _elementHeight: number): number {
+  // Backward-compatible alias. PDFKit rendering uses top-left coordinates, so y is unchanged.
+  return y;
+}
+
 function toPositivePageSize(value: number | undefined, fallback: number, unit?: CreationFlowUnit): number {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
     return fallback;
   }
 
-  return Math.max(unitToPoints(value, unit), 1);
+  return Math.max(toPdfUnits(value, unit), 1);
 }
 
 function parseHexColor(color: string | undefined): RgbColor | undefined {
@@ -108,22 +119,18 @@ function setStrokeColor(doc: PDFKit.PDFDocument, color: string | undefined): boo
 function renderTextElement(
   doc: PDFKit.PDFDocument,
   element: CreationFlowTextElement,
-  pageHeight: number,
   unit: CreationFlowUnit | undefined,
+  offset: { readonly x: number; readonly y: number },
 ): void {
   if (!element.visible) {
     return;
   }
 
-  const x = unitToPoints(element.x, unit);
-  const y = convertTopLeftToPdfY(
-    pageHeight,
-    unitToPoints(element.y, unit),
-    unitToPoints(element.height, unit),
-  );
-  const width = Math.max(unitToPoints(element.width, unit), 1);
-  const height = Math.max(unitToPoints(element.height, unit), 1);
-  const fontSize = Math.max(unitToPoints(element.fontSize ?? DEFAULT_TEXT_SIZE, unit), 1);
+  const x = offset.x + toPdfUnits(element.x, unit);
+  const y = offset.y + toPdfTopLeftY(element.y, unit);
+  const width = Math.max(toPdfUnits(element.width, unit), 1);
+  const height = Math.max(toPdfUnits(element.height, unit), 1);
+  const fontSize = Math.max(toPdfUnits(element.fontSize ?? DEFAULT_TEXT_SIZE, unit), 1);
 
   doc.fontSize(fontSize);
   setFillColor(doc, element.color) || doc.fillColor("black");
@@ -137,24 +144,20 @@ function renderTextElement(
 function renderShapeElement(
   doc: PDFKit.PDFDocument,
   element: CreationFlowShapeElement,
-  pageHeight: number,
   unit: CreationFlowUnit | undefined,
+  offset: { readonly x: number; readonly y: number },
 ): void {
   if (!element.visible || element.shapeType !== "rect") {
     return;
   }
 
-  const x = unitToPoints(element.x, unit);
-  const y = convertTopLeftToPdfY(
-    pageHeight,
-    unitToPoints(element.y, unit),
-    unitToPoints(element.height, unit),
-  );
-  const width = Math.max(unitToPoints(element.width, unit), 1);
-  const height = Math.max(unitToPoints(element.height, unit), 1);
+  const x = offset.x + toPdfUnits(element.x, unit);
+  const y = offset.y + toPdfTopLeftY(element.y, unit);
+  const width = Math.max(toPdfUnits(element.width, unit), 1);
+  const height = Math.max(toPdfUnits(element.height, unit), 1);
   const hasFill = setFillColor(doc, element.fill);
   const hasStroke = setStrokeColor(doc, element.stroke);
-  const strokeWidth = Math.max(unitToPoints(element.strokeWidth ?? 0, unit), 0);
+  const strokeWidth = Math.max(toPdfUnits(element.strokeWidth ?? 0, unit), 0);
 
   doc.lineWidth(strokeWidth);
   doc.rect(x, y, width, height);
@@ -177,15 +180,15 @@ function renderShapeElement(
 function renderElement(
   doc: PDFKit.PDFDocument,
   element: CreationFlowElement,
-  pageHeight: number,
   unit: CreationFlowUnit | undefined,
+  offset: { readonly x: number; readonly y: number },
 ): void {
   switch (element.type) {
     case "text":
-      renderTextElement(doc, element, pageHeight, unit);
+      renderTextElement(doc, element, unit, offset);
       break;
     case "shape":
-      renderShapeElement(doc, element, pageHeight, unit);
+      renderShapeElement(doc, element, unit, offset);
       break;
     case "image":
       // TODO: Render images once the PDF engine receives asset bytes or a storage resolver for assetId.
@@ -196,7 +199,22 @@ function renderElement(
   }
 }
 
-export async function renderDocumentToPdf(document: CreationFlowDocument): Promise<Buffer> {
+function getSurfaceOffset(
+  surface: CreationFlowSurface,
+  unit: CreationFlowUnit | undefined,
+): { readonly x: number; readonly y: number } {
+  const positionedSurface = surface as CreationFlowSurface & { readonly x?: number; readonly y?: number };
+
+  return {
+    x: toPdfUnits(positionedSurface.x ?? 0, unit),
+    y: toPdfUnits(positionedSurface.y ?? 0, unit),
+  };
+}
+
+export async function renderDocumentToPdf(
+  document: CreationFlowDocument,
+  options: RenderDocumentToPdfOptions = {},
+): Promise<Buffer> {
   const pages = document.pages.length > 0 ? document.pages : [];
   const firstPage = pages[0];
   const firstUnit = firstPage?.unit ?? "pt";
@@ -207,8 +225,8 @@ export async function renderDocumentToPdf(document: CreationFlowDocument): Promi
     const chunks: Buffer[] = [];
     const doc = new PDFDocument({
       autoFirstPage: false,
-      size: [firstWidth, firstHeight],
       margin: 0,
+      compress: options.compress ?? true,
     });
 
     doc.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -229,11 +247,15 @@ export async function renderDocumentToPdf(document: CreationFlowDocument): Promi
       doc.addPage({ size: [width, height], margin: 0 });
 
       const elements = (page.surfaces ?? [])
-        .flatMap((surface) => collectElements(surface.elements))
-        .sort((a, b) => getElementZIndex(a) - getElementZIndex(b));
+        .flatMap((surface) => {
+          const offset = getSurfaceOffset(surface, unit);
 
-      for (const element of elements) {
-        renderElement(doc, element, height, unit);
+          return collectElements(surface.elements).map((element) => ({ element, offset }));
+        })
+        .sort((a, b) => getElementZIndex(a.element) - getElementZIndex(b.element));
+
+      for (const { element, offset } of elements) {
+        renderElement(doc, element, unit, offset);
       }
     }
 
