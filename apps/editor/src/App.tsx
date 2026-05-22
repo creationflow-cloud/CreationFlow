@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { createConfigurationDocument, updateElement } from "@creationflow/core";
+import { addElement, createConfigurationDocument, updateElement } from "@creationflow/core";
+import type { AddTextElementInput } from "@creationflow/core";
 import type {
   CreationFlowDocument,
   CreationFlowElement,
@@ -300,6 +301,48 @@ export function App() {
     markDirty();
   }
 
+  function handleAddTextElement() {
+    if (!currentDocument || !selection.selectedPageId || !selection.selectedSurfaceId) {
+      return;
+    }
+
+    const elementId = crypto.randomUUID() as ElementId;
+
+    const input: AddTextElementInput = {
+      id: elementId,
+      type: "text",
+      name: "Text",
+      x: 50,
+      y: 50,
+      width: 200,
+      height: 40,
+      rotation: 0,
+      opacity: 1,
+      visible: true,
+      locked: false,
+      zIndex: 999,
+      text: "Your text here",
+      fontFamily: "Inter, sans-serif",
+      fontSize: 20,
+      fontWeight: "400",
+      color: "#1d2738",
+      align: "left",
+    };
+
+    const updatedDocument = addElement(currentDocument, {
+      pageId: selection.selectedPageId as PageId,
+      surfaceId: selection.selectedSurfaceId as SurfaceId,
+    }, input);
+
+    setCurrentDocument(updatedDocument);
+    setSelection({
+      selectedPageId: selection.selectedPageId,
+      selectedSurfaceId: selection.selectedSurfaceId,
+      selectedElementId: elementId,
+    });
+    markDirty();
+  }
+
   const handleSave = useCallback(async () => {
     if (!configuration || !currentDocument) {
       return;
@@ -459,7 +502,14 @@ export function App() {
 
           <h2 className="section-divider">Tools</h2>
           <nav className="tool-list" aria-label="Element tools">
-            {elementTools.map((tool) => (
+            <button
+              className="tool-button"
+              type="button"
+              onClick={handleAddTextElement}
+            >
+              Text
+            </button>
+            {elementTools.slice(1).map((tool) => (
               <button className="tool-button" key={tool} type="button">
                 {tool}
               </button>
