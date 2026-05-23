@@ -29,11 +29,53 @@ describe("getRenderJobPdfOutput", () => {
 
     expect(output).toEqual({
       assetId: "asset-1",
-      downloadUrl: "http://localhost:3000/assets/asset-1/file",
+      downloadUrl: "http://localhost:3000/assets/asset-1/file?v=asset-1",
       filename: "rendered.pdf",
       mimeType: "application/pdf",
       sizeBytes: "1234",
     });
+  });
+
+  it("appends cache-busting param to download URL", () => {
+    const output = getRenderJobPdfOutput(
+      createJob({
+        assetId: "asset-abc",
+        downloadUrl: "/assets/asset-abc/file",
+        filename: "rendered.pdf",
+        mimeType: "application/pdf",
+      }),
+    );
+
+    expect(output).not.toBeNull();
+    expect(output!.downloadUrl).toBe("http://localhost:3000/assets/asset-abc/file?v=asset-abc");
+  });
+
+  it("appends cache-busting param with & when URL already has query string", () => {
+    const output = getRenderJobPdfOutput(
+      createJob({
+        assetId: "asset-xyz",
+        downloadUrl: "http://example.com/assets/asset-xyz/file?foo=bar",
+        filename: "rendered.pdf",
+        mimeType: "application/pdf",
+      }),
+    );
+
+    expect(output).not.toBeNull();
+    expect(output!.downloadUrl).toBe("http://example.com/assets/asset-xyz/file?foo=bar&v=asset-xyz");
+  });
+
+  it("uses ? for cache-busting when relative URL has no query string", () => {
+    const output = getRenderJobPdfOutput(
+      createJob({
+        assetId: "asset-new",
+        downloadUrl: "/assets/asset-new/file",
+        filename: "rendered.pdf",
+        mimeType: "application/pdf",
+      }),
+    );
+
+    expect(output).not.toBeNull();
+    expect(output!.downloadUrl).toContain("?v=asset-new");
   });
 
   it("returns null for missing or invalid output", () => {

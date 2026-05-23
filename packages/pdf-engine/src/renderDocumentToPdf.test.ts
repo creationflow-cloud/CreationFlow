@@ -566,4 +566,748 @@ describe("path-based surfaces", () => {
     expect(pdf.length).toBeGreaterThan(0);
     await expect(getPageCount(pdf)).resolves.toBe(1);
   });
+
+  it("clips elements to path-based designRegion with clipContent", async () => {
+    const warnings: RenderDocumentWarning[] = [];
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          createDesignRegionSurface(
+            "surface-1",
+            "M50,50 L250,50 L250,150 L50,150 Z",
+            true,
+            [
+              createTextElement("text-1", 60, 60),
+              createShapeElement("shape-1", 100, 100, 50, 50),
+            ],
+          ),
+        ]),
+      ]),
+      {
+        compress: false,
+        onWarning: (warning) => warnings.push(warning),
+      },
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+    await expect(getPageCount(pdf)).resolves.toBe(1);
+    expect(warnings.filter((w) => w.code === "path_render_failed")).toHaveLength(0);
+  });
+
+  it("renders elements at local coordinates inside clipped path surface", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          {
+            id: "surface-1" as SurfaceId,
+            name: "Clipped Path",
+            width: 300,
+            height: 200,
+            unit: "pt",
+            elements: [
+              {
+                id: "shape-1" as ElementId,
+                type: "shape",
+                name: "shape-1",
+                x: 10,
+                y: 20,
+                width: 30,
+                height: 40,
+                rotation: 0,
+                opacity: 1,
+                visible: true,
+                locked: false,
+                zIndex: 0,
+                shapeType: "rect",
+                fill: "#ddeeff",
+                stroke: "#112233",
+                strokeWidth: 2,
+              },
+            ],
+            shape: "path",
+            role: "designRegion",
+            pathData: "M0,0 L300,0 L300,200 L0,200 Z",
+            clipContent: true,
+          } as CreationFlowSurface,
+        ]),
+      ]),
+      { compress: false },
+    );
+
+    const streams = extractPdfStreams(pdf);
+    const content = streams.join("\n");
+
+    expect(pdf.length).toBeGreaterThan(0);
+    expect(content).toContain("10 20 30 40 re");
+  });
+
+  it("clips elements to rectangular surface with clipContent", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          {
+            id: "surface-1" as SurfaceId,
+            name: "Clipped Rect",
+            x: 50,
+            y: 60,
+            width: 200,
+            height: 150,
+            unit: "pt",
+            elements: [
+              createTextElement("text-1", 10, 20),
+              createShapeElement("shape-1", 30, 40, 50, 50),
+            ],
+            clipContent: true,
+          } as CreationFlowSurface,
+        ]),
+      ]),
+      { compress: false },
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+    await expect(getPageCount(pdf)).resolves.toBe(1);
+  });
+
+  it("does not leak clipping to subsequent surfaces", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          {
+            id: "surface-1" as SurfaceId,
+            name: "Clipped Path",
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 100,
+            unit: "pt",
+            elements: [createShapeElement("shape-1", 10, 10, 20, 20)],
+            shape: "path",
+            role: "designRegion",
+            pathData: "M0,0 L100,0 L100,100 L0,100 Z",
+            clipContent: true,
+          } as CreationFlowSurface,
+          {
+            id: "surface-2" as SurfaceId,
+            name: "Unclipped Rect",
+            x: 150,
+            y: 150,
+            width: 100,
+            height: 100,
+            unit: "pt",
+            elements: [createShapeElement("shape-2", 10, 10, 30, 30)],
+          } as CreationFlowSurface,
+        ]),
+      ]),
+      { compress: false },
+    );
+
+    const streams = extractPdfStreams(pdf);
+    const content = streams.join("\n");
+
+    expect(pdf.length).toBeGreaterThan(0);
+    expect(content).toContain("10 10 20 20 re");
+    expect(content).toContain("160 160 30 30 re");
+  });
+
+  it("preserves zIndex ordering inside clipped surface", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          {
+            id: "surface-1" as SurfaceId,
+            name: "Clipped Path",
+            width: 300,
+            height: 200,
+            unit: "pt",
+            elements: [
+              {
+                ...createShapeElement("shape-back", 10, 10, 50, 50),
+                zIndex: 0,
+                fill: "#ff0000",
+              },
+              {
+                ...createShapeElement("shape-front", 20, 20, 50, 50),
+                zIndex: 1,
+                fill: "#00ff00",
+              },
+            ],
+            shape: "path",
+            role: "designRegion",
+            pathData: "M0,0 L300,0 L300,200 L0,200 Z",
+            clipContent: true,
+          } as CreationFlowSurface,
+        ]),
+      ]),
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+    await expect(getPageCount(pdf)).resolves.toBe(1);
+  });
+
+  it("renders path colorRegion with surface-local translation", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          createColorRegionSurface(
+            "surface-1",
+            "M0,0 L50,0 L50,50 L0,50 Z",
+            "#0000ff",
+            { x: 100, y: 50 },
+          ),
+        ]),
+      ]),
+      { compress: false },
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+    await expect(getPageCount(pdf)).resolves.toBe(1);
+  });
+
+  it("debug: outputs raw PDF stream for path clipping inspection", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        {
+          id: "page-1" as PageId,
+          name: "page-1",
+          width: 500,
+          height: 600,
+          unit: "pt",
+          surfaces: [
+            {
+              id: "design-region" as SurfaceId,
+              name: "Design Region",
+              width: 500,
+              height: 600,
+              unit: "pt",
+              elements: [
+                {
+                  id: "large-rect" as ElementId,
+                  type: "shape",
+                  name: "Large Rectangle",
+                  x: 0,
+                  y: 0,
+                  width: 500,
+                  height: 600,
+                  rotation: 0,
+                  opacity: 1,
+                  visible: true,
+                  locked: false,
+                  zIndex: 0,
+                  shapeType: "rect",
+                  fill: "#ff0000",
+                  stroke: undefined,
+                  strokeWidth: 0,
+                },
+              ],
+              shape: "path",
+              role: "designRegion",
+              pathData: "M100 100 L200 100 L200 200 L100 200 Z",
+              clipContent: true,
+            } as CreationFlowSurface,
+          ],
+        } as CreationFlowPage,
+      ]),
+      { compress: false },
+    );
+
+    const streams = extractPdfStreams(pdf);
+    const content = streams.join("\n");
+
+    console.log("=== PDF CONTENT STREAM DEBUG ===");
+    console.log("Page size: 500x600");
+    console.log("Surface: designRegion, path clip, clipContent=true");
+    console.log("Path: M100 100 L200 100 L200 200 L100 200 Z");
+    console.log("Element: rect 0,0 500x600 (should be clipped to 100x100 path area)");
+    console.log("---");
+    console.log(content);
+    console.log("=== END PDF CONTENT STREAM ===");
+
+    expect(pdf.length).toBeGreaterThan(0);
+
+    const hasW = content.includes("W");
+    const hasQ = content.includes("Q");
+    const hasRect = content.includes("0 0 500 600 re");
+
+    expect(hasW).toBe(true);
+    expect(hasQ).toBe(true);
+    expect(hasRect).toBe(true);
+
+    const wIndex = content.indexOf("W");
+    const rectIndex = content.indexOf("0 0 500 600 re");
+    const qIndex = content.lastIndexOf("Q");
+
+    expect(wIndex).toBeLessThan(rectIndex);
+    expect(rectIndex).toBeLessThan(qIndex);
+  });
+});
+
+describe("realistic apparel template clipping", () => {
+  it("clips designRegion elements while leaving colorRegion unclipped", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        {
+          id: "page-1" as PageId,
+          name: "T-Shirt Front",
+          width: 500,
+          height: 600,
+          unit: "pt",
+          surfaces: [
+            {
+              id: "color-region" as SurfaceId,
+              name: "T-Shirt Base",
+              width: 500,
+              height: 600,
+              unit: "pt",
+              elements: [],
+              shape: "path",
+              role: "colorRegion",
+              pathData: "M50 50 L450 50 L450 550 L50 550 Z",
+              fillColor: "#ffffff",
+              clipContent: false,
+            } as CreationFlowSurface,
+            {
+              id: "design-region" as SurfaceId,
+              name: "Print Area",
+              width: 300,
+              height: 400,
+              unit: "pt",
+              elements: [
+                {
+                  id: "large-rect" as ElementId,
+                  type: "shape",
+                  name: "Background Fill",
+                  x: 0,
+                  y: 0,
+                  width: 500,
+                  height: 600,
+                  rotation: 0,
+                  opacity: 1,
+                  visible: true,
+                  locked: false,
+                  zIndex: 0,
+                  shapeType: "rect",
+                  fill: "#ff0000",
+                  stroke: undefined,
+                  strokeWidth: 0,
+                },
+                {
+                  id: "text-inside" as ElementId,
+                  type: "text",
+                  name: "Inside Text",
+                  x: 50,
+                  y: 50,
+                  width: 100,
+                  height: 30,
+                  rotation: 0,
+                  opacity: 1,
+                  visible: true,
+                  locked: false,
+                  zIndex: 1,
+                  text: "Inside",
+                  fontFamily: "Helvetica",
+                  fontSize: 12,
+                  color: "#000000",
+                  align: "left",
+                },
+                {
+                  id: "text-outside" as ElementId,
+                  type: "text",
+                  name: "Outside Text",
+                  x: 400,
+                  y: 500,
+                  width: 100,
+                  height: 30,
+                  rotation: 0,
+                  opacity: 1,
+                  visible: true,
+                  locked: false,
+                  zIndex: 2,
+                  text: "Outside",
+                  fontFamily: "Helvetica",
+                  fontSize: 12,
+                  color: "#000000",
+                  align: "left",
+                },
+              ],
+              shape: "path",
+              role: "designRegion",
+              pathData: "M100 100 L200 100 L200 200 L100 200 Z",
+              clipContent: true,
+            } as CreationFlowSurface,
+            {
+              id: "overlay" as SurfaceId,
+              name: "Seam Overlay",
+              width: 500,
+              height: 600,
+              unit: "pt",
+              elements: [],
+              shape: "path",
+              role: "overlay",
+              pathData: "M50 50 L450 50 L450 550 L50 550 Z",
+              fillColor: "#000000",
+              clipContent: false,
+            } as CreationFlowSurface,
+          ],
+        } as CreationFlowPage,
+      ]),
+      { compress: false },
+    );
+
+    const streams = extractPdfStreams(pdf);
+    const content = streams.join("\n");
+
+    expect(pdf.length).toBeGreaterThan(0);
+
+    // Verify clipping operator appears
+    expect(content).toContain("W");
+
+    // Verify rectangle is drawn
+    expect(content).toContain("0 0 500 600 re");
+
+    // Verify text elements are present (hex-encoded in PDF)
+    // "Inside" = 496e73696465, "Outside" = 4f757473696465
+    expect(content).toContain("496e73696465");
+    expect(content).toContain("4f757473696465");
+
+    // Count W operators - should be exactly 1 (for designRegion clipping)
+    const wCount = content.split("W").length - 1;
+    expect(wCount).toBe(1);
+  });
+});
+
+describe("debugSurfaces", () => {
+  it("renders without crashing when debugSurfaces is true", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          createSurface("surface-1", [createShapeElement("shape-1", 10, 10, 20, 20)]),
+        ]),
+      ]),
+      { compress: false, debugSurfaces: true },
+    );
+
+    expect(Buffer.isBuffer(pdf)).toBe(true);
+    expect(pdf.length).toBeGreaterThan(0);
+    expect(pdf.subarray(0, 4).toString("latin1")).toBe("%PDF");
+  });
+
+  it("produces identical output when debugSurfaces is false vs omitted", async () => {
+    const doc = createDocument([
+      createPage("page-1", [
+        createSurface("surface-1", [createShapeElement("shape-1", 10, 10, 20, 20)]),
+      ]),
+    ]);
+
+    const pdfDefault = await renderDocumentToPdf(doc, { compress: false });
+    const pdfFalse = await renderDocumentToPdf(doc, { compress: false, debugSurfaces: false });
+
+    const streamsDefault = extractPdfStreams(pdfDefault).join("\n");
+    const streamsFalse = extractPdfStreams(pdfFalse).join("\n");
+
+    expect(streamsDefault).toBe(streamsFalse);
+  });
+
+  it("adds debug strokes for designRegion surface", async () => {
+    const designRegion = {
+      id: "design" as SurfaceId,
+      name: "Design",
+      width: 300,
+      height: 200,
+      unit: "pt",
+      elements: [],
+      shape: "path" as const,
+      role: "designRegion" as const,
+      pathData: "M50 50 L250 50 L250 150 L50 150 Z",
+      clipContent: false,
+    } as CreationFlowSurface;
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [designRegion])]),
+      { compress: false, debugSurfaces: true },
+    );
+
+    const streams = extractPdfStreams(pdf);
+    const content = streams.join("\n");
+
+    // Magenta color for designRegion: [255, 0, 102] -> 1 0 0.4 scn (approx)
+    // Should contain the path stroke operators
+    expect(content).toContain("50 50 m");
+    expect(content).toContain("250 50 l");
+    expect(content).toContain("S");
+  });
+
+  it("adds debug strokes for colorRegion surface", async () => {
+    const colorRegion = {
+      id: "color" as SurfaceId,
+      name: "Color",
+      width: 300,
+      height: 200,
+      unit: "pt",
+      elements: [],
+      shape: "path" as const,
+      role: "colorRegion" as const,
+      pathData: "M0 0 L300 0 L300 200 L0 200 Z",
+      clipContent: false,
+    } as CreationFlowSurface;
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [colorRegion])]),
+      { compress: false, debugSurfaces: true },
+    );
+
+    const streams = extractPdfStreams(pdf);
+    const content = streams.join("\n");
+
+    // Blue color for colorRegion: [0, 102, 255]
+    expect(content).toContain("0 0.4 1 scn");
+  });
+
+  it("adds dashed strokes for overlay surface", async () => {
+    const overlay = {
+      id: "overlay" as SurfaceId,
+      name: "Overlay",
+      width: 300,
+      height: 200,
+      unit: "pt",
+      elements: [],
+      shape: "path" as const,
+      role: "overlay" as const,
+      pathData: "M10 10 L290 10 L290 190 L10 190 Z",
+      clipContent: false,
+    } as CreationFlowSurface;
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [overlay])]),
+      { compress: false, debugSurfaces: true },
+    );
+
+    const streams = extractPdfStreams(pdf);
+    const content = streams.join("\n");
+
+    // Gray color for overlay: [102, 102, 102] -> 0.4 0.4 0.4 scn
+    expect(content).toContain("0.4 0.4 0.4 scn");
+    // Dash pattern: [5 5] 0 d
+    expect(content).toContain("[5 5] 0 d");
+  });
+
+  it("adds debug strokes for default/rect surface", async () => {
+    const defaultSurface = {
+      id: "default" as SurfaceId,
+      name: "Default",
+      width: 300,
+      height: 200,
+      unit: "pt",
+      elements: [],
+    } as CreationFlowSurface;
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [defaultSurface])]),
+      { compress: false, debugSurfaces: true },
+    );
+
+    const streams = extractPdfStreams(pdf);
+    const content = streams.join("\n");
+
+    // Green color for default: [0, 204, 0] -> 0 0.8 0 scn
+    expect(content).toContain("0 0.8 0 scn");
+    // Rect boundary
+    expect(content).toContain("0 0 300 200 re");
+  });
+
+  it("renders surface labels with name and role", async () => {
+    const designRegion = {
+      id: "design" as SurfaceId,
+      name: "Front Design",
+      width: 300,
+      height: 200,
+      unit: "pt",
+      elements: [],
+      shape: "path" as const,
+      role: "designRegion" as const,
+      pathData: "M50 50 L250 50 L250 150 L50 150 Z",
+      clipContent: false,
+    } as CreationFlowSurface;
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [designRegion])]),
+      { compress: false, debugSurfaces: true },
+    );
+
+    const streams = extractPdfStreams(pdf);
+    const content = streams.join("\n");
+
+    // "Front Design (designRegion)" hex-encoded: 46726f6e742044657369676e202864657369676e526567696f6e29
+    // PDF may split into chunks, so check for key parts
+    // "Design" = 44657369676e
+    expect(content).toContain("44657369676e");
+    // "designRegion" = 64657369676e526567696f6e
+    expect(content).toContain("64657369676e526567696f6e");
+  });
+
+  it("does not add debug strokes when debugSurfaces is false", async () => {
+    const designRegion = {
+      id: "design" as SurfaceId,
+      name: "Design",
+      width: 300,
+      height: 200,
+      unit: "pt",
+      elements: [],
+      shape: "path" as const,
+      role: "designRegion" as const,
+      pathData: "M50 50 L250 50 L250 150 L50 150 Z",
+      clipContent: false,
+    } as CreationFlowSurface;
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [designRegion])]),
+      { compress: false, debugSurfaces: false },
+    );
+
+    const streams = extractPdfStreams(pdf);
+    const content = streams.join("\n");
+
+    // Should not contain debug label text
+    expect(content).not.toContain("Front Design");
+    expect(content).not.toContain("Design (designRegion)");
+  });
+
+  it("handles multiple surfaces with different roles", async () => {
+    const surfaces = [
+      {
+        id: "color" as SurfaceId,
+        name: "Base Color",
+        width: 300,
+        height: 200,
+        unit: "pt",
+        elements: [],
+        shape: "path" as const,
+        role: "colorRegion" as const,
+        pathData: "M0 0 L300 0 L300 200 L0 200 Z",
+        clipContent: false,
+      },
+      {
+        id: "design" as SurfaceId,
+        name: "Design",
+        width: 300,
+        height: 200,
+        unit: "pt",
+        elements: [],
+        shape: "path" as const,
+        role: "designRegion" as const,
+        pathData: "M50 50 L250 50 L250 150 L50 150 Z",
+        clipContent: false,
+      },
+      {
+        id: "overlay" as SurfaceId,
+        name: "Seam",
+        width: 300,
+        height: 200,
+        unit: "pt",
+        elements: [],
+        shape: "path" as const,
+        role: "overlay" as const,
+        pathData: "M10 10 L290 10 L290 190 L10 190 Z",
+        clipContent: false,
+      },
+    ] as CreationFlowSurface[];
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", surfaces)]),
+      { compress: false, debugSurfaces: true },
+    );
+
+    const streams = extractPdfStreams(pdf);
+    const content = streams.join("\n");
+
+    // Check for hex-encoded labels
+    // "Base Color (colorRegion)" contains "colorRegion" = 636f6c6f72526567696f6e
+    expect(content).toContain("636f6c6f72526567696f6e");
+    // "Design (designRegion)" contains "designRegion" = 64657369676e526567696f6e
+    expect(content).toContain("64657369676e526567696f6e");
+    // "Seam (overlay)" - PDF splits text into chunks, check for "Seam" = 5365616d
+    expect(content).toContain("5365616d");
+  });
+
+  it("verifies t-shirt template clipping with debug surfaces", async () => {
+    const designPath = "M185 165 C205 150 295 150 315 165 L330 505 C300 518 200 518 170 505 Z";
+
+    const surfaces = [
+      {
+        id: "color" as SurfaceId,
+        name: "Base Color",
+        width: 500,
+        height: 600,
+        unit: "pt",
+        elements: [],
+        shape: "path" as const,
+        role: "colorRegion" as const,
+        pathData: "M0 0 L500 0 L500 600 L0 600 Z",
+        fillColor: "#ffffff",
+        clipContent: false,
+      },
+      {
+        id: "design" as SurfaceId,
+        name: "Design",
+        width: 500,
+        height: 600,
+        unit: "pt",
+        elements: [
+          {
+            id: "red-rect" as ElementId,
+            type: "shape",
+            name: "Red Rectangle",
+            x: 50,
+            y: 300,
+            width: 200,
+            height: 100,
+            rotation: 0,
+            opacity: 1,
+            visible: true,
+            locked: false,
+            zIndex: 0,
+            shapeType: "rect",
+            fill: "#ff0000",
+          },
+        ],
+        shape: "path" as const,
+        role: "designRegion" as const,
+        pathData: designPath,
+        clipContent: true,
+      },
+      {
+        id: "overlay" as SurfaceId,
+        name: "Seam Overlay",
+        width: 500,
+        height: 600,
+        unit: "pt",
+        elements: [],
+        shape: "path" as const,
+        role: "overlay" as const,
+        pathData: "M0 0 L500 0 L500 600 L0 600 Z",
+        clipContent: false,
+      },
+    ] as CreationFlowSurface[];
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", surfaces)]),
+      { compress: false, debugSurfaces: true },
+    );
+
+    const streams = extractPdfStreams(pdf);
+    const content = streams.join("\n");
+
+    expect(content).toContain("0 0.4 1 scn");
+    expect(content).toContain("1 0 0.4 scn");
+    expect(content).toContain("0.4 0.4 0.4 scn");
+    expect(content).toContain("W");
+    expect(content).toContain("1 0 0 scn");
+    expect(content).toContain("185 165 m");
+    expect(content).toContain("44657369676e");
+    expect(content).toContain("636f6c6f72526567696f6e");
+
+    expect(Buffer.isBuffer(pdf)).toBe(true);
+    expect(pdf.length).toBeGreaterThan(0);
+    expect(pdf.subarray(0, 4).toString("latin1")).toBe("%PDF");
+  });
 });

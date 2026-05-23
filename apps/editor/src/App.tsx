@@ -51,6 +51,8 @@ import {
   selectFirstSurface,
   selectPage,
   selectSurface,
+  findFirstDesignRegionSurface,
+  findFirstNonOverlaySurface,
 } from "./helpers/selection-helpers.js";
 import type { SelectionState } from "./helpers/selection-helpers.js";
 
@@ -242,6 +244,38 @@ export function App() {
       ? findSurfaceById(currentDocument, selection.selectedSurfaceId)
       : undefined;
 
+  function getTargetSurfaceForElementCreation(): { surfaceId: SurfaceId | null; pageId: PageId | null } {
+    if (!currentDocument || !selection.selectedPageId || !selection.selectedSurfaceId) {
+      return { surfaceId: null, pageId: null };
+    }
+
+    const surface = findSurfaceById(currentDocument, selection.selectedSurfaceId);
+    if (!surface) {
+      return { surfaceId: null, pageId: null };
+    }
+
+    const role = surface.role ?? "default";
+
+    if (role === "overlay") {
+      const designRegion = findFirstDesignRegionSurface(currentDocument, selection.selectedPageId);
+      if (designRegion) {
+        return { surfaceId: designRegion.id, pageId: selection.selectedPageId as PageId };
+      }
+
+      const nonOverlay = findFirstNonOverlaySurface(currentDocument, selection.selectedPageId);
+      if (nonOverlay) {
+        return { surfaceId: nonOverlay.id, pageId: selection.selectedPageId as PageId };
+      }
+
+      return { surfaceId: null, pageId: null };
+    }
+
+    return {
+      surfaceId: selection.selectedSurfaceId as SurfaceId,
+      pageId: selection.selectedPageId as PageId,
+    };
+  }
+
   const selectedElement =
     currentDocument && selection.selectedElementId
       ? findElementById(currentDocument, selection.selectedElementId)
@@ -403,7 +437,12 @@ export function App() {
   }
 
   function handleAddTextElement() {
-    if (!currentDocument || !selection.selectedPageId || !selection.selectedSurfaceId) {
+    if (!currentDocument) {
+      return;
+    }
+
+    const target = getTargetSurfaceForElementCreation();
+    if (!target.pageId || !target.surfaceId) {
       return;
     }
 
@@ -435,16 +474,16 @@ export function App() {
     const updatedDocument = addElement(
       currentDocument,
       {
-        pageId: selection.selectedPageId as PageId,
-        surfaceId: selection.selectedSurfaceId as SurfaceId,
+        pageId: target.pageId,
+        surfaceId: target.surfaceId,
       },
       input,
     );
 
     setCurrentDocument(updatedDocument);
     setSelection({
-      selectedPageId: selection.selectedPageId,
-      selectedSurfaceId: selection.selectedSurfaceId,
+      selectedPageId: target.pageId,
+      selectedSurfaceId: target.surfaceId,
       selectedElementId: elementId,
     });
   }
@@ -457,7 +496,12 @@ export function App() {
   }
 
   function handleAddShapeElement() {
-    if (!currentDocument || !selection.selectedPageId || !selection.selectedSurfaceId) {
+    if (!currentDocument) {
+      return;
+    }
+
+    const target = getTargetSurfaceForElementCreation();
+    if (!target.pageId || !target.surfaceId) {
       return;
     }
 
@@ -487,22 +531,27 @@ export function App() {
     const updatedDocument = addElement(
       currentDocument,
       {
-        pageId: selection.selectedPageId as PageId,
-        surfaceId: selection.selectedSurfaceId as SurfaceId,
+        pageId: target.pageId,
+        surfaceId: target.surfaceId,
       },
       input,
     );
 
     setCurrentDocument(updatedDocument);
     setSelection({
-      selectedPageId: selection.selectedPageId,
-      selectedSurfaceId: selection.selectedSurfaceId,
+      selectedPageId: target.pageId,
+      selectedSurfaceId: target.surfaceId,
       selectedElementId: elementId,
     });
   }
 
   function handleAddImageElement() {
-    if (!currentDocument || !selection.selectedPageId || !selection.selectedSurfaceId) {
+    if (!currentDocument) {
+      return;
+    }
+
+    const target = getTargetSurfaceForElementCreation();
+    if (!target.pageId || !target.surfaceId) {
       return;
     }
 
@@ -530,16 +579,16 @@ export function App() {
     const updatedDocument = addElement(
       currentDocument,
       {
-        pageId: selection.selectedPageId as PageId,
-        surfaceId: selection.selectedSurfaceId as SurfaceId,
+        pageId: target.pageId,
+        surfaceId: target.surfaceId,
       },
       input,
     );
 
     setCurrentDocument(updatedDocument);
     setSelection({
-      selectedPageId: selection.selectedPageId,
-      selectedSurfaceId: selection.selectedSurfaceId,
+      selectedPageId: target.pageId,
+      selectedSurfaceId: target.surfaceId,
       selectedElementId: elementId,
     });
   }

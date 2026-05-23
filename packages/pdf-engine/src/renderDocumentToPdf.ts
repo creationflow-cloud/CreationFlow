@@ -44,6 +44,7 @@ export interface RenderDocumentToPdfOptions {
   readonly compress?: boolean;
   readonly resolveAsset?: (assetId: AssetId) => Promise<ResolvedPdfAsset | null | undefined>;
   readonly onWarning?: (warning: RenderDocumentWarning) => void;
+  readonly debugSurfaces?: boolean;
 }
 
 export function toPdfUnits(value: number, unit: CreationFlowUnit | undefined): number {
@@ -326,6 +327,8 @@ function renderPathSurface(
   offset: { readonly x: number; readonly y: number },
   options: RenderDocumentToPdfOptions,
 ): void {
+  console.log(`renderPathSurface: ${surface.name} (${surface.role ?? "default"})`);
+
   if (!surface.pathData || surface.shape !== "path") {
     return;
   }
@@ -374,6 +377,8 @@ function clipToPath(
   offset: { readonly x: number; readonly y: number },
   options: RenderDocumentToPdfOptions,
 ): boolean {
+  console.log(`clipToPath: ${surface.name} (${surface.role ?? "default"})`);
+
   if (!surface.pathData || surface.shape !== "path" || !surface.clipContent) {
     return false;
   }
@@ -409,22 +414,100 @@ function clipToRect(
     return false;
   }
 
-  const x = offset.x;
-  const y = offset.y;
   const width = toPdfUnits(surface.width, unit);
   const height = toPdfUnits(surface.height, unit);
 
   doc.save();
-  doc.rect(x, y, width, height);
+  doc.translate(offset.x, offset.y);
+  doc.rect(0, 0, width, height);
   doc.clip();
   
   return true;
+}
+
+function renderSurfaceDebugOverlays(
+  doc: PDFKit.PDFDocument,
+  surfaces: readonly CreationFlowSurface[],
+  unit: CreationFlowUnit | undefined,
+): void {
+  if (!surfaces.length) return;
+
+  doc.save();
+
+  for (const surface of surfaces) {
+    const offset = getSurfaceOffset(surface, unit);
+    const width = toPdfUnits(surface.width, unit);
+    const height = toPdfUnits(surface.height, unit);
+    const role = surface.role ?? "default";
+
+    let strokeColor: [number, number, number];
+    let strokeWidth = 1;
+    let dashPattern: number[] | undefined;
+
+    switch (role) {
+      case "colorRegion":
+        strokeColor = [0, 102, 255];
+        break;
+      case "designRegion":
+        strokeColor = [255, 0, 102];
+        break;
+      case "overlay":
+        strokeColor = [102, 102, 102];
+        strokeWidth = 0.5;
+        dashPattern = [5, 5];
+        break;
+      default:
+        strokeColor = [0, 204, 0];
+    }
+
+    doc.save();
+    doc.translate(offset.x, offset.y);
+
+    if (surface.shape === "path" && surface.pathData) {
+      doc.strokeColor(strokeColor);
+      doc.lineWidth(strokeWidth);
+      if (dashPattern) {
+        doc.dash(dashPattern[0], { space: dashPattern[1] });
+      }
+      const path = doc.path(surface.pathData);
+      path.stroke();
+      if (dashPattern) {
+        doc.undash();
+      }
+    } else {
+      doc.strokeColor(strokeColor);
+      doc.lineWidth(strokeWidth);
+      if (dashPattern) {
+        doc.dash(dashPattern[0], { space: dashPattern[1] });
+      }
+      doc.rect(0, 0, width, height);
+      doc.stroke();
+      if (dashPattern) {
+        doc.undash();
+      }
+    }
+
+    doc.fontSize(8);
+    doc.fillColor(strokeColor);
+    const label = `${surface.name || "Surface"} (${role})`;
+    doc.text(label, 2, 2, { width: Math.max(width - 4, 50), align: "left" });
+
+    doc.restore();
+  }
+
+  doc.restore();
 }
 
 export async function renderDocumentToPdf(
   document: CreationFlowDocument,
   options: RenderDocumentToPdfOptions = {},
 ): Promise<Buffer> {
+  console.log("[pdf-engine] renderDocumentToPdf called", {
+    debugVersion: "path-clipping-v2",
+    debugSurfaces: options.debugSurfaces,
+    page_count: document.pages.length,
+  });
+
   const pages = document.pages.length > 0 ? document.pages : [];
   const firstPage = pages[0];
   const firstUnit = firstPage?.unit ?? "pt";
@@ -461,6 +544,7 @@ export async function renderDocumentToPdf(
 
         for (const surface of surfaces) {
           const offset = getSurfaceOffset(surface, unit);
+          console.log(`surface: ${surface.name} (${surface.role ?? "default"}) shape=${surface.shape ?? "rect"} clipContent=${surface.clipContent ?? false}`);
 
           if (surface.shape === "path" && surface.pathData) {
             renderPathSurface(doc, surface, unit, offset, options);
@@ -470,21 +554,31 @@ export async function renderDocumentToPdf(
           elements.sort((a, b) => getElementZIndex(a) - getElementZIndex(b));
 
           let clipped = false;
-          if (surface.clipContent) {
-            if (surface.shape === "path" && surface.pathData) {
-              clipped = clipToPath(doc, surface, unit, offset, options);
-            } else {
-              clipped = clipToRect(doc, surface, unit, offset);
-            }
+          const isPathClip = surface.shape === "path" && surface.pathData && surface.clipContent;
+          const isRectClip = surface.clipContent && surface.shape !== "path";
+
+          if (isPathClip) {
+            clipped = clipToPath(doc, surface, unit, offset, options);
+          } else if (isRectClip) {
+            clipped = clipToRect(doc, surface, unit, offset);
           }
 
+          const elementOffset = clipped
+            ? { x: 0, y: 0 }
+            : offset;
+
           for (const element of elements) {
-            await renderElement(doc, element, unit, offset, options);
+            console.log(`render element: ${element.name || element.type} clipped=${clipped} offset=(${elementOffset.x},${elementOffset.y})`);
+            await renderElement(doc, element, unit, elementOffset, options);
           }
 
           if (clipped) {
             doc.restore();
           }
+        }
+
+        if (options.debugSurfaces) {
+          renderSurfaceDebugOverlays(doc, surfaces, unit);
         }
       }
 

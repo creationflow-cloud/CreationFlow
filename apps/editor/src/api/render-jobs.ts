@@ -60,7 +60,9 @@ export function getRenderJobPdfOutput(job: RenderJobDto | null): RenderJobPdfOut
 
   return {
     assetId,
-    downloadUrl: downloadUrl.startsWith("http") ? downloadUrl : `${BASE_URL}${downloadUrl}`,
+    downloadUrl: downloadUrl.startsWith("http")
+      ? `${downloadUrl}${downloadUrl.includes("?") ? "&" : "?"}v=${assetId}`
+      : `${BASE_URL}${downloadUrl}?v=${assetId}`,
     filename,
     mimeType,
     sizeBytes: typeof sizeBytes === "string" ? sizeBytes : undefined,

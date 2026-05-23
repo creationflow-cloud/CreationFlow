@@ -82,7 +82,44 @@ export async function renderRenderJobToPdf(
       throw new Error("Configuration document is not renderable.");
     }
 
+    if (process.env.CREATIONFLOW_PDF_DEBUG_VERBOSE === "true") {
+      const doc = configuration.document as Record<string, unknown>;
+      const pages = (doc.pages as Record<string, unknown>[]) ?? [];
+      console.log("=== RENDER DOCUMENT STRUCTURE DEBUG ===");
+      console.log(`Total pages: ${pages.length}`);
+      for (const page of pages) {
+        const pageId = page.id as string;
+        const pageName = page.name as string;
+        const surfaces = (page.surfaces as Record<string, unknown>[]) ?? [];
+        console.log(`  Page: ${pageName} (${pageId}) - ${surfaces.length} surfaces`);
+        for (const surface of surfaces) {
+          const surfaceId = surface.id as string;
+          const surfaceName = surface.name as string;
+          const shape = surface.shape as string | undefined;
+          const role = surface.role as string | undefined;
+          const clipContent = surface.clipContent as boolean | undefined;
+          const pathData = surface.pathData as string | undefined;
+          const elements = (surface.elements as Record<string, unknown>[]) ?? [];
+          console.log(`    Surface: ${surfaceName} (${surfaceId})`);
+          console.log(`      shape: ${shape ?? "rect"}`);
+          console.log(`      role: ${role ?? "default"}`);
+          console.log(`      clipContent: ${clipContent ?? false}`);
+          console.log(`      pathData: ${pathData ? "present (" + pathData.length + " chars)" : "absent"}`);
+          console.log(`      elements: ${elements.length}`);
+          for (const el of elements) {
+            const elType = el.type as string;
+            const elName = el.name as string | undefined;
+            const elX = el.x as number;
+            const elY = el.y as number;
+            console.log(`        - ${elType} "${elName ?? "unnamed"}" at (${elX},${elY})`);
+          }
+        }
+      }
+      console.log("=== END RENDER DOCUMENT STRUCTURE DEBUG ===");
+    }
+
     const renderWarnings: RenderDocumentWarning[] = [];
+    const debugSurfaces = process.env.CREATIONFLOW_PDF_DEBUG_SURFACES === "true";
     const pdf = await renderDocumentToPdf(configuration.document, {
       resolveAsset: async (assetId) => {
         const asset = await getAssetById(db, assetId);
@@ -104,6 +141,7 @@ export async function renderRenderJobToPdf(
       onWarning: (warning) => {
         renderWarnings.push(warning);
       },
+      debugSurfaces,
     });
     const storageKey = crypto.randomUUID();
     const filename = getPdfFilename(configuration.id, job.id);

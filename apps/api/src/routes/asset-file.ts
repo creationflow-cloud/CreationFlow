@@ -56,14 +56,19 @@ export async function registerAssetFileRoutes(server: FastifyInstance): Promise<
         });
 
         const response = reply
-          .header("Content-Type", asset.mimeType ?? "application/octet-stream")
-          .header("Cache-Control", "public, max-age=31536000");
+          .header("Content-Type", asset.mimeType ?? "application/octet-stream");
 
         if (asset.type === "pdf") {
-          response.header(
-            "Content-Disposition",
-            `attachment; filename="${toContentDispositionFilename(asset.name)}"`,
-          );
+          response
+            .header("Cache-Control", "no-cache, no-store, must-revalidate")
+            .header("Pragma", "no-cache")
+            .header("Expires", "0")
+            .header(
+              "Content-Disposition",
+              `attachment; filename="${toContentDispositionFilename(asset.name)}"`,
+            );
+        } else {
+          response.header("Cache-Control", "public, max-age=31536000");
         }
 
         return response.send(object.body);

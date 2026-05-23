@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useId } from "react";
 
 import type { CreationFlowElement, CreationFlowSurface } from "@creationflow/schema";
 import { getElementZIndex } from "@creationflow/core";
@@ -35,6 +35,7 @@ export function SurfaceCanvas({
 }: SurfaceCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const clipPathId = useId();
 
   const sortedElements = [...surface.elements].sort(
     (a, b) => getElementZIndex(a) - getElementZIndex(b),
@@ -42,6 +43,9 @@ export function SurfaceCanvas({
 
   const scaledWidth = surface.width * previewScale;
   const scaledHeight = surface.height * previewScale;
+
+  const isPathSurface = surface.shape === "path";
+  const shouldClipPath = isPathSurface && surface.clipContent && surface.pathData;
 
   const getDocCoords = useCallback(
     (clientX: number, clientY: number) => {
@@ -154,7 +158,6 @@ export function SurfaceCanvas({
     ? surface.elements.find((el) => el.id === selectedElementId)
     : undefined;
 
-  const isPathSurface = surface.shape === "path";
   const surfaceRole = surface.role ?? "default";
 
   const getSurfaceStyle = (): React.CSSProperties => {
@@ -165,10 +168,22 @@ export function SurfaceCanvas({
       overflow: surface.clipContent ? "hidden" : "visible",
     };
 
-    if (isPathSurface && surface.clipContent) {
-      // TODO: Implement proper SVG clip-path for path-based surfaces in editor
-      // For MVP, we use overflow: hidden as a fallback for rectangular clipping
-      // Full path-based clipping would require SVG <clipPath> or CSS clip-path with path()
+    return baseStyle;
+  };
+
+  const getElementLayerStyle = (): React.CSSProperties => {
+    const baseStyle: React.CSSProperties = {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      zIndex: 1,
+    };
+
+    if (shouldClipPath) {
+      baseStyle.clipPath = `url(#${clipPathId})`;
+      baseStyle.overflow = "visible";
     }
 
     return baseStyle;
@@ -218,6 +233,33 @@ export function SurfaceCanvas({
     );
   };
 
+  const renderClipPathDefinition = () => {
+    if (!shouldClipPath) {
+      return null;
+    }
+
+    return (
+      <svg
+        style={{
+          position: "absolute",
+          width: 0,
+          height: 0,
+          overflow: "hidden",
+        }}
+        aria-hidden="true"
+      >
+        <defs>
+          <clipPath
+            id={clipPathId}
+            clipPathUnits="userSpaceOnUse"
+          >
+            <path d={surface.pathData!} />
+          </clipPath>
+        </defs>
+      </svg>
+    );
+  };
+
   return (
     <div
       ref={canvasRef}
@@ -225,17 +267,9 @@ export function SurfaceCanvas({
       style={getSurfaceStyle()}
     >
       {renderPathOverlay()}
+      {renderClipPathDefinition()}
       
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          zIndex: 1,
-        }}
-      >
+      <div style={getElementLayerStyle()}>
         {sortedElements.map((element) => (
           <ElementView
             key={element.id}
