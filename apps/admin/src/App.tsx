@@ -48,6 +48,7 @@ interface TemplateDetailSurface {
   pathData?: string;
   fillColor?: string;
   clipContent?: boolean;
+  elements?: unknown[];
 }
 
 function buildDefaultPage(): TemplateDetailPage {
@@ -339,6 +340,38 @@ export function App() {
               surfaces: page.surfaces.map((s, j) => (j === surfaceIndex ? { ...s, ...patch } : s)),
             }
           : page,
+      ),
+    );
+  };
+
+  const handleDeleteSurface = (pageIndex: number, surfaceIndex: number) => {
+    const page = detailPages[pageIndex];
+    const surface = page.surfaces[surfaceIndex];
+
+    if (!surface) return;
+
+    if (page.surfaces.length === 1) {
+      window.alert(
+        "Cannot delete the last surface on a page. Add another surface first or delete the entire page.",
+      );
+      return;
+    }
+
+    const elementCount = surface.elements?.length ?? 0;
+    const message =
+      elementCount > 0
+        ? `Delete surface "${surface.name}"?\n\nThis will also delete ${elementCount} element(s) on this surface. This action cannot be undone.`
+        : `Delete surface "${surface.name}"? This action cannot be undone.`;
+
+    const confirmed = window.confirm(message);
+
+    if (!confirmed) return;
+
+    setDetailPages((prev) =>
+      prev.map((p, i) =>
+        i === pageIndex
+          ? { ...p, surfaces: p.surfaces.filter((_, j) => j !== surfaceIndex) }
+          : p,
       ),
     );
   };
@@ -653,6 +686,14 @@ export function App() {
                           />
                           Clip Content
                         </label>
+                        <button
+                          type="button"
+                          className="delete-surface-btn"
+                          onClick={() => handleDeleteSurface(pageIndex, surfaceIndex)}
+                          title="Delete surface"
+                        >
+                          Delete
+                        </button>
                       </div>
                     ))}
                   </div>
