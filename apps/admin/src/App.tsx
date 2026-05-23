@@ -14,6 +14,7 @@ import {
 } from "./api/configurations.js";
 import { listWorkspaces, type WorkspaceDto } from "./api/workspaces.js";
 import { createDefaultDocument } from "./api/default-document.js";
+import { importSvgSurfaces, type SvgSurfaceImportResult } from "@creationflow/importers";
 
 type Page = "dashboard" | "products" | "templates" | "configurations";
 
@@ -171,6 +172,10 @@ export function App() {
   const [detailSaving, setDetailSaving] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailSaveStatus, setDetailSaveStatus] = useState<"idle" | "saved" | "error">("idle");
+
+  const [svgImportInput, setSvgImportInput] = useState("");
+  const [svgImportPreview, setSvgImportPreview] = useState<SvgSurfaceImportResult | null>(null);
+  const [svgImportTargetPage, setSvgImportTargetPage] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -355,6 +360,58 @@ export function App() {
     } finally {
       setDetailSaving(false);
     }
+  };
+
+  const handleAnalyzeSvg = () => {
+    if (!svgImportInput.trim()) {
+      setSvgImportPreview(null);
+      return;
+    }
+
+    try {
+      const result = importSvgSurfaces(svgImportInput);
+      setSvgImportPreview(result);
+    } catch (err) {
+      setSvgImportPreview({
+        width: 0,
+        height: 0,
+        surfaces: [],
+        warnings: [{
+          code: "unsupported_element",
+          message: `SVG import failed: ${err instanceof Error ? err.message : "Unknown error"}`,
+        }],
+      });
+    }
+  };
+
+  const handleApplyImportedSurfaces = (pageIndex: number) => {
+    if (!svgImportPreview || svgImportPreview.surfaces.length === 0) return;
+
+    const importedSurfaces: TemplateDetailSurface[] = svgImportPreview.surfaces.map((s) => ({
+      id: crypto.randomUUID(),
+      name: s.name,
+      kind: "custom",
+      width: svgImportPreview.width,
+      height: svgImportPreview.height,
+      unit: s.unit,
+      shape: s.shape,
+      role: s.role,
+      pathData: s.pathData,
+      fillColor: s.fillColor,
+      clipContent: s.clipContent,
+    }));
+
+    setDetailPages((prev) =>
+      prev.map((page, i) =>
+        i === pageIndex
+          ? { ...page, surfaces: [...page.surfaces, ...importedSurfaces] }
+          : page,
+      ),
+    );
+
+    setSvgImportInput("");
+    setSvgImportPreview(null);
+    setSvgImportTargetPage(null);
   };
 
   const pageTitle: Record<Page, string> = {
@@ -601,6 +658,79 @@ export function App() {
                   </div>
                 </div>
               ))}
+
+              <section className="svg-import-panel">
+                <h3>SVG Import</h3>
+                <p className="import-hint">Paste an SVG with named paths to create surfaces automatically.</p>
+                <textarea
+                  className="svg-import-textarea"
+                  placeholder={`<svg viewBox="0 0 500 600">\n  <path id="design-area" d="M100 100 L400 100 L400 500 L100 500 Z"/>\n</svg>`}
+                  value={svgImportInput}
+                  onChange={(e) => setSvgImportInput(e.target.value)}
+                  rows={8}
+                />
+                <div className="import-actions">
+                  <button type="button" className="analyze-btn" onClick={handleAnalyzeSvg}>
+                    Analyze SVG
+                  </button>
+                  {svgImportTargetPage !== null && svgImportPreview && svgImportPreview.surfaces.length > 0 && (
+                    <button
+                      type="button"
+                      className="apply-btn"
+                      onClick={() => handleApplyImportedSurfaces(svgImportTargetPage)}
+                    >
+                      Apply {svgImportPreview.surfaces.length} Surface{svgImportPreview.surfaces.length !== 1 ? "s" : ""} to Page {svgImportTargetPage + 1}
+                    </button>
+                  )}
+                </div>
+
+                {svgImportPreview && (
+                  <div className="import-preview">
+                    <h4>Detected Surfaces: {svgImportPreview.surfaces.length}</h4>
+                    {svgImportPreview.surfaces.length > 0 && (
+                      <select
+                        className="import-target-select"
+                        value={svgImportTargetPage ?? ""}
+                        onChange={(e) => setSvgImportTargetPage(e.target.value ? Number(e.target.value) : null)}
+                      >
+                        <option value="">Select target page...</option>
+                        {detailPages.map((page, i) => (
+                          <option key={page.id} value={i}>
+                            Page {i + 1}: {page.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <ul className="surface-preview-list">
+                      {svgImportPreview.surfaces.map((s, i) => (
+                        <li key={i} className={`surface-preview-item role-${s.role}`}>
+                          <span className="surface-name">{s.name}</span>
+                          <span className="surface-role-badge">{s.role}</span>
+                          <span className="surface-shape-badge">{s.shape}</span>
+                          {s.clipContent && <span className="clip-badge">clip</span>}
+                        </li>
+                      ))}
+                    </ul>
+                    {svgImportPreview.warnings.length > 0 && (
+                      <div className="import-warnings">
+                        <h5>Warnings ({svgImportPreview.warnings.length})</h5>
+                        <ul>
+                          {svgImportPreview.warnings.map((w, i) => (
+                            <li key={i} className="warning-item">
+                              <code>{w.code}</code>: {w.message}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {svgImportPreview.viewBox && (
+                      <p className="viewbox-info">
+                        ViewBox: {svgImportPreview.viewBox.x} {svgImportPreview.viewBox.y} {svgImportPreview.viewBox.width}×{svgImportPreview.viewBox.height}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </section>
             </section>
           )}
         </section>
