@@ -32,8 +32,6 @@ import {
   renderRenderJob,
 } from "./api/render-jobs.js";
 import type { RenderJobDto } from "./api/render-jobs.js";
-import { ElementProperties } from "./components/ElementProperties.js";
-import { SurfaceCanvas } from "./components/SurfaceCanvas.js";
 import { findElementById, findSurfaceById } from "./helpers/document-helpers.js";
 import { canRedo, canUndo, pushHistory, redo, undo } from "./helpers/document-history.js";
 import type { HistoryState } from "./helpers/document-history.js";
@@ -49,18 +47,18 @@ import {
 import {
   selectElement,
   selectFirstSurface,
-  selectPage,
-  selectSurface,
   findFirstDesignRegionSurface,
   findFirstNonOverlaySurface,
 } from "./helpers/selection-helpers.js";
 import type { SelectionState } from "./helpers/selection-helpers.js";
 
-import { PageSurfaceSwitcher } from "./components/PageSurfaceSwitcher.js";
+import { TopBar } from "./components/TopBar.js";
+import { LeftSidebar } from "./components/LeftSidebar.js";
+import { CanvasWorkspace } from "./components/CanvasWorkspace.js";
+import { RightSidebar } from "./components/RightSidebar.js";
 
 function getQueryParam(param: string): string | null {
   const params = new URLSearchParams(window.location.search);
-
   return params.get(param);
 }
 
@@ -436,6 +434,13 @@ export function App() {
     setCurrentDocument(updatedDocument);
   }
 
+  function getNextZIndex(): number {
+    if (!selectedSurface) return 0;
+    const elements = selectedSurface.elements;
+    if (elements.length === 0) return 0;
+    return Math.max(...elements.map(getElementZIndex)) + 1;
+  }
+
   function handleAddTextElement() {
     if (!currentDocument) {
       return;
@@ -486,13 +491,6 @@ export function App() {
       selectedSurfaceId: target.surfaceId,
       selectedElementId: elementId,
     });
-  }
-
-  function getNextZIndex(): number {
-    if (!selectedSurface) return 0;
-    const elements = selectedSurface.elements;
-    if (elements.length === 0) return 0;
-    return Math.max(...elements.map(getElementZIndex)) + 1;
   }
 
   function handleAddShapeElement() {
@@ -602,14 +600,6 @@ export function App() {
     [configuration],
   );
 
-  const handleSelectPage = useCallback((pageId: string) => {
-    setSelection(selectPage(pageId));
-  }, []);
-
-  const handleSelectSurface = useCallback((surfaceId: string) => {
-    setSelection((prev) => selectSurface(surfaceId, prev));
-  }, []);
-
   const handleUndo = useCallback(() => {
     if (!currentDocument) return;
     const result = undo(history, currentDocument);
@@ -655,12 +645,7 @@ export function App() {
   }, [configuration, currentDocument]);
 
   const handleRenderPdf = useCallback(async () => {
-    if (!configuration) {
-      return;
-    }
-
-    if (dirty) {
-      setRenderError("Save your changes before rendering the PDF.");
+    if (!configuration || !currentDocument) {
       return;
     }
 
@@ -669,6 +654,13 @@ export function App() {
     setRenderJob(null);
 
     try {
+      if (dirty) {
+        await updateConfiguration(configuration.id, {
+          document: currentDocument as unknown as Record<string, unknown>,
+        });
+        setLastSavedSnapshot(JSON.stringify(currentDocument));
+      }
+
       const createdJob = await createRenderJob({
         workspaceId: configuration.workspaceId,
         configurationId: configuration.id,
@@ -685,7 +677,7 @@ export function App() {
     } finally {
       setRendering(false);
     }
-  }, [configuration, dirty]);
+  }, [configuration, currentDocument, dirty]);
 
   const handleSaveRef = useRef(handleSave);
   const handleUndoRef = useRef(handleUndo);
@@ -755,61 +747,25 @@ export function App() {
 
   return (
     <main className="editor-shell">
-      <header className="editor-header">
-        <div>
-          <p className="eyebrow">CreationFlow Editor</p>
-          <h1>{currentDocument ? documentName : "Untitled document"}</h1>
-        </div>
-
-        <div className="header-actions">
-          {configuration && currentDocument && (
-            <>
-              <button
-                type="button"
-                className="history-btn"
-                disabled={!canUndo(history)}
-                onClick={handleUndo}
-                title="Undo (Ctrl+Z)"
-              >
-                Undo
-              </button>
-              <button
-                type="button"
-                className="history-btn"
-                disabled={!canRedo(history)}
-                onClick={handleRedo}
-                title="Redo (Ctrl+Y)"
-              >
-                Redo
-              </button>
-              <span className={`dirty-indicator ${dirty ? "dirty" : "clean"}`}>
-                {dirty ? "Unsaved changes" : saveStatus === "saved" ? "Saved" : "No changes"}
-              </span>
-              <button
-                type="button"
-                className={`save-btn ${saveStatus}`}
-                disabled={!dirty || saving}
-                onClick={handleSave}
-              >
-                {saving
-                  ? "Saving..."
-                  : saveStatus === "saved"
-                    ? "Saved ✓"
-                    : saveStatus === "error"
-                      ? "Save failed"
-                      : "Save"}
-              </button>
-            </>
-          )}
-          <span className="document-pill">
-            {configuration
-              ? `Config: ${configuration.id.slice(0, 8)}...`
-              : templateId
-                ? `Template: ${templateId.slice(0, 8)}...`
-                : "No document"}
-          </span>
-        </div>
-      </header>
+      <TopBar
+        documentName={documentName}
+        hasDocument={!!currentDocument}
+        configuration={configuration}
+        templateId={templateId}
+        dirty={dirty}
+        saving={saving}
+        saveStatus={saveStatus}
+        canUndo={canUndo(history)}
+        canRedo={canRedo(history)}
+        rendering={rendering}
+        renderJob={renderJob}
+        renderError={renderError}
+        pdfOutput={pdfOutput}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onSave={handleSave}
+        onRenderPdf={handleRenderPdf}
+      />
 
       {noIdProvided && (
         <section className="status-banner status-error">
@@ -830,390 +786,59 @@ export function App() {
       )}
 
       <section className="editor-workspace" aria-label="Editor workspace">
-        <aside className="sidebar left-sidebar" aria-label="Document tree sidebar">
-          <h2>Document</h2>
-          {currentDocument && currentDocument.pages.length > 0 ? (
-            <nav className="document-tree" aria-label="Document structure">
-              {currentDocument.pages.map((page) => (
-                <div className="tree-group" key={page.id}>
-                  <button
-                    className={`tree-button ${selection.selectedPageId === page.id ? "selected" : ""}`}
-                    type="button"
-                    onClick={() => setSelection(selectPage(page.id))}
-                  >
-                    {page.name}
-                  </button>
-                  {selection.selectedPageId === page.id && page.surfaces && (
-                    <ul className="tree-children">
-                      {page.surfaces.map((surface) => (
-                        <li className="tree-group" key={surface.id}>
-                          <button
-                            className={`tree-button ${selection.selectedSurfaceId === surface.id ? "selected" : ""}`}
-                            type="button"
-                            onClick={() =>
-                              setSelection(
-                                selectSurface(surface.id, {
-                                  selectedPageId: page.id,
-                                  selectedSurfaceId: null,
-                                  selectedElementId: null,
-                                }),
-                              )
-                            }
-                          >
-                            {surface.name}
-                          </button>
-                          {selection.selectedSurfaceId === surface.id &&
-                            surface.elements.length > 0 && (
-                              <ul className="tree-children">
-                                {surface.elements.map((element) => (
-                                  <li className="tree-group" key={element.id}>
-                                    <button
-                                      className={`tree-button ${selection.selectedElementId === element.id ? "selected" : ""}`}
-                                      type="button"
-                                      onClick={() =>
-                                        setSelection(
-                                          selectElement(element.id, {
-                                            selectedPageId: page.id,
-                                            selectedSurfaceId: surface.id,
-                                            selectedElementId: null,
-                                          }),
-                                        )
-                                      }
-                                    >
-                                      [{element.type}] {element.name ?? element.id.slice(0, 8)}
-                                    </button>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ))}
-            </nav>
-          ) : (
-            <p className="tree-placeholder">No pages in document</p>
-          )}
-
-          <h2 className="section-divider">Tools</h2>
-          <nav className="tool-list" aria-label="Element tools">
-            <button className="tool-button" type="button" onClick={handleAddTextElement}>
-              Add Text
-            </button>
-            <button className="tool-button" type="button" onClick={handleAddShapeElement}>
-              Add Shape
-            </button>
-            <button className="tool-button" type="button" onClick={handleAddImageElement}>
-              Add Image
-            </button>
-          </nav>
-
-          <h2 className="section-divider">Layers</h2>
-          {selectedSurface ? (
-            selectedSurface.elements.length === 0 ? (
-              <p className="layer-placeholder">No layers yet. Add an element above.</p>
-            ) : (
-              <div className="layer-list">
-                {[...selectedSurface.elements]
-                  .sort((a, b) => getElementZIndex(b) - getElementZIndex(a))
-                  .map((el) => (
-                    <div
-                      className={`layer-item ${selection.selectedElementId === el.id ? "selected" : ""}`}
-                      key={el.id}
-                    >
-                      <button
-                        className="layer-select-btn"
-                        type="button"
-                        onClick={() =>
-                          setSelection(
-                            selectElement(el.id, {
-                              selectedPageId: selection.selectedPageId,
-                              selectedSurfaceId: selection.selectedSurfaceId,
-                              selectedElementId: null,
-                            }),
-                          )
-                        }
-                      >
-                        [{el.type}] {el.name ?? el.id.slice(0, 8)}
-                      </button>
-                      <button
-                        className="layer-action-btn"
-                        type="button"
-                        title="Duplicate"
-                        onClick={() => {
-                          setSelection(
-                            selectElement(el.id, {
-                              selectedPageId: selection.selectedPageId,
-                              selectedSurfaceId: selection.selectedSurfaceId,
-                              selectedElementId: null,
-                            }),
-                          );
-                          handleDuplicateElement(el.id);
-                        }}
-                      >
-                        Dup
-                      </button>
-                      <button
-                        className="layer-action-btn"
-                        type="button"
-                        title="Delete"
-                        onClick={() => {
-                          setSelection(
-                            selectElement(el.id, {
-                              selectedPageId: selection.selectedPageId,
-                              selectedSurfaceId: selection.selectedSurfaceId,
-                              selectedElementId: null,
-                            }),
-                          );
-                          handleDeleteElement(el.id);
-                        }}
-                      >
-                        Del
-                      </button>
-                      <button
-                        className="layer-action-btn"
-                        type="button"
-                        title="Bring to front"
-                        onClick={() => {
-                          setSelection(
-                            selectElement(el.id, {
-                              selectedPageId: selection.selectedPageId,
-                              selectedSurfaceId: selection.selectedSurfaceId,
-                              selectedElementId: null,
-                            }),
-                          );
-                          handleBringToFront(el.id);
-                        }}
-                      >
-                        ↑
-                      </button>
-                      <button
-                        className="layer-action-btn"
-                        type="button"
-                        title="Bring forward"
-                        onClick={() => {
-                          setSelection(
-                            selectElement(el.id, {
-                              selectedPageId: selection.selectedPageId,
-                              selectedSurfaceId: selection.selectedSurfaceId,
-                              selectedElementId: null,
-                            }),
-                          );
-                          handleBringForward(el.id);
-                        }}
-                      >
-                        Fwd
-                      </button>
-                      <button
-                        className="layer-action-btn"
-                        type="button"
-                        title="Send backward"
-                        onClick={() => {
-                          setSelection(
-                            selectElement(el.id, {
-                              selectedPageId: selection.selectedPageId,
-                              selectedSurfaceId: selection.selectedSurfaceId,
-                              selectedElementId: null,
-                            }),
-                          );
-                          handleSendBackward(el.id);
-                        }}
-                      >
-                        Back
-                      </button>
-                      <button
-                        className="layer-action-btn"
-                        type="button"
-                        title="Send to back"
-                        onClick={() => {
-                          setSelection(
-                            selectElement(el.id, {
-                              selectedPageId: selection.selectedPageId,
-                              selectedSurfaceId: selection.selectedSurfaceId,
-                              selectedElementId: null,
-                            }),
-                          );
-                          handleSendToBack(el.id);
-                        }}
-                      >
-                        ↓
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            )
-          ) : (
-            <p className="layer-placeholder">Select a surface to see layers.</p>
-          )}
-        </aside>
-
-        <section className="canvas-stage" aria-label="Canvas area">
-          {selectedSurface ? (
-            <div className="canvas-scroll-wrapper">
-              <div className="canvas-surface-header">
-                <h2>{selectedSurface.name}</h2>
-                <span className="surface-dimensions">
-                  {selectedSurface.width} × {selectedSurface.height} {selectedSurface.unit}
-                </span>
-              </div>
-              <SurfaceCanvas
-                surface={selectedSurface}
-                selectedElementId={selection.selectedElementId}
-                onSelectElement={(elementId) =>
-                  setSelection(
-                    selectElement(elementId, {
-                      selectedPageId: selection.selectedPageId,
-                      selectedSurfaceId: selection.selectedSurfaceId,
-                      selectedElementId: null,
-                    }),
-                  )
-                }
-                onUpdateElement={handleUpdateElementById}
-                onDragStart={() => {
-                  if (currentDocument) commitHistory(currentDocument);
-                }}
-              />
-            </div>
-          ) : (
-            <div className="canvas-placeholder">
-              <h2>Canvas Area</h2>
-              <p>Select a surface to preview elements</p>
-            </div>
-          )}
-        </section>
-
-        <aside className="sidebar right-sidebar" aria-label="Properties sidebar">
-          <h2>Properties</h2>
-
-          {selectedElement ? (
-            <ElementProperties
-              element={selectedElement}
-              onUpdate={handleUpdateElement}
-              onDelete={handleDeleteElement}
-              onDuplicate={handleDuplicateElement}
-              onBringForward={handleBringForward}
-              onSendBackward={handleSendBackward}
-              onBringToFront={handleBringToFront}
-              onSendToBack={handleSendToBack}
-              onMove={handleMoveElement}
-              onUploadAsset={handleUploadAsset}
-            />
-          ) : (
-            <div className="property-card">
-              <p className="document-placeholder">No element selected</p>
-            </div>
-          )}
-
-          <div className="property-card api-info-card">
-            <h3>API Connection</h3>
-            <div className="info-row">
-              <span className="info-label">Configuration ID</span>
-              <span className="info-value">{configuration ? configuration.id : "not set"}</span>
-            </div>
-            <div className="info-row">
-              <span className="info-label">Status</span>
-              <span className="info-value info-status">
-                {configuration ? configuration.status : "not loaded"}
-              </span>
-            </div>
-            {configuration && (
-              <div className="render-panel">
-                <button
-                  type="button"
-                  className="render-btn"
-                  disabled={rendering || dirty || saving}
-                  onClick={handleRenderPdf}
-                  title={dirty ? "Save changes before rendering" : "Render saved configuration to PDF"}
-                >
-                  {rendering ? "Rendering..." : "Render PDF"}
-                </button>
-                {dirty && (
-                  <p className="render-status render-warning">
-                    Save changes before rendering. PDFs use the saved configuration.
-                  </p>
-                )}
-                {renderJob?.status === "done" && pdfOutput && (
-                  <p className="render-status render-success">
-                    PDF ready: <a href={pdfOutput.downloadUrl}>{pdfOutput.filename}</a>
-                  </p>
-                )}
-                {renderJob?.status === "processing" && (
-                  <p className="render-status">Render job is processing...</p>
-                )}
-                {renderError && <p className="render-status render-error">{renderError}</p>}
-              </div>
-            )}
-          </div>
-
-          {templateId && (
-            <div className="property-card">
-              <h3>Template</h3>
-              {(loading || configurationCreating) && <p className="template-status">Loading...</p>}
-              {error && <p className="template-status template-error">{error}</p>}
-              {template && !loading && !configurationCreating && (
-                <div className="template-info">
-                  <div className="info-row">
-                    <span className="info-label">ID</span>
-                    <span className="info-value">{template.id}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="info-label">Workspace</span>
-                    <span className="info-value">{template.workspaceId}</span>
-                  </div>
-                  {template.productId && (
-                    <div className="info-row">
-                      <span className="info-label">Product</span>
-                      <span className="info-value">{template.productId}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="property-card">
-            <h3>Current document</h3>
-            {!currentDocument && !loading && !configurationLoading && (
-              <p className="document-placeholder">No document loaded yet.</p>
-            )}
-            {configuration && (
-              <div className="template-info">
-                <div className="info-row">
-                  <span className="info-label">Configuration</span>
-                  <span className="info-value">{configuration.id}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Status</span>
-                  <span className="info-value">{configuration.status}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Template</span>
-                  <span className="info-value">{template?.id}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {configurationError && (
-            <div className="property-card">
-              <h3>Configuration Error</h3>
-              <p className="template-status template-error">{configurationError}</p>
-            </div>
-          )}
-        </aside>
-      </section>
-
-      {currentDocument && (
-        <PageSurfaceSwitcher
+        <LeftSidebar
           document={currentDocument}
-          selectedPageId={selection.selectedPageId}
-          selectedSurfaceId={selection.selectedSurfaceId}
-          onSelectPage={handleSelectPage}
-          onSelectSurface={handleSelectSurface}
+          selection={selection}
+          onSelectionChange={setSelection}
+          onAddText={handleAddTextElement}
+          onAddShape={handleAddShapeElement}
+          onAddImage={handleAddImageElement}
+          onDuplicateElement={handleDuplicateElement}
+          onDeleteElement={handleDeleteElement}
+          onBringForward={handleBringForward}
+          onSendBackward={handleSendBackward}
+          onBringToFront={handleBringToFront}
+          onSendToBack={handleSendToBack}
         />
-      )}
+
+        <CanvasWorkspace
+          surface={selectedSurface}
+          selectedElementId={selection.selectedElementId}
+          onSelectElement={(elementId) =>
+            setSelection(
+              selectElement(elementId, {
+                selectedPageId: selection.selectedPageId,
+                selectedSurfaceId: selection.selectedSurfaceId,
+                selectedElementId: null,
+              }),
+            )
+          }
+          onUpdateElement={handleUpdateElementById}
+          onDragStart={() => {
+            if (currentDocument) commitHistory(currentDocument);
+          }}
+        />
+
+        <RightSidebar
+          selectedElement={selectedElement}
+          onUpdateElement={handleUpdateElement}
+          onDeleteElement={handleDeleteElement}
+          onDuplicateElement={handleDuplicateElement}
+          onBringForward={handleBringForward}
+          onSendBackward={handleSendBackward}
+          onBringToFront={handleBringToFront}
+          onSendToBack={handleSendToBack}
+          onMoveElement={handleMoveElement}
+          onUploadAsset={handleUploadAsset}
+          configuration={configuration}
+          template={template}
+          templateId={templateId}
+          loading={loading}
+          configurationCreating={configurationCreating}
+          error={error}
+          configurationError={configurationError}
+        />
+      </section>
     </main>
   );
 }
