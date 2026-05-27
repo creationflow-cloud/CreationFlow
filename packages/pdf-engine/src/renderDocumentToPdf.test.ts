@@ -398,6 +398,30 @@ describe("path-based surfaces", () => {
     } as CreationFlowSurface;
   }
 
+  function createDesignRegionSurfaceWithFill(
+    id: string,
+    pathData: string,
+    fillColor: string,
+    clipContent: boolean,
+    elements: readonly CreationFlowElement[] = [],
+    offset: { readonly x?: number; readonly y?: number } = {},
+  ): CreationFlowSurface {
+    return {
+      id: id as SurfaceId,
+      name: id,
+      width: 300,
+      height: 200,
+      unit: "pt",
+      elements,
+      shape: "path",
+      role: "designRegion",
+      pathData,
+      fillColor,
+      clipContent,
+      ...offset,
+    } as CreationFlowSurface;
+  }
+
   it("renders a path-based colorRegion surface without crashing", async () => {
     const pdf = await renderDocumentToPdf(
       createDocument([
@@ -839,6 +863,82 @@ describe("path-based surfaces", () => {
 
     expect(wIndex).toBeLessThan(rectIndex);
     expect(rectIndex).toBeLessThan(qIndex);
+  });
+
+  it("renders designRegion with explicit fillColor", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          createDesignRegionSurfaceWithFill(
+            "surface-1",
+            "M50,50 L250,50 L250,150 L50,150 Z",
+            "#00ff00",
+            false,
+            [],
+          ),
+        ]),
+      ]),
+      { compress: false },
+    );
+
+    const streams = extractPdfStreams(pdf);
+    const content = streams.join("\n");
+
+    expect(pdf.length).toBeGreaterThan(0);
+    expect(content).toContain("0 1 0 scn");
+    await expect(getPageCount(pdf)).resolves.toBe(1);
+  });
+
+  it("does not render designRegion background without fillColor", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          createDesignRegionSurface(
+            "surface-1",
+            "M50,50 L250,50 L250,150 L50,150 Z",
+            false,
+            [],
+          ),
+        ]),
+      ]),
+      { compress: false },
+    );
+
+    const streams = extractPdfStreams(pdf);
+    const content = streams.join("\n");
+
+    expect(pdf.length).toBeGreaterThan(0);
+    expect(content).not.toContain("scn");
+    await expect(getPageCount(pdf)).resolves.toBe(1);
+  });
+
+  it("clips elements to designRegion with fillColor and clipContent", async () => {
+    const warnings: RenderDocumentWarning[] = [];
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          createDesignRegionSurfaceWithFill(
+            "surface-1",
+            "M50,50 L250,50 L250,150 L50,150 Z",
+            "#ffff00",
+            true,
+            [
+              createTextElement("text-1", 60, 60),
+              createShapeElement("shape-1", 100, 100, 50, 50),
+            ],
+          ),
+        ]),
+      ]),
+      {
+        compress: false,
+        onWarning: (warning) => warnings.push(warning),
+      },
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+    await expect(getPageCount(pdf)).resolves.toBe(1);
+    expect(warnings.filter((w) => w.code === "path_render_failed")).toHaveLength(0);
   });
 });
 

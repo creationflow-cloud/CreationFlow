@@ -327,8 +327,6 @@ function renderPathSurface(
   offset: { readonly x: number; readonly y: number },
   options: RenderDocumentToPdfOptions,
 ): void {
-  console.log(`renderPathSurface: ${surface.name} (${surface.role ?? "default"})`);
-
   if (!surface.pathData || surface.shape !== "path") {
     return;
   }
@@ -337,19 +335,17 @@ function renderPathSurface(
   const surfaceOffsetY = offset.y;
 
   try {
-    if (surface.role === "colorRegion" || surface.role === "overlay") {
+    if (surface.fillColor) {
       const hasFill = setFillColor(doc, surface.fillColor);
-      
+
       doc.save();
       doc.translate(surfaceOffsetX, surfaceOffsetY);
-      
+
       try {
         const path = doc.path(surface.pathData);
-        
+
         if (hasFill) {
           path.fill();
-        } else {
-          path.stroke();
         }
       } catch (error) {
         warn(options, {
@@ -358,7 +354,7 @@ function renderPathSurface(
           message: error instanceof Error ? error.message : "Path rendering failed.",
         });
       }
-      
+
       doc.restore();
     }
   } catch (error) {
@@ -377,8 +373,6 @@ function clipToPath(
   offset: { readonly x: number; readonly y: number },
   options: RenderDocumentToPdfOptions,
 ): boolean {
-  console.log(`clipToPath: ${surface.name} (${surface.role ?? "default"})`);
-
   if (!surface.pathData || surface.shape !== "path" || !surface.clipContent) {
     return false;
   }
@@ -502,12 +496,6 @@ export async function renderDocumentToPdf(
   document: CreationFlowDocument,
   options: RenderDocumentToPdfOptions = {},
 ): Promise<Buffer> {
-  console.log("[pdf-engine] renderDocumentToPdf called", {
-    debugVersion: "path-clipping-v2",
-    debugSurfaces: options.debugSurfaces,
-    page_count: document.pages.length,
-  });
-
   const pages = document.pages.length > 0 ? document.pages : [];
   const firstPage = pages[0];
   const firstUnit = firstPage?.unit ?? "pt";
@@ -544,7 +532,6 @@ export async function renderDocumentToPdf(
 
         for (const surface of surfaces) {
           const offset = getSurfaceOffset(surface, unit);
-          console.log(`surface: ${surface.name} (${surface.role ?? "default"}) shape=${surface.shape ?? "rect"} clipContent=${surface.clipContent ?? false}`);
 
           if (surface.shape === "path" && surface.pathData) {
             renderPathSurface(doc, surface, unit, offset, options);
@@ -568,7 +555,6 @@ export async function renderDocumentToPdf(
             : offset;
 
           for (const element of elements) {
-            console.log(`render element: ${element.name || element.type} clipped=${clipped} offset=(${elementOffset.x},${elementOffset.y})`);
             await renderElement(doc, element, unit, elementOffset, options);
           }
 

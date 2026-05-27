@@ -189,15 +189,54 @@ export function SurfaceCanvas({
     return baseStyle;
   };
 
+  const renderSurfaceBackground = () => {
+    if (!surface.pathData || surface.shape !== "path") {
+      return null;
+    }
+
+    const shouldRenderFill = surface.fillColor &&
+      (surface.role === "colorRegion" || surface.role === "overlay");
+
+    if (!shouldRenderFill) {
+      return null;
+    }
+
+    const opacity = surface.role === "overlay" ? 0.5 : 0.3;
+
+    return (
+      <svg
+        className="surface-background"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      >
+        <path
+          d={surface.pathData}
+          fill={surface.fillColor}
+          fillOpacity={opacity}
+        />
+      </svg>
+    );
+  };
+
   const renderPathOverlay = () => {
     if (!isPathSurface || !surface.pathData) {
       return null;
     }
 
-    const fillColor = surface.fillColor ?? "transparent";
     const strokeColor = surface.role === "designRegion" ? "#243b68" : "none";
     const strokeWidth = surface.role === "designRegion" ? 2 : 0;
-    const opacity = surface.role === "overlay" ? 0.5 : 0.3;
+    const hasStroke = strokeWidth > 0;
+
+    if (!hasStroke) {
+      return null;
+    }
 
     return (
       <svg
@@ -212,23 +251,13 @@ export function SurfaceCanvas({
           zIndex: 0,
         }}
       >
-        {surface.role === "colorRegion" || surface.role === "overlay" ? (
-          <path
-            d={surface.pathData}
-            fill={fillColor}
-            fillOpacity={opacity}
-            stroke={strokeColor}
-            strokeWidth={strokeWidth}
-          />
-        ) : (
-          <path
-            d={surface.pathData}
-            fill="none"
-            stroke={strokeColor}
-            strokeWidth={strokeWidth}
-            strokeDasharray="4 2"
-          />
-        )}
+        <path
+          d={surface.pathData}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth={strokeWidth}
+          strokeDasharray={surface.role === "designRegion" ? "4 2" : undefined}
+        />
       </svg>
     );
   };
@@ -266,6 +295,7 @@ export function SurfaceCanvas({
       className="surface-canvas"
       style={getSurfaceStyle()}
     >
+      {renderSurfaceBackground()}
       {renderPathOverlay()}
       {renderClipPathDefinition()}
       

@@ -1,7 +1,8 @@
 import type { CreationFlowDocument } from "@creationflow/schema";
 import { LayerList } from "./LayerList.js";
+import { PageSurfaceList } from "./PageSurfaceList.js";
 import type { SelectionState } from "../helpers/selection-helpers.js";
-import { selectElement, selectPage, selectSurface } from "../helpers/selection-helpers.js";
+import { selectElement, selectSurface } from "../helpers/selection-helpers.js";
 
 interface LeftSidebarProps {
   readonly document: CreationFlowDocument | null;
@@ -36,53 +37,33 @@ export function LeftSidebar({
     ? getSelectedSurface(document, selection.selectedSurfaceId)
     : undefined;
 
+  const selectedPage = document
+    ? document.pages.find((p) => p.id === selection.selectedPageId)
+    : undefined;
+
   return (
     <aside className="sidebar left-sidebar" aria-label="Document navigation">
-      <section className="sidebar-section">
-        <h2 className="sidebar-heading">Document</h2>
-        {document && document.pages.length > 0 ? (
-          <nav className="document-tree" aria-label="Document structure">
-            {document.pages.map((page) => (
-              <div className="tree-group" key={page.id}>
-                <button
-                  className={`tree-button tree-page ${selection.selectedPageId === page.id ? "selected" : ""}`}
-                  type="button"
-                  onClick={() => onSelectionChange(selectPage(page.id))}
-                >
-                  <span className="tree-icon">📄</span>
-                  <span className="tree-label">{page.name}</span>
-                </button>
-                {selection.selectedPageId === page.id && page.surfaces && (
-                  <ul className="tree-children">
-                    {page.surfaces.map((surface) => (
-                      <li className="tree-group" key={surface.id}>
-                        <button
-                          className={`tree-button tree-surface ${selection.selectedSurfaceId === surface.id ? "selected" : ""}`}
-                          type="button"
-                          onClick={() =>
-                            onSelectionChange(
-                              selectSurface(surface.id, {
-                                selectedPageId: page.id,
-                                selectedSurfaceId: null,
-                                selectedElementId: null,
-                              }),
-                            )
-                          }
-                        >
-                          <span className="tree-icon">▭</span>
-                          <span className="tree-label">{surface.name}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))}
-          </nav>
-        ) : (
-          <p className="tree-placeholder">No pages in document</p>
-        )}
-      </section>
+      {selectedPage && (
+        <section className="sidebar-section sidebar-surfaces-section">
+          <h2 className="sidebar-heading">
+            Surfaces
+            <span className="layer-count">{selectedPage.surfaces?.length ?? 0}</span>
+          </h2>
+          <PageSurfaceList
+            page={selectedPage}
+            selectedSurfaceId={selection.selectedSurfaceId}
+            onSelectSurface={(surfaceId) =>
+              onSelectionChange(
+                selectSurface(surfaceId, {
+                  selectedPageId: selection.selectedPageId,
+                  selectedSurfaceId: null,
+                  selectedElementId: null,
+                }),
+              )
+            }
+          />
+        </section>
+      )}
 
       <section className="sidebar-section">
         <h2 className="sidebar-heading">Tools</h2>

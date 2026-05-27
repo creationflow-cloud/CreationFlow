@@ -56,6 +56,7 @@ import { TopBar } from "./components/TopBar.js";
 import { LeftSidebar } from "./components/LeftSidebar.js";
 import { CanvasWorkspace } from "./components/CanvasWorkspace.js";
 import { RightSidebar } from "./components/RightSidebar.js";
+import { PageFooter } from "./components/PageFooter.js";
 
 function getQueryParam(param: string): string | null {
   const params = new URLSearchParams(window.location.search);
@@ -87,6 +88,12 @@ export function App() {
   const [rendering, setRendering] = useState(false);
   const [renderJob, setRenderJob] = useState<RenderJobDto | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
+
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const lastPreviewJobIdRef = useRef<string | null>(null);
+  const lastPreviewConfigIdRef = useRef<string | null>(null);
 
   const dirty =
     currentDocument && lastSavedSnapshot
@@ -618,6 +625,66 @@ export function App() {
     setCurrentDocument(result.next);
   }, [history, currentDocument]);
 
+  const refreshPdfPreview = useCallback(async () => {
+    if (!configuration || previewLoading) {
+      return;
+    }
+
+    setPreviewLoading(true);
+    setPreviewError(null);
+
+    try {
+      const createdJob = await createRenderJob({
+        workspaceId: configuration.workspaceId,
+        configurationId: configuration.id,
+      });
+
+      const renderedJob = await renderRenderJob(createdJob.id);
+
+      if (renderedJob.status === "done") {
+        const pdfOutput = getRenderJobPdfOutput(renderedJob);
+        if (pdfOutput) {
+          if (pdfPreviewUrl && pdfPreviewUrl.startsWith("blob:")) {
+            URL.revokeObjectURL(pdfPreviewUrl);
+          }
+
+          const response = await fetch(pdfOutput.downloadUrl);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch PDF: ${response.status}`);
+          }
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+
+          setPdfPreviewUrl(blobUrl);
+          lastPreviewJobIdRef.current = renderedJob.id;
+        }
+      } else if (renderedJob.status === "failed") {
+        setPreviewError(renderedJob.errorMessage ?? "Preview rendering failed");
+      }
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : "Preview refresh failed");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [configuration, previewLoading]);
+
+  useEffect(() => {
+    if (!configuration || !currentDocument || configurationLoading || loading) {
+      return;
+    }
+
+    if (configuration.id === lastPreviewConfigIdRef.current) {
+      return;
+    }
+
+    if (previewLoading) {
+      return;
+    }
+
+    void refreshPdfPreview();
+    lastPreviewConfigIdRef.current = configuration.id;
+  }, [configuration, currentDocument, configurationLoading, loading, previewLoading, refreshPdfPreview]);
+
   const handleSave = useCallback(async () => {
     if (!configuration || !currentDocument) {
       return;
@@ -633,6 +700,8 @@ export function App() {
       setSaveStatus("saved");
       setLastSavedSnapshot(JSON.stringify(currentDocument));
 
+      await refreshPdfPreview();
+
       setTimeout(() => {
         setSaveStatus("idle");
       }, 3000);
@@ -642,7 +711,7 @@ export function App() {
     } finally {
       setSaving(false);
     }
-  }, [configuration, currentDocument]);
+  }, [configuration, currentDocument, refreshPdfPreview]);
 
   const handleRenderPdf = useCallback(async () => {
     if (!configuration || !currentDocument) {
@@ -743,6 +812,14 @@ export function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selection.selectedElementId]);
 
+  useEffect(() => {
+    return () => {
+      if (pdfPreviewUrl && pdfPreviewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(pdfPreviewUrl);
+      }
+    };
+  }, [pdfPreviewUrl]);
+
   const noIdProvided = !templateId && !configurationId && !loading && !configurationLoading;
 
   return (
@@ -839,6 +916,16 @@ export function App() {
           configurationError={configurationError}
         />
       </section>
+
+      <PageFooter
+        document={currentDocument}
+        selection={selection}
+        onSelectionChange={setSelection}
+        pdfPreviewUrl={pdfPreviewUrl}
+        previewLoading={previewLoading}
+        previewError={previewError}
+        onRetryPreview={refreshPdfPreview}
+      />
     </main>
   );
 }

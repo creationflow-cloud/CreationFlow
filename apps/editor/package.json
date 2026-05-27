@@ -14,6 +14,7 @@
     "@creationflow/core": "workspace:*",
     "@creationflow/schema": "workspace:*",
     "@vitejs/plugin-react": "^5.0.0",
+    "pdfjs-dist": "^4.8.69",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "vite": "^7.0.0"
