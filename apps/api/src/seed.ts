@@ -14,6 +14,7 @@ function buildDemoDocumentSchema(): Record<string, unknown> {
   const frontTextElementId = randomUUID();
   const frontRectElementId = randomUUID();
   const frontCircleElementId = randomUUID();
+  const frontPatternElementId = randomUUID();
   const backTextElementId = randomUUID();
   const backRectElementId = randomUUID();
 
@@ -43,6 +44,30 @@ function buildDemoDocumentSchema(): Record<string, unknown> {
             kind: "front",
             elements: [
               {
+                id: frontPatternElementId,
+                type: "pattern",
+                name: "Background Pattern",
+                x: 0,
+                y: 0,
+                width: 500,
+                height: 600,
+                rotation: 0,
+                opacity: 0.3,
+                visible: true,
+                locked: true,
+                zIndex: 0,
+                surfaceId: frontSurfaceId,
+                assetId: "dots",
+                repeatMode: "both",
+                tileWidth: 32,
+                tileHeight: 32,
+                gapX: 8,
+                gapY: 8,
+                offsetX: 0,
+                offsetY: 0,
+                color: undefined,
+              },
+              {
                 id: frontRectElementId,
                 type: "shape",
                 name: "Decorative Frame",
@@ -54,7 +79,7 @@ function buildDemoDocumentSchema(): Record<string, unknown> {
                 opacity: 1,
                 visible: true,
                 locked: false,
-                zIndex: 0,
+                zIndex: 100,
                 shapeType: "rect",
                 fill: undefined,
                 stroke: "#243b68",
@@ -72,7 +97,7 @@ function buildDemoDocumentSchema(): Record<string, unknown> {
                 opacity: 1,
                 visible: true,
                 locked: false,
-                zIndex: 1,
+                zIndex: 101,
                 text: "Your Design Here",
                 fontFamily: "Inter, sans-serif",
                 fontSize: 24,
@@ -92,7 +117,7 @@ function buildDemoDocumentSchema(): Record<string, unknown> {
                 opacity: 0.8,
                 visible: true,
                 locked: false,
-                zIndex: 2,
+                zIndex: 102,
                 shapeType: "ellipse",
                 fill: "#eef1f6",
                 stroke: "#d9dee8",
@@ -120,7 +145,7 @@ function buildDemoDocumentSchema(): Record<string, unknown> {
                 opacity: 1,
                 visible: true,
                 locked: false,
-                zIndex: 0,
+                zIndex: 100,
                 shapeType: "rect",
                 fill: undefined,
                 stroke: "#28a745",
@@ -138,7 +163,7 @@ function buildDemoDocumentSchema(): Record<string, unknown> {
                 opacity: 1,
                 visible: true,
                 locked: false,
-                zIndex: 1,
+                zIndex: 101,
                 text: "Back Design",
                 fontFamily: "Inter, sans-serif",
                 fontSize: 24,

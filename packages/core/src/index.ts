@@ -19,6 +19,7 @@ export type {
   AddShapeElementInput,
   AddGroupElementInput,
   AddVariableElementInput,
+  AddPatternElementInput,
   AddPageInput,
   AddSurfaceInput,
   CreateConfigurationDocumentInput,

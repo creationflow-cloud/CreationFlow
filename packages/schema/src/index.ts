@@ -68,7 +68,9 @@ export interface CreationFlowSurface {
   readonly clipContent?: boolean;
 }
 
-export type CreationFlowElementType = "text" | "image" | "shape" | "group" | "variable";
+export type CreationFlowElementType = "text" | "image" | "shape" | "group" | "variable" | "pattern";
+
+export type CreationFlowPatternRepeatMode = "horizontal" | "vertical" | "both";
 
 interface CreationFlowElementBase {
   readonly id: ElementId;
@@ -122,12 +124,27 @@ export interface CreationFlowVariableElement extends CreationFlowElementBase {
   readonly fallback?: string;
 }
 
+export interface CreationFlowPatternElement extends CreationFlowElementBase {
+  readonly type: "pattern";
+  readonly surfaceId: SurfaceId;
+  readonly assetId: AssetId;
+  readonly repeatMode: CreationFlowPatternRepeatMode;
+  readonly tileWidth: number;
+  readonly tileHeight: number;
+  readonly gapX: number;
+  readonly gapY: number;
+  readonly offsetX: number;
+  readonly offsetY: number;
+  readonly color?: string;
+}
+
 export type CreationFlowElement =
   | CreationFlowTextElement
   | CreationFlowImageElement
   | CreationFlowShapeElement
   | CreationFlowGroupElement
-  | CreationFlowVariableElement;
+  | CreationFlowVariableElement
+  | CreationFlowPatternElement;
 
 export interface CreationFlowAsset {
   readonly id: AssetId;
@@ -172,4 +189,8 @@ export function isTextElement(element: CreationFlowElement): element is Creation
 
 export function isImageElement(element: CreationFlowElement): element is CreationFlowImageElement {
   return element.type === "image";
+}
+
+export function isPatternElement(element: CreationFlowElement): element is CreationFlowPatternElement {
+  return element.type === "pattern";
 }

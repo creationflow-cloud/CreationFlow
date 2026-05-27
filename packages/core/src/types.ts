@@ -2,6 +2,7 @@ import type {
   AssetId,
   CreationFlowDocumentMetadata,
   CreationFlowElement,
+  CreationFlowPatternRepeatMode,
   CreationFlowTextAlign,
   CreationFlowUnit,
   DocumentId,
@@ -91,12 +92,27 @@ export interface AddVariableElementInput extends AddElementBaseInput {
   readonly fallback?: string;
 }
 
+export interface AddPatternElementInput extends AddElementBaseInput {
+  readonly type: "pattern";
+  readonly surfaceId: SurfaceId;
+  readonly assetId: AssetId;
+  readonly repeatMode: CreationFlowPatternRepeatMode;
+  readonly tileWidth: number;
+  readonly tileHeight: number;
+  readonly gapX: number;
+  readonly gapY: number;
+  readonly offsetX: number;
+  readonly offsetY: number;
+  readonly color?: string;
+}
+
 export type AddElementInput =
   | AddTextElementInput
   | AddImageElementInput
   | AddShapeElementInput
   | AddGroupElementInput
-  | AddVariableElementInput;
+  | AddVariableElementInput
+  | AddPatternElementInput;
 
 export type ElementPatch = Partial<Omit<CreationFlowElement, "id" | "type">>;
 

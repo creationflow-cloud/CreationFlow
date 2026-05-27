@@ -305,7 +305,7 @@ export function SurfaceCanvas({
       {renderSurfaceBackground()}
       {renderPathOverlay()}
       {renderClipPathDefinition()}
-      
+
       <div style={getElementLayerStyle()}>
         {sortedElements.map((element) => (
           <ElementView
@@ -314,6 +314,10 @@ export function SurfaceCanvas({
             isSelected={selectedElementId === element.id}
             onSelect={() => onSelectElement(element.id)}
             onMouseDown={(e) => handleElementMouseDown(element.id, e)}
+            surfaceWidth={surface.width}
+            surfaceHeight={surface.height}
+            clipPathId={shouldClipPath ? clipPathId : null}
+            previewScale={previewScale}
           />
         ))}
       </div>

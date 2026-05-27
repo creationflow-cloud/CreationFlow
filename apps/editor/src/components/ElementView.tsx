@@ -1,6 +1,7 @@
 import type {
   CreationFlowElement,
   CreationFlowImageElement,
+  CreationFlowPatternElement,
   CreationFlowShapeElement,
   CreationFlowTextElement,
   CreationFlowVariableElement,
@@ -10,15 +11,29 @@ import { getElementZIndex } from "@creationflow/core";
 import { ImageElementView } from "./ImageElementView.js";
 import { ShapeElementView } from "./ShapeElementView.js";
 import { TextElementView } from "./TextElementView.js";
+import { PatternElementView } from "./PatternElementView.js";
 
 interface ElementViewProps {
   readonly element: CreationFlowElement;
   readonly isSelected: boolean;
   readonly onSelect: () => void;
   readonly onMouseDown: (e: React.MouseEvent) => void;
+  readonly surfaceWidth: number;
+  readonly surfaceHeight: number;
+  readonly clipPathId: string | null;
+  readonly previewScale: number;
 }
 
-export function ElementView({ element, isSelected, onSelect, onMouseDown }: ElementViewProps) {
+export function ElementView({
+  element,
+  isSelected,
+  onSelect,
+  onMouseDown,
+  surfaceWidth,
+  surfaceHeight,
+  clipPathId,
+  previewScale,
+}: ElementViewProps) {
   const rotation = element.rotation ?? 0;
   const opacity = element.visible ? element.opacity : 0.35;
 
@@ -39,6 +54,20 @@ export function ElementView({ element, isSelected, onSelect, onMouseDown }: Elem
 
   if (isSelected) {
     baseStyle.boxShadow = "0 0 0 2px rgba(36, 59, 104, 0.25)";
+  }
+
+  if (element.type === "pattern") {
+    return (
+      <PatternElementView
+        element={element as CreationFlowPatternElement}
+        surfaceWidth={surfaceWidth}
+        surfaceHeight={surfaceHeight}
+        clipPathId={clipPathId}
+        previewScale={previewScale}
+        isSelected={isSelected}
+        onSelect={onSelect}
+      />
+    );
   }
 
   if (element.type === "text") {

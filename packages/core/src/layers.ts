@@ -248,6 +248,32 @@ export function duplicateElementOnSurface(
         fallback: element.fallback,
       };
       break;
+    case "pattern":
+      input = {
+        id: newId,
+        type: "pattern",
+        name: `${baseName} Copy`,
+        x: element.x,
+        y: element.y,
+        width: element.width,
+        height: element.height,
+        rotation: element.rotation,
+        opacity: element.opacity,
+        visible: element.visible,
+        locked: element.locked,
+        zIndex: getElementZIndex(element),
+        surfaceId: element.surfaceId,
+        assetId: element.assetId,
+        repeatMode: element.repeatMode,
+        tileWidth: element.tileWidth,
+        tileHeight: element.tileHeight,
+        gapX: element.gapX,
+        gapY: element.gapY,
+        offsetX: element.offsetX,
+        offsetY: element.offsetY,
+        color: element.color,
+      };
+      break;
   }
 
   const updatedDocument = addElement(document, { pageId, surfaceId }, input);

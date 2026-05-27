@@ -8,6 +8,7 @@ import {
 } from "@creationflow/core";
 import type {
   AddImageElementInput,
+  AddPatternElementInput,
   AddShapeElementInput,
   AddTextElementInput,
 } from "@creationflow/core";
@@ -44,6 +45,7 @@ import {
   sendBackward,
   sendToBack,
 } from "./helpers/element-actions.js";
+import { PatternGallery } from "./components/PatternGallery.js";
 import {
   selectElement,
   selectFirstSurface,
@@ -92,6 +94,7 @@ export function App() {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [showPatternGallery, setShowPatternGallery] = useState(false);
   const lastPreviewJobIdRef = useRef<string | null>(null);
   const lastPreviewConfigIdRef = useRef<string | null>(null);
 
@@ -598,6 +601,68 @@ export function App() {
     });
   }
 
+  function handleAddPatternElement(patternId: string) {
+    if (!currentDocument) {
+      return;
+    }
+
+    const target = getTargetSurfaceForElementCreation();
+    if (!target.pageId || !target.surfaceId) {
+      return;
+    }
+
+    const targetSurface = findSurfaceById(currentDocument, target.surfaceId);
+    if (!targetSurface) {
+      return;
+    }
+
+    commitHistory(currentDocument);
+
+    const elementId = crypto.randomUUID() as ElementId;
+
+    const input: AddPatternElementInput = {
+      id: elementId,
+      type: "pattern",
+      name: `Muster ${patternId}`,
+      x: 0,
+      y: 0,
+      width: targetSurface.width,
+      height: targetSurface.height,
+      rotation: 0,
+      opacity: 0.4,
+      visible: true,
+      locked: true,
+      zIndex: 0,
+      surfaceId: target.surfaceId,
+      assetId: patternId as AssetId,
+      repeatMode: "both",
+      tileWidth: 32,
+      tileHeight: 32,
+      gapX: 8,
+      gapY: 8,
+      offsetX: 0,
+      offsetY: 0,
+      color: undefined,
+    };
+
+    const updatedDocument = addElement(
+      currentDocument,
+      {
+        pageId: target.pageId,
+        surfaceId: target.surfaceId,
+      },
+      input,
+    );
+
+    setCurrentDocument(updatedDocument);
+    setSelection({
+      selectedPageId: target.pageId,
+      selectedSurfaceId: target.surfaceId,
+      selectedElementId: elementId,
+    });
+    setShowPatternGallery(false);
+  }
+
   const handleUploadAsset = useCallback(
     async (file: File): Promise<string> => {
       if (!configuration) throw new Error("No configuration loaded.");
@@ -870,6 +935,7 @@ export function App() {
           onAddText={handleAddTextElement}
           onAddShape={handleAddShapeElement}
           onAddImage={handleAddImageElement}
+          onAddPattern={() => setShowPatternGallery(true)}
           onDuplicateElement={handleDuplicateElement}
           onDeleteElement={handleDeleteElement}
           onBringForward={handleBringForward}
@@ -916,6 +982,13 @@ export function App() {
           configurationError={configurationError}
         />
       </section>
+
+      {showPatternGallery && selectedSurface && (
+        <PatternGallery
+          onAddPattern={handleAddPatternElement}
+          onClose={() => setShowPatternGallery(false)}
+        />
+      )}
 
       <PageFooter
         document={currentDocument}

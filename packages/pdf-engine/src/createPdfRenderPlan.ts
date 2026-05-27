@@ -1,10 +1,10 @@
-import type { CreationFlowDocument, CreationFlowElement } from "@creationflow/schema";
+import type { CreationFlowDocument, CreationFlowElement, CreationFlowSurface } from "@creationflow/schema";
 import { getElementZIndex } from "@creationflow/core";
 
 import type { PdfRenderPlan, PdfRenderPlanElement, PdfRenderPlanPage } from "./types.js";
 
-function toRenderPlanElement(element: CreationFlowElement): PdfRenderPlanElement {
-  return {
+function toRenderPlanElement(element: CreationFlowElement, surface?: CreationFlowSurface): PdfRenderPlanElement {
+  const base = {
     elementId: element.id,
     type: element.type,
     x: element.x,
@@ -15,16 +15,36 @@ function toRenderPlanElement(element: CreationFlowElement): PdfRenderPlanElement
     zIndex: getElementZIndex(element),
     visible: element.visible,
   };
+
+  if (element.type === "pattern") {
+    const clipPath = surface?.shape === "path" && surface.pathData ? surface.pathData : undefined;
+    return {
+      ...base,
+      assetId: element.assetId,
+      repeatMode: element.repeatMode,
+      tileWidth: element.tileWidth,
+      tileHeight: element.tileHeight,
+      gapX: element.gapX,
+      gapY: element.gapY,
+      offsetX: element.offsetX,
+      offsetY: element.offsetY,
+      opacity: element.opacity,
+      color: element.color,
+      clipPath,
+    };
+  }
+
+  return base;
 }
 
-function collectElements(surfaceElements: readonly CreationFlowElement[]): PdfRenderPlanElement[] {
+function collectElements(surfaceElements: readonly CreationFlowElement[], surface?: CreationFlowSurface): PdfRenderPlanElement[] {
   const elements: PdfRenderPlanElement[] = [];
 
   for (const element of surfaceElements) {
-    elements.push(toRenderPlanElement(element));
+    elements.push(toRenderPlanElement(element, surface));
 
     if (element.type === "group") {
-      elements.push(...collectElements(element.children));
+      elements.push(...collectElements(element.children, surface));
     }
   }
 
@@ -36,7 +56,7 @@ export function createPdfRenderPlan(document: CreationFlowDocument): PdfRenderPl
 
   const renderPlanPages: PdfRenderPlanPage[] = pages.map((page): PdfRenderPlanPage => {
     const surfaces = page.surfaces ?? [];
-    const elements = surfaces.flatMap((surface) => collectElements(surface.elements));
+    const elements = surfaces.flatMap((surface) => collectElements(surface.elements, surface));
 
     elements.sort((a, b) => getElementZIndex(a) - getElementZIndex(b));
 

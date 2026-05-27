@@ -1,7 +1,9 @@
 import { useState } from "react";
 
 import type {
+  AssetId,
   CreationFlowElement,
+  CreationFlowPatternElement,
   CreationFlowTextAlign,
   CreationFlowTextElement,
   CreationFlowImageElement,
@@ -177,20 +179,24 @@ export function ElementProperties({
         value={element.name ?? ""}
         onChange={(name) => onUpdate({ name: name || undefined })}
       />
-      <NumberInput label="X" value={element.x} onChange={(x) => onUpdate({ x })} />
-      <NumberInput label="Y" value={element.y} onChange={(y) => onUpdate({ y })} />
-      <NumberInput
-        label="Width"
-        value={element.width}
-        onChange={(width) => onUpdate({ width })}
-        min={0}
-      />
-      <NumberInput
-        label="Height"
-        value={element.height}
-        onChange={(height) => onUpdate({ height })}
-        min={0}
-      />
+      {element.type !== "pattern" && (
+        <>
+          <NumberInput label="X" value={element.x} onChange={(x) => onUpdate({ x })} />
+          <NumberInput label="Y" value={element.y} onChange={(y) => onUpdate({ y })} />
+          <NumberInput
+            label="Width"
+            value={element.width}
+            onChange={(width) => onUpdate({ width })}
+            min={0}
+          />
+          <NumberInput
+            label="Height"
+            value={element.height}
+            onChange={(height) => onUpdate({ height })}
+            min={0}
+          />
+        </>
+      )}
       <NumberInput
         label="Rotation"
         value={element.rotation}
@@ -239,47 +245,58 @@ export function ElementProperties({
         <ShapeElementProperties element={element as CreationFlowShapeElement} onUpdate={onUpdate} />
       )}
 
-      <div className="element-actions-section">
-        <h3>Actions</h3>
-        <div className="action-buttons-grid">
-          <button className="action-btn" type="button" onClick={onDuplicate}>
-            Duplicate
-          </button>
-          <button className="action-btn danger" type="button" onClick={onDelete}>
-            Delete
-          </button>
-          <button className="action-btn" type="button" onClick={onBringForward}>
-            Bring forward
-          </button>
-          <button className="action-btn" type="button" onClick={onSendBackward}>
-            Send backward
-          </button>
-          <button className="action-btn" type="button" onClick={onBringToFront}>
-            Bring to front
-          </button>
-          <button className="action-btn" type="button" onClick={onSendToBack}>
-            Send to back
-          </button>
-        </div>
-      </div>
+      {element.type === "pattern" && (
+        <PatternElementProperties
+          element={element as CreationFlowPatternElement}
+          onUpdate={onUpdate}
+        />
+      )}
 
-      <div className="position-controls-section">
-        <h3>Quick Position</h3>
-        <div className="position-controls">
-          <button className="position-btn up" type="button" onClick={() => onMove(0, -5)}>
-            ↑
-          </button>
-          <button className="position-btn left" type="button" onClick={() => onMove(-5, 0)}>
-            ←
-          </button>
-          <button className="position-btn down" type="button" onClick={() => onMove(0, 5)}>
-            ↓
-          </button>
-          <button className="position-btn right" type="button" onClick={() => onMove(5, 0)}>
-            →
-          </button>
-        </div>
-      </div>
+      {element.type !== "pattern" && (
+        <>
+          <div className="element-actions-section">
+            <h3>Actions</h3>
+            <div className="action-buttons-grid">
+              <button className="action-btn" type="button" onClick={onDuplicate}>
+                Duplicate
+              </button>
+              <button className="action-btn danger" type="button" onClick={onDelete}>
+                Delete
+              </button>
+              <button className="action-btn" type="button" onClick={onBringForward}>
+                Bring forward
+              </button>
+              <button className="action-btn" type="button" onClick={onSendBackward}>
+                Send backward
+              </button>
+              <button className="action-btn" type="button" onClick={onBringToFront}>
+                Bring to front
+              </button>
+              <button className="action-btn" type="button" onClick={onSendToBack}>
+                Send to back
+              </button>
+            </div>
+          </div>
+
+          <div className="position-controls-section">
+            <h3>Quick Position</h3>
+            <div className="position-controls">
+              <button className="position-btn up" type="button" onClick={() => onMove(0, -5)}>
+                ↑
+              </button>
+              <button className="position-btn left" type="button" onClick={() => onMove(-5, 0)}>
+                ←
+              </button>
+              <button className="position-btn down" type="button" onClick={() => onMove(0, 5)}>
+                ↓
+              </button>
+              <button className="position-btn right" type="button" onClick={() => onMove(5, 0)}>
+                →
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -424,6 +441,91 @@ function ShapeElementProperties({
           } as Partial<CreationFlowShapeElement>)
         }
         min={0}
+      />
+    </>
+  );
+}
+
+function PatternElementProperties({
+  element,
+  onUpdate,
+}: {
+  element: CreationFlowPatternElement;
+  onUpdate: (patch: Partial<CreationFlowElement>) => void;
+}) {
+  return (
+    <>
+      <TextInput
+        label="Asset ID"
+        value={element.assetId}
+        onChange={(assetId) => onUpdate({ assetId: assetId as AssetId } as Partial<CreationFlowPatternElement>)}
+      />
+      <SelectInput<"horizontal" | "vertical" | "both">
+        label="Wiederholung"
+        value={element.repeatMode}
+        options={[
+          { value: "both", label: "Beide (Grid)" },
+          { value: "horizontal", label: "Horizontal" },
+          { value: "vertical", label: "Vertikal" },
+        ]}
+        onChange={(repeatMode) => onUpdate({ repeatMode } as Partial<CreationFlowPatternElement>)}
+      />
+      <NumberInput
+        label="Kachel Breite"
+        value={element.tileWidth}
+        onChange={(tileWidth) => onUpdate({ tileWidth } as Partial<CreationFlowPatternElement>)}
+        min={1}
+      />
+      <NumberInput
+        label="Kachel Höhe"
+        value={element.tileHeight}
+        onChange={(tileHeight) => onUpdate({ tileHeight } as Partial<CreationFlowPatternElement>)}
+        min={1}
+      />
+      <NumberInput
+        label="Abstand X"
+        value={element.gapX}
+        onChange={(gapX) => onUpdate({ gapX } as Partial<CreationFlowPatternElement>)}
+        min={0}
+      />
+      <NumberInput
+        label="Abstand Y"
+        value={element.gapY}
+        onChange={(gapY) => onUpdate({ gapY } as Partial<CreationFlowPatternElement>)}
+        min={0}
+      />
+      <NumberInput
+        label="Offset X"
+        value={element.offsetX}
+        onChange={(offsetX) => onUpdate({ offsetX } as Partial<CreationFlowPatternElement>)}
+      />
+      <NumberInput
+        label="Offset Y"
+        value={element.offsetY}
+        onChange={(offsetY) => onUpdate({ offsetY } as Partial<CreationFlowPatternElement>)}
+      />
+      <NumberInput
+        label="Drehung"
+        value={element.rotation}
+        onChange={(rotation) => onUpdate({ rotation } as Partial<CreationFlowPatternElement>)}
+        min={0}
+        max={360}
+        step={1}
+      />
+      <NumberInput
+        label="Deckkraft"
+        value={element.opacity}
+        onChange={(opacity) => onUpdate({ opacity } as Partial<CreationFlowPatternElement>)}
+        min={0}
+        max={1}
+        step={0.1}
+      />
+      <TextInput
+        label="Farbe"
+        value={element.color ?? ""}
+        onChange={(color) =>
+          onUpdate({ color: color || undefined } as Partial<CreationFlowPatternElement>)
+        }
       />
     </>
   );

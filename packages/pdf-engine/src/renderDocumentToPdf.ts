@@ -4,6 +4,7 @@ import type {
   CreationFlowDocument,
   CreationFlowElement,
   CreationFlowImageElement,
+  CreationFlowPatternElement,
   CreationFlowShapeElement,
   CreationFlowSurface,
   CreationFlowTextElement,
@@ -34,7 +35,10 @@ export interface RenderDocumentWarning {
     | "image_resolve_failed"
     | "unsupported_image_type"
     | "image_render_failed"
-    | "path_render_failed";
+    | "path_render_failed"
+    | "pattern_resolver_missing"
+    | "pattern_asset_not_found"
+    | "pattern_render_failed";
   readonly elementId: ElementId;
   readonly assetId?: AssetId;
   readonly message: string;
@@ -285,9 +289,217 @@ async function renderImageElement(
   }
 }
 
+function renderBuiltinPdfPatternShape(
+  doc: PDFKit.PDFDocument,
+  patternId: string,
+  x: number,
+  y: number,
+  tileW: number,
+  tileH: number,
+  color: RgbColor,
+): void {
+  const halfW = tileW / 2;
+  const halfH = tileH / 2;
+
+  doc.fillColor([color.r, color.g, color.b]);
+
+  switch (patternId) {
+    case "dots":
+      doc.circle(x + halfW, y + halfH, tileW * 0.25);
+      doc.fill();
+      break;
+    case "stripes":
+      doc.rect(x, y, tileW, halfH);
+      doc.fill();
+      break;
+    case "diamonds":
+      doc.path(`M${x + halfW} ${y} L${x + tileW} ${y + halfH} L${x + halfW} ${y + tileH} L${x} ${y + halfH} Z`);
+      doc.fill();
+      break;
+    case "waves": {
+      const sw = Math.max(1, tileW * 0.1);
+      doc.strokeColor([color.r, color.g, color.b]);
+      doc.lineWidth(sw);
+      doc.path(`M${x} ${y + halfH} C${x + tileW * 0.25} ${y} ${x + tileW * 0.75} ${y} ${x + halfW} ${y + halfH} C${x + tileW * 0.75} ${y + tileH} ${x + tileW * 0.25} ${y + tileH} ${x + tileW} ${y + halfH}`);
+      doc.stroke();
+      break;
+    }
+    case "zigzag": {
+      const sw = Math.max(1, tileW * 0.1);
+      doc.strokeColor([color.r, color.g, color.b]);
+      doc.lineWidth(sw);
+      doc.path(`M${x} ${y + halfH} L${x + tileW * 0.25} ${y + halfH * 0.2} L${x + halfW} ${y + halfH} L${x + tileW * 0.75} ${y + halfH * 0.2} L${x + tileW} ${y + halfH}`);
+      doc.stroke();
+      break;
+    }
+    case "crosses": {
+      const cw = tileW * 0.15;
+      doc.rect(x + halfW - cw, y + quarterH(tileH), cw * 2, halfH);
+      doc.fill();
+      doc.rect(x + quarterW(tileW), y + halfH - cw, halfW, cw * 2);
+      doc.fill();
+      break;
+    }
+    case "stars": {
+      const cx = x + halfW;
+      const cy = y + halfH;
+      const outerR = tileW * 0.4;
+      const innerR = tileW * 0.18;
+      doc.path(buildStarPath(cx, cy, outerR, innerR, 5));
+      doc.fill();
+      break;
+    }
+    case "circles": {
+      const sw = Math.max(1, tileW * 0.1);
+      doc.strokeColor([color.r, color.g, color.b]);
+      doc.lineWidth(sw);
+      doc.circle(x + halfW, y + halfH, tileW * 0.35);
+      doc.stroke();
+      break;
+    }
+    default:
+      doc.rect(x, y, tileW, tileH);
+      doc.fill();
+      break;
+  }
+}
+
+function quarterW(w: number): number { return w / 4; }
+function quarterH(h: number): number { return h / 4; }
+
+function buildStarPath(cx: number, cy: number, outerR: number, innerR: number, points: number): string {
+  const segments = points * 2;
+  const angleStep = Math.PI / points;
+  let path = "";
+  for (let i = 0; i < segments; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const angle = -Math.PI / 2 + i * angleStep;
+    const px = cx + r * Math.cos(angle);
+    const py = cy + r * Math.sin(angle);
+    path += (i === 0 ? "M" : "L") + `${px} ${py} `;
+  }
+  return path + "Z";
+}
+
+const BUILTIN_PATTERN_IDS = new Set(["dots", "stripes", "crosses", "diamonds", "waves", "zigzag", "stars", "circles"]);
+
+async function renderPatternElement(
+  doc: PDFKit.PDFDocument,
+  element: CreationFlowPatternElement,
+  surface: CreationFlowSurface,
+  unit: CreationFlowUnit | undefined,
+  offset: { readonly x: number; readonly y: number },
+  options: RenderDocumentToPdfOptions,
+): Promise<void> {
+  if (!element.visible) {
+    return;
+  }
+
+  const surfaceW = toPdfUnits(surface.width, unit);
+  const surfaceH = toPdfUnits(surface.height, unit);
+  const tileW = toPdfUnits(element.tileWidth, unit);
+  const tileH = toPdfUnits(element.tileHeight, unit);
+  const gapX = toPdfUnits(element.gapX, unit);
+  const gapY = toPdfUnits(element.gapY, unit);
+  const offX = toPdfUnits(element.offsetX, unit);
+  const offY = toPdfUnits(element.offsetY, unit);
+
+  const stepX = element.repeatMode === "vertical" ? surfaceW : tileW + gapX;
+  const stepY = element.repeatMode === "horizontal" ? surfaceH : tileH + gapY;
+
+  const patternColor = parseHexColor(element.color) ?? { r: 36, g: 59, b: 104 };
+
+  doc.save();
+  doc.translate(offset.x, offset.y);
+
+  if (element.rotation) {
+    doc.rotate(element.rotation, { origin: [surfaceW / 2, surfaceH / 2] });
+  }
+
+  if (element.opacity < 1) {
+    doc.opacity(element.opacity);
+  }
+
+  const isBuiltin = BUILTIN_PATTERN_IDS.has(element.assetId);
+
+  if (isBuiltin) {
+    for (let y = offY; y < surfaceH + tileH; y += stepY) {
+      for (let x = offX; x < surfaceW + tileW; x += stepX) {
+        renderBuiltinPdfPatternShape(doc, element.assetId, x, y, tileW, tileH, patternColor);
+      }
+    }
+  } else {
+    if (!options.resolveAsset) {
+      warn(options, {
+        code: "pattern_resolver_missing",
+        elementId: element.id,
+        assetId: element.assetId,
+        message: "Pattern element was skipped because no asset resolver was provided.",
+      });
+      doc.restore();
+      return;
+    }
+
+    let asset: ResolvedPdfAsset | null | undefined;
+    try {
+      asset = await options.resolveAsset(element.assetId);
+    } catch (error) {
+      warn(options, {
+        code: "pattern_asset_not_found",
+        elementId: element.id,
+        assetId: element.assetId,
+        message: error instanceof Error ? error.message : "Pattern asset resolution failed.",
+      });
+      doc.restore();
+      return;
+    }
+
+    if (!asset) {
+      warn(options, {
+        code: "pattern_asset_not_found",
+        elementId: element.id,
+        assetId: element.assetId,
+        message: "Pattern asset was not found.",
+      });
+      doc.restore();
+      return;
+    }
+
+    if (!isSupportedImageMimeType(asset.mimeType)) {
+      warn(options, {
+        code: "unsupported_image_type",
+        elementId: element.id,
+        assetId: element.assetId,
+        message: `Unsupported image MIME type: ${asset.mimeType}.`,
+      });
+      doc.restore();
+      return;
+    }
+
+    const image = Buffer.from(asset.data);
+    try {
+      for (let y = offY; y < surfaceH + tileH; y += stepY) {
+        for (let x = offX; x < surfaceW + tileW; x += stepX) {
+          doc.image(image, x, y, { width: tileW, height: tileH });
+        }
+      }
+    } catch (error) {
+      warn(options, {
+        code: "pattern_render_failed",
+        elementId: element.id,
+        assetId: element.assetId,
+        message: error instanceof Error ? error.message : "Pattern rendering failed.",
+      });
+    }
+  }
+
+  doc.restore();
+}
+
 async function renderElement(
   doc: PDFKit.PDFDocument,
   element: CreationFlowElement,
+  surface: CreationFlowSurface,
   unit: CreationFlowUnit | undefined,
   offset: { readonly x: number; readonly y: number },
   options: RenderDocumentToPdfOptions,
@@ -301,6 +513,9 @@ async function renderElement(
       break;
     case "image":
       await renderImageElement(doc, element, unit, offset, options);
+      break;
+    case "pattern":
+      await renderPatternElement(doc, element, surface, unit, offset, options);
       break;
     case "group":
     case "variable":
@@ -555,7 +770,7 @@ export async function renderDocumentToPdf(
             : offset;
 
           for (const element of elements) {
-            await renderElement(doc, element, unit, elementOffset, options);
+            await renderElement(doc, element, surface, unit, elementOffset, options);
           }
 
           if (clipped) {

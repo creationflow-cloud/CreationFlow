@@ -1,5 +1,7 @@
 import type {
+  AssetId,
   CreationFlowElementType,
+  CreationFlowPatternRepeatMode,
   CreationFlowUnit,
   DocumentId,
   ElementId,
@@ -31,4 +33,15 @@ export interface PdfRenderPlanElement {
   readonly rotation: number;
   readonly zIndex: number;
   readonly visible: boolean;
+  readonly assetId?: AssetId;
+  readonly repeatMode?: CreationFlowPatternRepeatMode;
+  readonly tileWidth?: number;
+  readonly tileHeight?: number;
+  readonly gapX?: number;
+  readonly gapY?: number;
+  readonly offsetX?: number;
+  readonly offsetY?: number;
+  readonly opacity?: number;
+  readonly color?: string;
+  readonly clipPath?: string;
 }

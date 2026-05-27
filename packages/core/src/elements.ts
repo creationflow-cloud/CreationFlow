@@ -200,6 +200,32 @@ export function addElement(
         fallback: input.fallback,
       };
       break;
+    case "pattern":
+      element = {
+        id: input.id,
+        type: "pattern",
+        name: input.name,
+        x: input.x,
+        y: input.y,
+        width: input.width,
+        height: input.height,
+        rotation: input.rotation,
+        opacity: input.opacity,
+        visible: input.visible,
+        locked: input.locked,
+        zIndex: input.zIndex,
+        surfaceId: input.surfaceId,
+        assetId: input.assetId,
+        repeatMode: input.repeatMode,
+        tileWidth: input.tileWidth,
+        tileHeight: input.tileHeight,
+        gapX: input.gapX,
+        gapY: input.gapY,
+        offsetX: input.offsetX,
+        offsetY: input.offsetY,
+        color: input.color,
+      };
+      break;
   }
 
   let pageFound = false;
