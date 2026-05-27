@@ -37,7 +37,7 @@ yarn-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
-/AGENTS.md
+/docs/AGENTS.md
 
 # Uploads
 uploads/
