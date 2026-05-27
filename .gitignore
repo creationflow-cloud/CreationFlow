@@ -6,6 +6,13 @@ dist/
 build/
 coverage/
 
+.openclaw/
+HEARTBEAT.md
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
+
 # Environment files
 .env
 .env.*
