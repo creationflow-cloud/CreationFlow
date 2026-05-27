@@ -168,6 +168,11 @@ export function SurfaceCanvas({
       overflow: surface.clipContent ? "hidden" : "visible",
     };
 
+    if (shouldClipPath) {
+      baseStyle.background = "transparent";
+      baseStyle.overflow = "visible";
+    }
+
     return baseStyle;
   };
 
@@ -183,7 +188,6 @@ export function SurfaceCanvas({
 
     if (shouldClipPath) {
       baseStyle.clipPath = `url(#${clipPathId})`;
-      baseStyle.overflow = "visible";
     }
 
     return baseStyle;
@@ -197,11 +201,14 @@ export function SurfaceCanvas({
     const shouldRenderFill = surface.fillColor &&
       (surface.role === "colorRegion" || surface.role === "overlay");
 
-    if (!shouldRenderFill) {
+    const shouldRenderPathFill = surface.role === "designRegion";
+
+    if (!shouldRenderFill && !shouldRenderPathFill) {
       return null;
     }
 
-    const opacity = surface.role === "overlay" ? 0.5 : 0.3;
+    const opacity = surface.role === "overlay" ? 0.5 : surface.role === "designRegion" ? 1.0 : 0.3;
+    const fill = surface.role === "designRegion" ? "#ffffff" : surface.fillColor;
 
     return (
       <svg
@@ -214,11 +221,12 @@ export function SurfaceCanvas({
           height: "100%",
           pointerEvents: "none",
           zIndex: 0,
+          ...(shouldClipPath ? { clipPath: `url(#${clipPathId})` } : {}),
         }}
       >
         <path
           d={surface.pathData}
-          fill={surface.fillColor}
+          fill={fill}
           fillOpacity={opacity}
         />
       </svg>
@@ -256,7 +264,6 @@ export function SurfaceCanvas({
           fill="none"
           stroke={strokeColor}
           strokeWidth={strokeWidth}
-          strokeDasharray={surface.role === "designRegion" ? "4 2" : undefined}
         />
       </svg>
     );
@@ -309,18 +316,18 @@ export function SurfaceCanvas({
             onMouseDown={(e) => handleElementMouseDown(element.id, e)}
           />
         ))}
-
-        {selectedElement && selectedElementId && dragState?.mode !== "move" && (
-          <div
-            className="resize-handle"
-            style={{
-              left: `${selectedElement.x * previewScale + selectedElement.width * previewScale - 6}px`,
-              top: `${selectedElement.y * previewScale + selectedElement.height * previewScale - 6}px`,
-            }}
-            onMouseDown={(e) => handleResizeMouseDown(selectedElementId, e)}
-          />
-        )}
       </div>
+
+      {selectedElement && selectedElementId && dragState?.mode !== "move" && (
+        <div
+          className="resize-handle"
+          style={{
+            left: `${selectedElement.x * previewScale + selectedElement.width * previewScale - 6}px`,
+            top: `${selectedElement.y * previewScale + selectedElement.height * previewScale - 6}px`,
+          }}
+          onMouseDown={(e) => handleResizeMouseDown(selectedElementId, e)}
+        />
+      )}
     </div>
   );
 }
