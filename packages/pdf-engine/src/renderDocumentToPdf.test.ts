@@ -208,6 +208,31 @@ describe("renderDocumentToPdf", () => {
     expect(pdf.length).toBeGreaterThan(0);
   });
 
+  it("renders text with configured font family, weight, size, color and alignment", async () => {
+    const textElement: CreationFlowElement = {
+      ...createTextElement("text-1", 20, 30),
+      width: 160,
+      height: 60,
+      text: "Hello\nPDF",
+      fontFamily: "Courier",
+      fontSize: 18,
+      fontWeight: "700",
+      color: "#112233",
+      align: "center",
+    };
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [createSurface("surface-1", [textElement])])]),
+      { compress: false },
+    );
+    const pdfText = pdf.toString("latin1");
+    const streams = extractPdfStreams(pdf).join("\n");
+
+    expect(pdfText).toContain("/BaseFont /Courier-Bold");
+    expect(streams).toContain("18 Tf");
+    expect(streams).toContain("0.06666666666666667 0.13333333333333333 0.2 scn");
+  });
+
   it("renders a rectangle shape element without crashing", async () => {
     const pdf = await renderDocumentToPdf(
       createDocument([createPage("page-1", [createSurface("surface-1", [createShapeElement("shape-1", 40, 50, 100, 60)])])]),

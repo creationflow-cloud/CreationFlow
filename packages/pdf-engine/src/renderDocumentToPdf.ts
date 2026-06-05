@@ -16,6 +16,7 @@ import type {
 const DEFAULT_PAGE_WIDTH = 595.28;
 const DEFAULT_PAGE_HEIGHT = 841.89;
 const DEFAULT_TEXT_SIZE = 12;
+const STANDARD_FONT_FAMILIES = new Set(["Courier", "Helvetica", "Times"]);
 
 interface RgbColor {
   readonly r: number;
@@ -145,6 +146,23 @@ function setStrokeColor(doc: PDFKit.PDFDocument, color: string | undefined): boo
   return true;
 }
 
+function getPdfTextFontName(fontFamily: string | undefined, fontWeight: string | undefined): string {
+  const requestedFamily = (fontFamily ?? "Helvetica").trim();
+  const family = STANDARD_FONT_FAMILIES.has(requestedFamily) ? requestedFamily : "Helvetica";
+  const normalizedWeight = (fontWeight ?? "").toLowerCase();
+  const isBold = normalizedWeight === "bold" || Number(normalizedWeight) >= 600;
+
+  if (!isBold) {
+    return family === "Times" ? "Times-Roman" : family;
+  }
+
+  if (family === "Times") {
+    return "Times-Bold";
+  }
+
+  return `${family}-Bold`;
+}
+
 function renderTextElement(
   doc: PDFKit.PDFDocument,
   element: CreationFlowTextElement,
@@ -161,6 +179,7 @@ function renderTextElement(
   const height = Math.max(toPdfUnits(element.height, unit), 1);
   const fontSize = Math.max(toPdfUnits(element.fontSize ?? DEFAULT_TEXT_SIZE, unit), 1);
 
+  doc.font(getPdfTextFontName(element.fontFamily, element.fontWeight));
   doc.fontSize(fontSize);
   setFillColor(doc, element.color) || doc.fillColor("black");
   doc.text(element.text ?? "", x, y, {
