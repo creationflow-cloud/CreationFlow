@@ -241,6 +241,41 @@ describe("renderDocumentToPdf", () => {
     expect(pdf.length).toBeGreaterThan(0);
   });
 
+  it.each([
+    ["rect", "40 50 100 60 re"],
+    ["ellipse", " c"],
+    ["line", "40 50 m\n140 110 l\nS"],
+  ] as const)("renders %s shape geometry", async (shapeType, expectedStreamContent) => {
+    const shapeElement: CreationFlowElement = {
+      ...createShapeElement("shape-1", 40, 50, 100, 60),
+      shapeType,
+    };
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [createSurface("surface-1", [shapeElement])])]),
+      { compress: false },
+    );
+
+    expect(extractPdfStreams(pdf).join("\n")).toContain(expectedStreamContent);
+  });
+
+  it("renders shape stroke width and rotation", async () => {
+    const shapeElement: CreationFlowElement = {
+      ...createShapeElement("shape-1", 40, 50, 100, 60),
+      rotation: 45,
+      strokeWidth: 4,
+    };
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [createSurface("surface-1", [shapeElement])])]),
+      { compress: false },
+    );
+    const streams = extractPdfStreams(pdf).join("\n");
+
+    expect(streams).toContain("4 w");
+    expect(streams).toContain("0.707107 0.707107 -0.707107 0.707107");
+  });
+
   it("renders x=0 y=0 at the PDFKit top-left coordinate origin", async () => {
     const pdf = await renderDocumentToPdf(
       createDocument([createPage("page-1", [createSurface("surface-1", [createShapeElement("shape-1", 0, 0, 10, 20)])])]),

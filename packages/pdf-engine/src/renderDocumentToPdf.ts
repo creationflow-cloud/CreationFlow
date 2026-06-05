@@ -195,7 +195,7 @@ function renderShapeElement(
   unit: CreationFlowUnit | undefined,
   offset: { readonly x: number; readonly y: number },
 ): void {
-  if (!element.visible || element.shapeType !== "rect") {
+  if (!element.visible) {
     return;
   }
 
@@ -207,22 +207,48 @@ function renderShapeElement(
   const hasStroke = setStrokeColor(doc, element.stroke);
   const strokeWidth = Math.max(toPdfUnits(element.strokeWidth ?? 0, unit), 0);
 
+  doc.save();
+
+  if (element.rotation) {
+    doc.rotate(element.rotation, { origin: [x + width / 2, y + height / 2] });
+  }
+
   doc.lineWidth(strokeWidth);
-  doc.rect(x, y, width, height);
+
+  if (element.shapeType === "line") {
+    if (hasStroke && strokeWidth > 0) {
+      doc.moveTo(x, y);
+      doc.lineTo(x + width, y + height);
+      doc.stroke();
+    }
+
+    doc.restore();
+    return;
+  }
+
+  if (element.shapeType === "ellipse") {
+    doc.ellipse(x + width / 2, y + height / 2, width / 2, height / 2);
+  } else {
+    doc.rect(x, y, width, height);
+  }
 
   if (hasFill && hasStroke && strokeWidth > 0) {
     doc.fillAndStroke();
+    doc.restore();
     return;
   }
 
   if (hasFill) {
     doc.fill();
+    doc.restore();
     return;
   }
 
   if (hasStroke && strokeWidth > 0) {
     doc.stroke();
   }
+
+  doc.restore();
 }
 
 async function renderImageElement(
