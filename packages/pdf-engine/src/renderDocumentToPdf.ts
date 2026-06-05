@@ -128,6 +128,73 @@ function parseHexColor(color: string | undefined): RgbColor | undefined {
   };
 }
 
+interface CmykColor {
+  readonly c: number;
+  readonly m: number;
+  readonly y: number;
+  readonly k: number;
+}
+
+type ParsedColor =
+  | { readonly kind: "rgb"; readonly value: RgbColor }
+  | { readonly kind: "cmyk"; readonly value: CmykColor };
+
+function parseCmykColor(color: string | undefined): CmykColor | undefined {
+  if (!color) {
+    return undefined;
+  }
+
+  const match = color.trim().match(/^cmyk\s*\(\s*([^)]+)\s*\)$/i);
+  if (!match) {
+    return undefined;
+  }
+
+  const parts = match[1].split(/[\s,/]+/).filter(Boolean);
+  if (parts.length !== 4) {
+    return undefined;
+  }
+
+  const channels = parts.map((part) => {
+    if (part.endsWith("%")) {
+      const numeric = Number.parseFloat(part.slice(0, -1));
+      return Number.isFinite(numeric) ? numeric / 100 : Number.NaN;
+    }
+    const numeric = Number.parseFloat(part);
+    if (!Number.isFinite(numeric)) {
+      return Number.NaN;
+    }
+    if (numeric > 1) {
+      return numeric / 255;
+    }
+    return numeric;
+  });
+
+  if (channels.some((channel) => !Number.isFinite(channel) || channel < 0 || channel > 1)) {
+    return undefined;
+  }
+
+  return {
+    c: channels[0],
+    m: channels[1],
+    y: channels[2],
+    k: channels[3],
+  };
+}
+
+export function parseColor(color: string | undefined): ParsedColor | undefined {
+  const cmyk = parseCmykColor(color);
+  if (cmyk) {
+    return { kind: "cmyk", value: cmyk };
+  }
+
+  const rgb = parseHexColor(color);
+  if (rgb) {
+    return { kind: "rgb", value: rgb };
+  }
+
+  return undefined;
+}
+
 function warn(options: RenderDocumentToPdfOptions, warning: RenderDocumentWarning): void {
   options.onWarning?.(warning);
 }
@@ -180,22 +247,22 @@ function isSupportedImageMimeType(mimeType: string | undefined): boolean {
 }
 
 function setFillColor(doc: PDFKit.PDFDocument, color: string | undefined): boolean {
-  const parsed = parseHexColor(color);
+  const parsed = parseColor(color);
   if (!parsed) {
     return false;
   }
 
-  doc.fillColor([parsed.r, parsed.g, parsed.b]);
+  applyFillColor(doc, parsed);
   return true;
 }
 
 function setStrokeColor(doc: PDFKit.PDFDocument, color: string | undefined): boolean {
-  const parsed = parseHexColor(color);
+  const parsed = parseColor(color);
   if (!parsed) {
     return false;
   }
 
-  doc.strokeColor([parsed.r, parsed.g, parsed.b]);
+  applyStrokeColor(doc, parsed);
   return true;
 }
 
@@ -466,6 +533,32 @@ async function renderImageElement(
   }
 }
 
+function applyFillColor(doc: PDFKit.PDFDocument, color: ParsedColor): void {
+  if (color.kind === "cmyk") {
+    doc.fillColor([
+      color.value.c,
+      color.value.m,
+      color.value.y,
+      color.value.k,
+    ] as unknown as [number, number, number, number]);
+    return;
+  }
+  doc.fillColor([color.value.r, color.value.g, color.value.b]);
+}
+
+function applyStrokeColor(doc: PDFKit.PDFDocument, color: ParsedColor): void {
+  if (color.kind === "cmyk") {
+    doc.strokeColor([
+      color.value.c,
+      color.value.m,
+      color.value.y,
+      color.value.k,
+    ] as unknown as [number, number, number, number]);
+    return;
+  }
+  doc.strokeColor([color.value.r, color.value.g, color.value.b]);
+}
+
 function renderBuiltinPdfPatternShape(
   doc: PDFKit.PDFDocument,
   patternId: string,
@@ -473,12 +566,12 @@ function renderBuiltinPdfPatternShape(
   y: number,
   tileW: number,
   tileH: number,
-  color: RgbColor,
+  color: ParsedColor,
 ): void {
   const halfW = tileW / 2;
   const halfH = tileH / 2;
 
-  doc.fillColor([color.r, color.g, color.b]);
+  applyFillColor(doc, color);
 
   switch (patternId) {
     case "dots":
@@ -495,7 +588,7 @@ function renderBuiltinPdfPatternShape(
       break;
     case "waves": {
       const sw = Math.max(1, tileW * 0.1);
-      doc.strokeColor([color.r, color.g, color.b]);
+      applyStrokeColor(doc, color);
       doc.lineWidth(sw);
       doc.path(`M${x} ${y + halfH} C${x + tileW * 0.25} ${y} ${x + tileW * 0.75} ${y} ${x + halfW} ${y + halfH} C${x + tileW * 0.75} ${y + tileH} ${x + tileW * 0.25} ${y + tileH} ${x + tileW} ${y + halfH}`);
       doc.stroke();
@@ -503,7 +596,7 @@ function renderBuiltinPdfPatternShape(
     }
     case "zigzag": {
       const sw = Math.max(1, tileW * 0.1);
-      doc.strokeColor([color.r, color.g, color.b]);
+      applyStrokeColor(doc, color);
       doc.lineWidth(sw);
       doc.path(`M${x} ${y + halfH} L${x + tileW * 0.25} ${y + halfH * 0.2} L${x + halfW} ${y + halfH} L${x + tileW * 0.75} ${y + halfH * 0.2} L${x + tileW} ${y + halfH}`);
       doc.stroke();
@@ -528,7 +621,7 @@ function renderBuiltinPdfPatternShape(
     }
     case "circles": {
       const sw = Math.max(1, tileW * 0.1);
-      doc.strokeColor([color.r, color.g, color.b]);
+      applyStrokeColor(doc, color);
       doc.lineWidth(sw);
       doc.circle(x + halfW, y + halfH, tileW * 0.35);
       doc.stroke();
@@ -584,7 +677,7 @@ async function renderPatternElement(
   const stepX = element.repeatMode === "vertical" ? surfaceW : tileW + gapX;
   const stepY = element.repeatMode === "horizontal" ? surfaceH : tileH + gapY;
 
-  const patternColor = parseHexColor(element.color) ?? { r: 36, g: 59, b: 104 };
+  const patternColor = parseColor(element.color) ?? { kind: "rgb", value: { r: 36, g: 59, b: 104 } };
 
   doc.save();
   doc.translate(offset.x, offset.y);

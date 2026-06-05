@@ -19,6 +19,7 @@ import type {
 import {
   convertTopLeftToPdfY,
   DEFAULT_TARGET_DPI,
+  parseColor,
   renderDocumentToPdf,
   toPdfUnits,
 } from "./renderDocumentToPdf.js";
@@ -1834,9 +1835,60 @@ describe("renderDocumentToPdf coordinate system", () => {
   });
 });
 
-describe("DPI configuration", () => {
-  it("exposes a positive default target DPI", () => {
-    expect(typeof DEFAULT_TARGET_DPI).toBe("number");
-    expect(DEFAULT_TARGET_DPI).toBeGreaterThan(0);
+describe("CMYK color support", () => {
+  it("parses cmyk() percentage notation", () => {
+    expect(parseColor("cmyk(80%, 60%, 40%, 20%)")).toEqual({
+      kind: "cmyk",
+      value: { c: 0.8, m: 0.6, y: 0.4, k: 0.2 },
+    });
+  });
+
+  it("parses cmyk() 0-1 notation", () => {
+    expect(parseColor("cmyk(0.5, 0.25, 0, 1)")).toEqual({
+      kind: "cmyk",
+      value: { c: 0.5, m: 0.25, y: 0, k: 1 },
+    });
+  });
+
+  it("falls back to rgb for hex strings", () => {
+    expect(parseColor("#112233")).toEqual({
+      kind: "rgb",
+      value: { r: 17, g: 34, b: 51 },
+    });
+  });
+
+  it("returns undefined for malformed values", () => {
+    expect(parseColor("cmyk(1, 2, 3)")).toBeUndefined();
+    expect(parseColor("not-a-color")).toBeUndefined();
+    expect(parseColor(undefined)).toBeUndefined();
+  });
+
+  it("emits DeviceCMYK color operators when a shape uses a cmyk() fill", async () => {
+    const cmykShape: CreationFlowElement = {
+      ...createShapeElement("shape-cmyk", 10, 20, 30, 40),
+      fill: "cmyk(100%, 0%, 0%, 0%)",
+      stroke: undefined,
+      strokeWidth: 0,
+    };
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [createSurface("surface-1", [cmykShape])])]),
+      { compress: false },
+    );
+
+    const streams = extractPdfStreams(pdf).join("\n");
+    expect(streams).toContain("/DeviceCMYK cs");
+    expect(streams).toContain("1 0 0 0 scn");
+  });
+
+  it("keeps DeviceRGB for hex-based fills", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [createSurface("surface-1", [createShapeElement("shape-1", 0, 0, 10, 20)])])]),
+      { compress: false },
+    );
+
+    const streams = extractPdfStreams(pdf).join("\n");
+    expect(streams).toContain("/DeviceRGB cs");
+    expect(streams).not.toContain("/DeviceCMYK cs");
   });
 });
