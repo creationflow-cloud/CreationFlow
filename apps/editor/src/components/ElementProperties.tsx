@@ -48,10 +48,9 @@ function NumberInput({
       </label>
       <input
         id={`prop-${label}`}
-        key={`${label}-${value}`}
         className="info-input"
         type="number"
-        defaultValue={value}
+        value={value}
         min={min}
         max={max}
         step={step ?? 1}
