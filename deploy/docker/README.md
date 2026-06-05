@@ -28,11 +28,11 @@ docker compose --env-file deploy/docker/.env.example -f deploy/docker/docker-com
 
 - `postgres`: Local PostgreSQL database on port `5432`.
 - `redis`: Local Redis instance on port `6379`.
-- `api`: Placeholder API service on port `3000`.
+- `api`: Placeholder API service on port `3000`, configured with `REDIS_URL=redis://redis:6379`.
 - `editor`: Placeholder editor service on port `3001`.
 - `admin`: Placeholder admin service on port `3002`.
 - `renderer`: Placeholder renderer service.
-- `worker`: Placeholder worker service.
+- `worker`: Placeholder worker service, configured with `REDIS_URL=redis://redis:6379` and `API_URL=http://api:3000`.
 
 ## Notes
 

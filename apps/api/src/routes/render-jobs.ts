@@ -7,6 +7,7 @@ import {
   updateRenderJob,
 } from "../services/render-jobs.js";
 import { RenderJobNotFoundError, renderRenderJobToPdf } from "../services/render-job-renderer.js";
+import { enqueueRenderJob } from "../services/render-job-queue.js";
 import type { ApiRenderJobStatus } from "../mappers/render-job-status.js";
 
 const renderJobOutputSchema = {
@@ -142,6 +143,8 @@ export async function registerRenderJobRoutes(server: FastifyInstance): Promise<
     async (request, reply) => {
       try {
         const job = await createRenderJob(server.db, request.body);
+
+        await enqueueRenderJob(job.id);
 
         return reply.code(201).send(job);
       } catch (error) {

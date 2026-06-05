@@ -40,6 +40,8 @@ services:
       ]
     ports:
       - "${API_PORT:-3000}:3000"
+    environment:
+      REDIS_URL: redis://redis:6379
     depends_on:
       postgres:
         condition: service_healthy
@@ -92,6 +94,9 @@ services:
         "-c",
         'node -e "console.log(''CreationFlow Worker placeholder service'')" && tail -f /dev/null',
       ]
+    environment:
+      API_URL: http://api:3000
+      REDIS_URL: redis://redis:6379
     depends_on:
       postgres:
         condition: service_healthy

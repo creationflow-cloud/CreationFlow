@@ -1,10 +1,12 @@
-import { Worker } from "bullmq";
+import { Queue } from "bullmq";
 
 export const RENDER_JOB_QUEUE_NAME = "creationflow-render-jobs";
 
 export interface RenderJobQueuePayload {
   readonly jobId: string;
 }
+
+let queue: Queue<RenderJobQueuePayload> | undefined;
 
 interface RedisConnectionOptions {
   readonly host: string;
@@ -26,24 +28,32 @@ function getRedisConnectionOptions(redisUrl = process.env.REDIS_URL ?? "redis://
   };
 }
 
-export function createRenderWorker(): Worker<RenderJobQueuePayload> {
-  const apiUrl = (process.env.API_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+export function getRenderJobQueue(): Queue<RenderJobQueuePayload> {
+  queue ??= new Queue<RenderJobQueuePayload>(RENDER_JOB_QUEUE_NAME, {
+    connection: getRedisConnectionOptions(),
+  });
 
-  return new Worker<RenderJobQueuePayload>(
-    RENDER_JOB_QUEUE_NAME,
-    async (job) => {
-      const response = await fetch(`${apiUrl}/render-jobs/${job.data.jobId}/render`, {
-        method: "POST",
-      });
+  return queue;
+}
 
-      if (!response.ok) {
-        const body = await response.text();
-        throw new Error(`Render job ${job.data.jobId} failed through API (${response.status}): ${body}`);
-      }
-    },
+export async function enqueueRenderJob(jobId: string): Promise<void> {
+  await getRenderJobQueue().add(
+    "render",
+    { jobId },
     {
-      connection: getRedisConnectionOptions(),
-      concurrency: Number(process.env.WORKER_CONCURRENCY ?? 2),
+      jobId,
+      attempts: 3,
+      backoff: {
+        type: "exponential",
+        delay: 1_000,
+      },
+      removeOnComplete: 100,
+      removeOnFail: 100,
     },
   );
+}
+
+export async function closeRenderJobQueue(): Promise<void> {
+  await queue?.close();
+  queue = undefined;
 }
