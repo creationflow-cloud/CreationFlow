@@ -580,6 +580,14 @@ function getSurfaceOffset(
   };
 }
 
+function getPageBleed(surfaces: readonly CreationFlowSurface[], unit: CreationFlowUnit | undefined): number {
+  return surfaces.reduce((maxBleed, surface) => {
+    const bleed = toPdfUnits(surface.printArea?.bleed ?? 0, unit);
+
+    return Number.isFinite(bleed) && bleed > maxBleed ? bleed : maxBleed;
+  }, 0);
+}
+
 function renderPathSurface(
   doc: PDFKit.PDFDocument,
   surface: CreationFlowSurface,
@@ -683,13 +691,15 @@ function renderSurfaceDebugOverlays(
   doc: PDFKit.PDFDocument,
   surfaces: readonly CreationFlowSurface[],
   unit: CreationFlowUnit | undefined,
+  pageBleed: number,
 ): void {
   if (!surfaces.length) return;
 
   doc.save();
 
   for (const surface of surfaces) {
-    const offset = getSurfaceOffset(surface, unit);
+    const surfaceOffset = getSurfaceOffset(surface, unit);
+    const offset = { x: surfaceOffset.x + pageBleed, y: surfaceOffset.y + pageBleed };
     const width = toPdfUnits(surface.width, unit);
     const height = toPdfUnits(surface.height, unit);
     const role = surface.role ?? "default";
@@ -741,6 +751,21 @@ function renderSurfaceDebugOverlays(
       }
     }
 
+    if (surface.printArea?.safeArea) {
+      const safeArea = surface.printArea.safeArea;
+      doc.strokeColor([255, 153, 0]);
+      doc.lineWidth(0.5);
+      doc.dash(3, { space: 3 });
+      doc.rect(
+        toPdfUnits(safeArea.x, unit),
+        toPdfUnits(safeArea.y, unit),
+        toPdfUnits(safeArea.width, unit),
+        toPdfUnits(safeArea.height, unit),
+      );
+      doc.stroke();
+      doc.undash();
+    }
+
     doc.fontSize(8);
     doc.fillColor(strokeColor);
     const label = `${surface.name || "Surface"} (${role})`;
@@ -783,15 +808,16 @@ export async function renderDocumentToPdf(
 
       for (const page of pages) {
         const unit = page.unit ?? "pt";
-        const width = toPositivePageSize(page.width, DEFAULT_PAGE_WIDTH, unit);
-        const height = toPositivePageSize(page.height, DEFAULT_PAGE_HEIGHT, unit);
+        const surfaces = page.surfaces ?? [];
+        const pageBleed = getPageBleed(surfaces, unit);
+        const width = toPositivePageSize(page.width, DEFAULT_PAGE_WIDTH, unit) + pageBleed * 2;
+        const height = toPositivePageSize(page.height, DEFAULT_PAGE_HEIGHT, unit) + pageBleed * 2;
 
         doc.addPage({ size: [width, height], margin: 0 });
 
-        const surfaces = page.surfaces ?? [];
-
         for (const surface of surfaces) {
-          const offset = getSurfaceOffset(surface, unit);
+          const surfaceOffset = getSurfaceOffset(surface, unit);
+          const offset = { x: surfaceOffset.x + pageBleed, y: surfaceOffset.y + pageBleed };
 
           if (surface.shape === "path" && surface.pathData) {
             renderPathSurface(doc, surface, unit, offset, options);
@@ -824,7 +850,7 @@ export async function renderDocumentToPdf(
         }
 
         if (options.debugSurfaces) {
-          renderSurfaceDebugOverlays(doc, surfaces, unit);
+          renderSurfaceDebugOverlays(doc, surfaces, unit, pageBleed);
         }
       }
 

@@ -150,6 +150,14 @@ async function getPageCount(buffer: Buffer): Promise<number> {
   return document.getPageCount();
 }
 
+async function getFirstPageSize(buffer: Buffer): Promise<{ readonly width: number; readonly height: number }> {
+  const document = await PdfLibDocument.load(buffer);
+  const page = document.getPage(0);
+  const size = page.getSize();
+
+  return { width: size.width, height: size.height };
+}
+
 function extractPdfStreams(buffer: Buffer): string[] {
   const pdfText = buffer.toString("latin1");
   const streams: string[] = [];
@@ -312,6 +320,82 @@ describe("renderDocumentToPdf", () => {
     );
 
     expect(extractPdfStreams(pdf).join("\n")).toContain("15 27 30 40 re");
+  });
+
+  it("expands page size and offsets content for surface bleed", async () => {
+    const surface = createSurface("surface-1", [createShapeElement("shape-1", 0, 0, 10, 20)]) as CreationFlowSurface;
+    const bleedSurface: CreationFlowSurface = {
+      ...surface,
+      printArea: {
+        x: 0,
+        y: 0,
+        width: 300,
+        height: 200,
+        bleed: 10,
+      },
+    };
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [bleedSurface])]),
+      { compress: false },
+    );
+
+    await expect(getFirstPageSize(pdf)).resolves.toEqual({ width: 320, height: 220 });
+    expect(extractPdfStreams(pdf).join("\n")).toContain("10 10 10 20 re");
+  });
+
+  it("converts mm bleed into PDF page units", async () => {
+    const surface = {
+      ...createSurface("surface-1", []),
+      unit: "mm" as const,
+      printArea: {
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 50,
+        bleed: 3,
+      },
+    } as CreationFlowSurface;
+    const page = {
+      ...createPage("page-1", [surface]),
+      width: 100,
+      height: 50,
+      unit: "mm" as const,
+    };
+
+    const pdf = await renderDocumentToPdf(createDocument([page]));
+    const size = await getFirstPageSize(pdf);
+
+    expect(size.width).toBeCloseTo((106 * 72) / 25.4, 5);
+    expect(size.height).toBeCloseTo((56 * 72) / 25.4, 5);
+  });
+
+  it("renders safe area guidelines when surface debugging is enabled", async () => {
+    const surface = {
+      ...createSurface("surface-1", []),
+      printArea: {
+        x: 0,
+        y: 0,
+        width: 300,
+        height: 200,
+        bleed: 5,
+        safeArea: {
+          x: 20,
+          y: 30,
+          width: 100,
+          height: 80,
+        },
+      },
+    } as CreationFlowSurface;
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [surface])]),
+      { compress: false, debugSurfaces: true },
+    );
+    const streams = extractPdfStreams(pdf).join("\n");
+
+    expect(streams).toContain("20 30 100 80 re");
+    expect(streams).toContain("[3 3] 0 d");
   });
 
   it("renders a PNG image element without crashing", async () => {
