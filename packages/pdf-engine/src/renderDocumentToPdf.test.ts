@@ -116,6 +116,29 @@ function createImageElement(
   };
 }
 
+function createGroupElement(
+  id: string,
+  x: number,
+  y: number,
+  children: readonly CreationFlowElement[],
+): CreationFlowElement {
+  return {
+    id: id as ElementId,
+    type: "group",
+    name: id,
+    x,
+    y,
+    width: 0,
+    height: 0,
+    rotation: 0,
+    opacity: 1,
+    visible: true,
+    locked: false,
+    zIndex: 0,
+    children,
+  } as unknown as CreationFlowElement;
+}
+
 function createPage(
   id: string,
   surfaces?: readonly CreationFlowSurface[],
@@ -365,6 +388,50 @@ describe("renderDocumentToPdf", () => {
     );
 
     expect(extractPdfStreams(pdf).join("\n")).toContain("15 27 30 40 re");
+  });
+
+  it("renders grouped children at the group's local origin", async () => {
+    const group = createGroupElement("group-1", 40, 50, [
+      createShapeElement("shape-1", 5, 6, 30, 40),
+      createShapeElement("shape-2", 0, 0, 10, 20),
+    ]);
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [createSurface("surface-1", [group])])]),
+      { compress: false },
+    );
+    const streams = extractPdfStreams(pdf).join("\n");
+
+    expect(streams).toContain("40 50 10 20 re");
+    expect(streams).toContain("45 56 30 40 re");
+  });
+
+  it("renders nested groups by applying each group's offset", async () => {
+    const inner = createGroupElement("inner", 5, 6, [
+      createShapeElement("shape-1", 0, 0, 10, 20),
+    ]);
+    const outer = createGroupElement("outer", 20, 30, [inner]);
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [createSurface("surface-1", [outer])])]),
+      { compress: false },
+    );
+
+    expect(extractPdfStreams(pdf).join("\n")).toContain("25 36 10 20 re");
+  });
+
+  it("skips invisible groups without rendering their children", async () => {
+    const invisibleGroup = {
+      ...createGroupElement("group-1", 10, 20, [createShapeElement("shape-1", 0, 0, 10, 20)]),
+      visible: false,
+    } as CreationFlowElement;
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [createSurface("surface-1", [invisibleGroup])])]),
+      { compress: false },
+    );
+
+    expect(extractPdfStreams(pdf).join("\n")).not.toContain("10 20 10 20 re");
   });
 
   it("expands page size and offsets content for surface bleed", async () => {

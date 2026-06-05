@@ -113,9 +113,12 @@ export interface CreationFlowShapeElement extends CreationFlowElementBase {
   readonly strokeWidth?: number;
 }
 
-export interface CreationFlowGroupElement extends CreationFlowElementBase {
+export interface CreationFlowGroupElement
+  extends Omit<CreationFlowElementBase, "rotation" | "opacity"> {
   readonly type: "group";
   readonly children: readonly CreationFlowElement[];
+  readonly rotation?: number;
+  readonly opacity?: number;
 }
 
 export interface CreationFlowVariableElement extends CreationFlowElementBase {

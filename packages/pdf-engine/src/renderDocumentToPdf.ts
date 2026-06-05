@@ -3,6 +3,7 @@ import { getElementZIndex } from "@creationflow/core";
 import type {
   CreationFlowDocument,
   CreationFlowElement,
+  CreationFlowGroupElement,
   CreationFlowImageElement,
   CreationFlowPatternElement,
   CreationFlowShapeElement,
@@ -116,20 +117,6 @@ function parseHexColor(color: string | undefined): RgbColor | undefined {
     g: Number.parseInt(fullHex.slice(2, 4), 16),
     b: Number.parseInt(fullHex.slice(4, 6), 16),
   };
-}
-
-function collectElements(elements: readonly CreationFlowElement[]): CreationFlowElement[] {
-  const collected: CreationFlowElement[] = [];
-
-  for (const element of elements) {
-    collected.push(element);
-
-    if (element.type === "group") {
-      collected.push(...collectElements(element.children));
-    }
-  }
-
-  return collected;
 }
 
 function warn(options: RenderDocumentToPdfOptions, warning: RenderDocumentWarning): void {
@@ -655,8 +642,63 @@ async function renderElement(
       await renderPatternElement(doc, element, surface, unit, offset, options);
       break;
     case "group":
+      await renderGroupElement(doc, element, surface, unit, offset, options, state);
+      break;
     case "variable":
       break;
+  }
+}
+
+async function renderGroupElement(
+  doc: PDFKit.PDFDocument,
+  group: CreationFlowGroupElement,
+  surface: CreationFlowSurface,
+  unit: CreationFlowUnit | undefined,
+  offset: { readonly x: number; readonly y: number },
+  options: RenderDocumentToPdfOptions,
+  state: RenderDocumentState,
+): Promise<void> {
+  if (group.visible === false) {
+    return;
+  }
+
+  const childCount = group.children.length;
+  if (childCount === 0) {
+    return;
+  }
+
+  const groupX = toPdfUnits(group.x, unit);
+  const groupY = toPdfUnits(group.y, unit);
+  const childOffset = { x: offset.x + groupX, y: offset.y + groupY };
+
+  const hasTransform = !!group.rotation || group.opacity < 1;
+  if (hasTransform) {
+    doc.save();
+    doc.translate(childOffset.x, childOffset.y);
+
+    if (group.rotation) {
+      doc.rotate(group.rotation, { origin: [0, 0] });
+    }
+
+    if (group.opacity < 1) {
+      doc.opacity(group.opacity);
+    }
+  }
+
+  const renderOffset = hasTransform
+    ? { x: 0, y: 0 }
+    : childOffset;
+
+  const sortedChildren = [...group.children].sort(
+    (a, b) => getElementZIndex(a) - getElementZIndex(b),
+  );
+
+  for (const child of sortedChildren) {
+    await renderElement(doc, child, surface, unit, renderOffset, options, state);
+  }
+
+  if (hasTransform) {
+    doc.restore();
   }
 }
 
@@ -918,8 +960,9 @@ export async function renderDocumentToPdf(
             renderPathSurface(doc, surface, unit, offset, options);
           }
 
-          const elements = collectElements(surface.elements);
-          elements.sort((a, b) => getElementZIndex(a) - getElementZIndex(b));
+          const elements = [...surface.elements].sort(
+            (a, b) => getElementZIndex(a) - getElementZIndex(b),
+          );
 
           let clipped = false;
           const isPathClip = surface.shape === "path" && surface.pathData && surface.clipContent;
