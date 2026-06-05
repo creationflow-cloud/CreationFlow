@@ -26,6 +26,29 @@ export interface UpdateRenderJobInput {
   readonly errorMessage?: string | null;
 }
 
+export class InvalidRenderJobStatusTransitionError extends Error {
+  constructor(from: ApiRenderJobStatus, to: ApiRenderJobStatus) {
+    super(`Invalid render job status transition: ${from} -> ${to}.`);
+  }
+}
+
+const ALLOWED_STATUS_TRANSITIONS: Record<ApiRenderJobStatus, readonly ApiRenderJobStatus[]> = {
+  pending: ["processing", "failed"],
+  processing: ["done", "failed"],
+  done: [],
+  failed: [],
+};
+
+function assertValidStatusTransition(from: ApiRenderJobStatus, to: ApiRenderJobStatus): void {
+  if (from === to) {
+    return;
+  }
+
+  if (!ALLOWED_STATUS_TRANSITIONS[from].includes(to)) {
+    throw new InvalidRenderJobStatusTransitionError(from, to);
+  }
+}
+
 function toOutputValue(value: Prisma.JsonValue): Record<string, unknown> | undefined {
   if (value === null || Array.isArray(value) || typeof value !== "object") {
     return undefined;
@@ -130,6 +153,10 @@ export async function updateRenderJob(
 
   if (!existing) {
     return null;
+  }
+
+  if (patch.status !== undefined) {
+    assertValidStatusTransition(toApiRenderJobStatus(existing.status), patch.status);
   }
 
   const job = await db.renderJob.update({
