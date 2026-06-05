@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FileSystemStorageProvider, MemoryStorageProvider } from "@creationflow/storage";
@@ -11,8 +11,9 @@ const TINY_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
   "base64",
 );
+const TEST_FONT_PATH = "/usr/share/fonts/open-sans/OpenSans-Regular.ttf";
 
-function createSampleDocument(includeImage = false) {
+function createSampleDocument(includeImage = false, includeFont = false) {
   return {
     id: "doc-1",
     version: "0.0.0",
@@ -68,7 +69,7 @@ function createSampleDocument(includeImage = false) {
                 locked: false,
                 zIndex: 1,
                 text: "Render me",
-                fontFamily: "Helvetica",
+                fontFamily: includeFont ? "OpenSans-Regular" : "Helvetica",
                 fontSize: 12,
                 color: "#1d2738",
                 align: "left",
@@ -99,7 +100,17 @@ function createSampleDocument(includeImage = false) {
       },
     ],
     variables: [],
-    assets: [],
+    assets: includeFont
+      ? [
+          {
+            id: "font-asset",
+            type: "font",
+            name: "OpenSans-Regular.ttf",
+            source: "font-key",
+            mimeType: "font/ttf",
+          },
+        ]
+      : [],
     rules: [],
   };
 }
@@ -296,5 +307,24 @@ describe("renderRenderJobToPdf", () => {
         assetId: "input-image-asset",
       },
     ]);
+  });
+
+  it("renders a configuration containing a font asset from storage", async () => {
+    const { db, state } = createFakeDb(createSampleDocument(false, true));
+    const storage = new MemoryStorageProvider();
+
+    await storage.putObject({
+      bucket: "assets/workspace-1",
+      key: "font-key",
+      body: await readFile(TEST_FONT_PATH),
+      contentType: "font/ttf",
+    });
+
+    const result = await renderRenderJobToPdf(db, storage, "job-1");
+
+    expect(result.status).toBe("done");
+    expect(result.output?.warnings).toBeUndefined();
+    expect(state.assets).toHaveLength(1);
+    expect(state.assets[0].mimeType).toBe("application/pdf");
   });
 });

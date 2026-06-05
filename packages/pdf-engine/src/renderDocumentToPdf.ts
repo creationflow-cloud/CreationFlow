@@ -29,6 +29,11 @@ export interface ResolvedPdfAsset {
   readonly mimeType?: string;
 }
 
+export interface ResolvedPdfFont {
+  readonly data: Uint8Array | Buffer;
+  readonly mimeType?: string;
+}
+
 export interface RenderDocumentWarning {
   readonly code:
     | "image_resolver_missing"
@@ -36,6 +41,10 @@ export interface RenderDocumentWarning {
     | "image_resolve_failed"
     | "unsupported_image_type"
     | "image_render_failed"
+    | "font_resolver_missing"
+    | "font_not_found"
+    | "font_resolve_failed"
+    | "font_load_failed"
     | "path_render_failed"
     | "pattern_resolver_missing"
     | "pattern_asset_not_found"
@@ -48,8 +57,13 @@ export interface RenderDocumentWarning {
 export interface RenderDocumentToPdfOptions {
   readonly compress?: boolean;
   readonly resolveAsset?: (assetId: AssetId) => Promise<ResolvedPdfAsset | null | undefined>;
+  readonly resolveFont?: (fontFamily: string, fontWeight?: string) => Promise<ResolvedPdfFont | null | undefined>;
   readonly onWarning?: (warning: RenderDocumentWarning) => void;
   readonly debugSurfaces?: boolean;
+}
+
+interface RenderDocumentState {
+  readonly fontCache: Map<string, string>;
 }
 
 export function toPdfUnits(value: number, unit: CreationFlowUnit | undefined): number {
@@ -163,12 +177,89 @@ function getPdfTextFontName(fontFamily: string | undefined, fontWeight: string |
   return `${family}-Bold`;
 }
 
-function renderTextElement(
+function getFontCacheKey(fontFamily: string | undefined, fontWeight: string | undefined): string {
+  return `${fontFamily ?? "Helvetica"}:${fontWeight ?? "normal"}`;
+}
+
+async function setTextFont(
+  doc: PDFKit.PDFDocument,
+  element: CreationFlowTextElement,
+  options: RenderDocumentToPdfOptions,
+  state: RenderDocumentState,
+): Promise<void> {
+  const requestedFamily = element.fontFamily?.trim() || "Helvetica";
+
+  if (STANDARD_FONT_FAMILIES.has(requestedFamily)) {
+    doc.font(getPdfTextFontName(requestedFamily, element.fontWeight));
+    return;
+  }
+
+  const cacheKey = getFontCacheKey(requestedFamily, element.fontWeight);
+  const cachedFontName = state.fontCache.get(cacheKey);
+
+  if (cachedFontName) {
+    doc.font(cachedFontName);
+    return;
+  }
+
+  if (!options.resolveFont) {
+    warn(options, {
+      code: "font_resolver_missing",
+      elementId: element.id,
+      message: `Font family "${requestedFamily}" fell back to Helvetica because no font resolver was provided.`,
+    });
+    doc.font(getPdfTextFontName("Helvetica", element.fontWeight));
+    return;
+  }
+
+  let font: ResolvedPdfFont | null | undefined;
+
+  try {
+    font = await options.resolveFont(requestedFamily, element.fontWeight);
+  } catch (error) {
+    warn(options, {
+      code: "font_resolve_failed",
+      elementId: element.id,
+      message: error instanceof Error ? error.message : `Font family "${requestedFamily}" could not be resolved.`,
+    });
+    doc.font(getPdfTextFontName("Helvetica", element.fontWeight));
+    return;
+  }
+
+  if (!font) {
+    warn(options, {
+      code: "font_not_found",
+      elementId: element.id,
+      message: `Font family "${requestedFamily}" was not found and fell back to Helvetica.`,
+    });
+    doc.font(getPdfTextFontName("Helvetica", element.fontWeight));
+    return;
+  }
+
+  const fontName = `CreationFlowFont${state.fontCache.size + 1}`;
+
+  try {
+    doc.registerFont(fontName, Buffer.from(font.data));
+    state.fontCache.set(cacheKey, fontName);
+    doc.font(fontName);
+  } catch (error) {
+    warn(options, {
+      code: "font_load_failed",
+      elementId: element.id,
+      message: error instanceof Error ? error.message : `Font family "${requestedFamily}" could not be loaded.`,
+    });
+    doc.font(getPdfTextFontName("Helvetica", element.fontWeight));
+  }
+}
+
+async function renderTextElement(
   doc: PDFKit.PDFDocument,
   element: CreationFlowTextElement,
   unit: CreationFlowUnit | undefined,
   offset: { readonly x: number; readonly y: number },
-): void {
+  options: RenderDocumentToPdfOptions,
+  state: RenderDocumentState,
+): Promise<void> {
   if (!element.visible) {
     return;
   }
@@ -179,7 +270,7 @@ function renderTextElement(
   const height = Math.max(toPdfUnits(element.height, unit), 1);
   const fontSize = Math.max(toPdfUnits(element.fontSize ?? DEFAULT_TEXT_SIZE, unit), 1);
 
-  doc.font(getPdfTextFontName(element.fontFamily, element.fontWeight));
+  await setTextFont(doc, element, options, state);
   doc.fontSize(fontSize);
   setFillColor(doc, element.color) || doc.fillColor("black");
   doc.text(element.text ?? "", x, y, {
@@ -548,10 +639,11 @@ async function renderElement(
   unit: CreationFlowUnit | undefined,
   offset: { readonly x: number; readonly y: number },
   options: RenderDocumentToPdfOptions,
+  state: RenderDocumentState,
 ): Promise<void> {
   switch (element.type) {
     case "text":
-      renderTextElement(doc, element, unit, offset);
+      await renderTextElement(doc, element, unit, offset, options, state);
       break;
     case "shape":
       renderShapeElement(doc, element, unit, offset);
@@ -789,6 +881,9 @@ export async function renderDocumentToPdf(
 
   return await new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
+    const state: RenderDocumentState = {
+      fontCache: new Map(),
+    };
     const doc = new PDFDocument({
       autoFirstPage: false,
       margin: 0,
@@ -841,7 +936,7 @@ export async function renderDocumentToPdf(
             : offset;
 
           for (const element of elements) {
-            await renderElement(doc, element, surface, unit, elementOffset, options);
+            await renderElement(doc, element, surface, unit, elementOffset, options, state);
           }
 
           if (clipped) {

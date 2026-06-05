@@ -1,5 +1,6 @@
 import { PDFDocument as PdfLibDocument } from "pdf-lib";
 import { describe, expect, it } from "vitest";
+import { readFile } from "node:fs/promises";
 import type {
   CreationFlowDocument,
   CreationFlowElement,
@@ -25,6 +26,7 @@ const TINY_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
   "base64",
 );
+const TEST_FONT_PATH = "/usr/share/fonts/open-sans/OpenSans-Regular.ttf";
 
 function createSurface(
   id: string,
@@ -239,6 +241,49 @@ describe("renderDocumentToPdf", () => {
     expect(pdfText).toContain("/BaseFont /Courier-Bold");
     expect(streams).toContain("18 Tf");
     expect(streams).toContain("0.06666666666666667 0.13333333333333333 0.2 scn");
+  });
+
+  it("loads and embeds a configured font through the font resolver", async () => {
+    const fontData = await readFile(TEST_FONT_PATH);
+    const resolvedFontFamilies: string[] = [];
+    const textElement: CreationFlowElement = {
+      ...createTextElement("text-1", 20, 30),
+      fontFamily: "OpenSans-Regular",
+    };
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [createSurface("surface-1", [textElement])])]),
+      {
+        compress: false,
+        resolveFont: async (fontFamily) => {
+          resolvedFontFamilies.push(fontFamily);
+          return { data: fontData, mimeType: "font/ttf" };
+        },
+      },
+    );
+
+    expect(resolvedFontFamilies).toEqual(["OpenSans-Regular"]);
+    expect(pdf.toString("latin1")).toContain("OpenSans");
+  });
+
+  it("falls back with a warning when a configured font is missing", async () => {
+    const warnings: RenderDocumentWarning[] = [];
+    const textElement: CreationFlowElement = {
+      ...createTextElement("text-1", 20, 30),
+      fontFamily: "MissingFont",
+    };
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [createSurface("surface-1", [textElement])])]),
+      {
+        compress: false,
+        resolveFont: async () => null,
+        onWarning: (warning) => warnings.push(warning),
+      },
+    );
+
+    expect(warnings).toMatchObject([{ code: "font_not_found", elementId: "text-1" }]);
+    expect(pdf.toString("latin1")).toContain("/BaseFont /Helvetica");
   });
 
   it("renders a rectangle shape element without crashing", async () => {

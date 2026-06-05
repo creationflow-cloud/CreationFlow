@@ -82,8 +82,10 @@ export async function renderRenderJobToPdf(
       throw new Error("Configuration document is not renderable.");
     }
 
+    const renderDocument = configuration.document;
+
     if (process.env.CREATIONFLOW_PDF_DEBUG_VERBOSE === "true") {
-      const doc = configuration.document as Record<string, unknown>;
+      const doc = renderDocument as Record<string, unknown>;
       const pages = (doc.pages as Record<string, unknown>[]) ?? [];
       console.log("=== RENDER DOCUMENT STRUCTURE DEBUG ===");
       console.log(`Total pages: ${pages.length}`);
@@ -120,7 +122,7 @@ export async function renderRenderJobToPdf(
 
     const renderWarnings: RenderDocumentWarning[] = [];
     const debugSurfaces = process.env.CREATIONFLOW_PDF_DEBUG_SURFACES === "true";
-    const pdf = await renderDocumentToPdf(configuration.document, {
+    const pdf = await renderDocumentToPdf(renderDocument, {
       resolveAsset: async (assetId) => {
         const asset = await getAssetById(db, assetId);
 
@@ -136,6 +138,37 @@ export async function renderRenderJobToPdf(
         return {
           data: object.body,
           mimeType: asset.mimeType,
+        };
+      },
+      resolveFont: async (fontFamily) => {
+        const normalizedFontFamily = fontFamily.toLowerCase();
+        const documentFont = renderDocument.assets.find((asset) => {
+          if (asset.type !== "font") {
+            return false;
+          }
+
+          const normalizedName = asset.name.toLowerCase();
+          const normalizedNameWithoutExtension = normalizedName.replace(/\.[^.]+$/, "");
+
+          return (
+            asset.id === fontFamily ||
+            normalizedName === normalizedFontFamily ||
+            normalizedNameWithoutExtension === normalizedFontFamily
+          );
+        });
+
+        if (!documentFont) {
+          return null;
+        }
+
+        const object = await storage.getObject({
+          bucket: `assets/${renderDocument.metadata.workspaceId}`,
+          key: documentFont.source,
+        });
+
+        return {
+          data: object.body,
+          mimeType: documentFont.mimeType,
         };
       },
       onWarning: (warning) => {
