@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import Fastify from "fastify";
 import { FileSystemStorageProvider, MemoryStorageProvider } from "@creationflow/storage";
 import type { PrismaClient } from "@creationflow/database";
 
+import { registerAssetFileRoutes } from "../routes/asset-file.js";
 import { renderRenderJobToPdf } from "./render-job-renderer.js";
 
 const TINY_PNG = Buffer.from(
@@ -183,7 +185,9 @@ function createFakeDb(document: Record<string, unknown>) {
     },
     asset: {
       findUnique: async ({ where }: { where: { id: string } }) =>
-        where.id === state.inputAsset.id ? state.inputAsset : null,
+        where.id === state.inputAsset.id
+          ? state.inputAsset
+          : state.assets.find((asset) => asset.id === where.id) ?? null,
       create: async ({ data }: { data: Record<string, unknown> }) => {
         const asset = {
           id: "asset-1",
@@ -229,6 +233,35 @@ describe("renderRenderJobToPdf", () => {
     });
 
     expect(Buffer.from(stored.body).subarray(0, 4).toString("latin1")).toBe("%PDF");
+  });
+
+  it("renders, stores and downloads a generated PDF asset", async () => {
+    const { db, state } = createFakeDb(createSampleDocument());
+    const storage = new MemoryStorageProvider();
+    const server = Fastify({ logger: false });
+
+    server.decorate("storage", storage);
+    server.decorate("db", db);
+    await registerAssetFileRoutes(server);
+
+    try {
+      const result = await renderRenderJobToPdf(db, storage, "job-1");
+
+      expect(result.status).toBe("done");
+      expect(result.output?.downloadUrl).toBe("/assets/asset-1/file");
+      expect(state.assets).toHaveLength(1);
+
+      const response = await server.inject({
+        method: "GET",
+        url: result.output?.downloadUrl as string,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers["content-type"]).toBe("application/pdf");
+      expect(response.rawPayload.subarray(0, 4).toString("latin1")).toBe("%PDF");
+    } finally {
+      await server.close();
+    }
   });
 
   it("marks the render job failed when the configuration document is invalid", async () => {
