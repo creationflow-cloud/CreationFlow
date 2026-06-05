@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { MemoryStorageProvider } from "@creationflow/storage";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { FileSystemStorageProvider, MemoryStorageProvider } from "@creationflow/storage";
 import type { PrismaClient } from "@creationflow/database";
 
 import { renderRenderJobToPdf } from "./render-job-renderer.js";
@@ -246,5 +249,52 @@ describe("renderRenderJobToPdf", () => {
     expect(result.output?.warnings).toBeUndefined();
     expect(state.assets).toHaveLength(1);
     expect(state.assets[0].mimeType).toBe("application/pdf");
+  });
+
+  it("renders a configuration containing an image asset from file system storage", async () => {
+    const uploadDir = await mkdtemp(join(tmpdir(), "creationflow-render-"));
+
+    try {
+      const { db, state } = createFakeDb(createSampleDocument(true));
+      const storage = new FileSystemStorageProvider({ uploadDir, baseUrl: "http://localhost" });
+
+      await storage.init();
+      await storage.putObject({
+        bucket: "assets/workspace-1",
+        key: "input-image-key",
+        body: TINY_PNG,
+        contentType: "image/png",
+      });
+
+      const result = await renderRenderJobToPdf(db, storage, "job-1");
+
+      expect(result.status).toBe("done");
+      expect(result.output?.warnings).toBeUndefined();
+      expect(state.assets).toHaveLength(1);
+
+      const storedPdf = await storage.getObject({
+        bucket: "assets/workspace-1",
+        key: state.assets[0].source,
+      });
+
+      expect(Buffer.from(storedPdf.body).subarray(0, 4).toString("latin1")).toBe("%PDF");
+    } finally {
+      await rm(uploadDir, { recursive: true, force: true });
+    }
+  });
+
+  it("completes rendering with a warning when an image file is missing from storage", async () => {
+    const { db } = createFakeDb(createSampleDocument(true));
+    const storage = new MemoryStorageProvider();
+
+    const result = await renderRenderJobToPdf(db, storage, "job-1");
+
+    expect(result.status).toBe("done");
+    expect(result.output?.warnings).toMatchObject([
+      {
+        code: "image_resolve_failed",
+        assetId: "input-image-asset",
+      },
+    ]);
   });
 });
