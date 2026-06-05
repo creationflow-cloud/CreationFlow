@@ -76,7 +76,9 @@ export function toPdfUnits(value: number, unit: CreationFlowUnit | undefined): n
     case "mm":
       return (value * 72) / 25.4;
     case "pt":
+      return value;
     case "px":
+      return (value * 72) / 96;
     default:
       return value;
   }

@@ -7,6 +7,7 @@ import type {
   CreationFlowImageElement,
   CreationFlowPage,
   CreationFlowSurface,
+  CreationFlowUnit,
   AssetId,
   DocumentId,
   ElementId,
@@ -600,7 +601,7 @@ describe("PDF coordinate helpers", () => {
 
   it("converts units consistently", () => {
     expect(toPdfUnits(12, "pt")).toBe(12);
-    expect(toPdfUnits(12, "px")).toBe(12);
+    expect(toPdfUnits(96, "px")).toBeCloseTo(72, 6);
     expect(toPdfUnits(25.4, "mm")).toBe(72);
   });
 
@@ -1683,5 +1684,91 @@ describe("debugSurfaces", () => {
     expect(Buffer.isBuffer(pdf)).toBe(true);
     expect(pdf.length).toBeGreaterThan(0);
     expect(pdf.subarray(0, 4).toString("latin1")).toBe("%PDF");
+  });
+});
+
+describe("toPdfUnits", () => {
+  it("keeps pt values unchanged", () => {
+    expect(toPdfUnits(72, "pt")).toBe(72);
+  });
+
+  it("converts mm values to points using 72 / 25.4 ratio", () => {
+    expect(toPdfUnits(25.4, "mm")).toBeCloseTo(72, 6);
+    expect(toPdfUnits(10, "mm")).toBeCloseTo((10 * 72) / 25.4, 6);
+  });
+
+  it("converts px values to points using 72 / 96 ratio", () => {
+    expect(toPdfUnits(96, "px")).toBeCloseTo(72, 6);
+    expect(toPdfUnits(48, "px")).toBeCloseTo(36, 6);
+  });
+
+  it("treats undefined or unknown units as identity", () => {
+    expect(toPdfUnits(42, undefined)).toBe(42);
+    expect(toPdfUnits(42, "em" as unknown as CreationFlowUnit)).toBe(42);
+  });
+
+  it("returns 0 for non-finite values", () => {
+    expect(toPdfUnits(Number.NaN, "pt")).toBe(0);
+    expect(toPdfUnits(Number.POSITIVE_INFINITY, "mm")).toBe(0);
+  });
+});
+
+describe("convertTopLeftToPdfY", () => {
+  it("passes the top-left y coordinate through unchanged", () => {
+    expect(convertTopLeftToPdfY(841.89, 123, 60)).toBe(123);
+  });
+});
+
+describe("renderDocumentToPdf coordinate system", () => {
+  it("places a rect element at the given top-left coordinates in pt", async () => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [
+          createSurface("surface-1", [createShapeElement("shape-1", 12.5, 34.5, 10, 20)]),
+        ]),
+      ]),
+      { compress: false },
+    );
+
+    expect(extractPdfStreams(pdf).join("\n")).toContain("12.5 34.5 10 20 re");
+  });
+
+  it("scales mm-based page units to points for rect rendering", async () => {
+    const mmPage: CreationFlowPage = {
+      ...createPage("page-1", [createSurface("surface-1", [createShapeElement("shape-1", 25.4, 12.7, 12.7, 25.4)])]),
+      unit: "mm",
+    };
+
+    const pdf = await renderDocumentToPdf(createDocument([mmPage]), { compress: false });
+
+    expect(extractPdfStreams(pdf).join("\n")).toContain("72 36 36 72 re");
+  });
+
+  it("scales px-based page units to points for rect rendering", async () => {
+    const pxPage: CreationFlowPage = {
+      ...createPage("page-1", [createSurface("surface-1", [createShapeElement("shape-1", 96, 48, 96, 96)])]),
+      unit: "px",
+    };
+
+    const pdf = await renderDocumentToPdf(createDocument([pxPage]), { compress: false });
+
+    expect(extractPdfStreams(pdf).join("\n")).toContain("72 36 72 72 re");
+  });
+
+  it("places text at the configured top-left coordinate", async () => {
+    const text = {
+      ...createTextElement("text-1", 25, 75),
+      width: 100,
+      height: 20,
+      text: "Origin",
+    };
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [createSurface("surface-1", [text])])]),
+      { compress: false },
+    );
+
+    const streams = extractPdfStreams(pdf).join("\n");
+    expect(streams).toContain("1 0 0 1 25");
   });
 });
