@@ -30,7 +30,7 @@ export interface PdfRenderPlanElement {
   readonly y: number;
   readonly width: number;
   readonly height: number;
-  readonly rotation: number;
+  readonly rotation?: number;
   readonly zIndex: number;
   readonly visible: boolean;
   readonly assetId?: AssetId;

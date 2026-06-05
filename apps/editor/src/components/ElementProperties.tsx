@@ -198,7 +198,7 @@ export function ElementProperties({
       )}
       <NumberInput
         label="Rotation"
-        value={element.rotation}
+        value={element.rotation ?? 0}
         onChange={(rotation) => onUpdate({ rotation })}
         min={0}
         max={360}
@@ -211,7 +211,7 @@ export function ElementProperties({
       />
       <NumberInput
         label="Opacity"
-        value={element.opacity}
+        value={element.opacity ?? 1}
         onChange={(opacity) => onUpdate({ opacity })}
         min={0}
         max={1}

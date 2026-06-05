@@ -20,6 +20,8 @@ export interface CreationFlowDocumentMetadata {
   readonly configurationId?: ConfigurationId;
   readonly createdAt: string;
   readonly updatedAt: string;
+  readonly dpi?: number;
+  readonly minAssetDpi?: number;
 }
 
 export interface CreationFlowPrintArea {

@@ -28,6 +28,8 @@ interface RgbColor {
 export interface ResolvedPdfAsset {
   readonly data: Uint8Array | Buffer;
   readonly mimeType?: string;
+  readonly width?: number;
+  readonly height?: number;
 }
 
 export interface ResolvedPdfFont {
@@ -41,6 +43,7 @@ export interface RenderDocumentWarning {
     | "image_not_found"
     | "image_resolve_failed"
     | "unsupported_image_type"
+    | "image_low_resolution"
     | "image_render_failed"
     | "font_resolver_missing"
     | "font_not_found"
@@ -57,6 +60,8 @@ export interface RenderDocumentWarning {
 
 export interface RenderDocumentToPdfOptions {
   readonly compress?: boolean;
+  readonly targetDpi?: number;
+  readonly minAssetDpi?: number;
   readonly resolveAsset?: (assetId: AssetId) => Promise<ResolvedPdfAsset | null | undefined>;
   readonly resolveFont?: (fontFamily: string, fontWeight?: string) => Promise<ResolvedPdfFont | null | undefined>;
   readonly onWarning?: (warning: RenderDocumentWarning) => void;
@@ -65,6 +70,8 @@ export interface RenderDocumentToPdfOptions {
 
 interface RenderDocumentState {
   readonly fontCache: Map<string, string>;
+  readonly targetDpi: number;
+  readonly minAssetDpi: number;
 }
 
 export function toPdfUnits(value: number, unit: CreationFlowUnit | undefined): number {
@@ -123,6 +130,49 @@ function parseHexColor(color: string | undefined): RgbColor | undefined {
 
 function warn(options: RenderDocumentToPdfOptions, warning: RenderDocumentWarning): void {
   options.onWarning?.(warning);
+}
+
+function getEffectiveAssetDpi(
+  asset: { readonly width?: number | null; readonly height?: number | null },
+  elementWidthPt: number,
+  elementHeightPt: number,
+): number | undefined {
+  const assetWidth = asset.width ?? 0;
+  const assetHeight = asset.height ?? 0;
+  const widthInches = elementWidthPt / 72;
+  const heightInches = elementHeightPt / 72;
+
+  if (widthInches <= 0 || heightInches <= 0 || assetWidth <= 0 || assetHeight <= 0) {
+    return undefined;
+  }
+
+  return Math.min(assetWidth / widthInches, assetHeight / heightInches);
+}
+
+function maybeWarnAssetResolution(
+  options: RenderDocumentToPdfOptions,
+  elementId: ElementId,
+  assetId: AssetId,
+  asset: { readonly width?: number | null; readonly height?: number | null },
+  elementWidthPt: number,
+  elementHeightPt: number,
+): void {
+  const minDpi = options.minAssetDpi;
+  if (typeof minDpi !== "number" || minDpi <= 0) {
+    return;
+  }
+
+  const effectiveDpi = getEffectiveAssetDpi(asset, elementWidthPt, elementHeightPt);
+  if (effectiveDpi === undefined || effectiveDpi >= minDpi) {
+    return;
+  }
+
+  warn(options, {
+    code: "image_low_resolution",
+    elementId,
+    assetId,
+    message: `Image asset resolves to ~${effectiveDpi.toFixed(1)} DPI which is below the configured minimum of ${minDpi} DPI.`,
+  });
 }
 
 function isSupportedImageMimeType(mimeType: string | undefined): boolean {
@@ -392,6 +442,8 @@ async function renderImageElement(
   const height = Math.max(toPdfUnits(element.height, unit), 1);
   const image = Buffer.from(asset.data);
 
+  maybeWarnAssetResolution(options, element.id, element.assetId, asset, width, height);
+
   try {
     if (element.fit === "contain") {
       doc.image(image, x, y, { fit: [width, height] });
@@ -602,6 +654,7 @@ async function renderPatternElement(
     }
 
     const image = Buffer.from(asset.data);
+    maybeWarnAssetResolution(options, element.id, element.assetId, asset, tileW, tileH);
     try {
       for (let y = offY; y < surfaceH + tileH; y += stepY) {
         for (let x = offX; x < surfaceW + tileW; x += stepX) {
@@ -673,7 +726,8 @@ async function renderGroupElement(
   const groupY = toPdfUnits(group.y, unit);
   const childOffset = { x: offset.x + groupX, y: offset.y + groupY };
 
-  const hasTransform = !!group.rotation || group.opacity < 1;
+  const groupOpacity = group.opacity ?? 1;
+  const hasTransform = !!group.rotation || groupOpacity < 1;
   if (hasTransform) {
     doc.save();
     doc.translate(childOffset.x, childOffset.y);
@@ -682,8 +736,8 @@ async function renderGroupElement(
       doc.rotate(group.rotation, { origin: [0, 0] });
     }
 
-    if (group.opacity < 1) {
-      doc.opacity(group.opacity);
+    if (groupOpacity < 1) {
+      doc.opacity(groupOpacity);
     }
   }
 
@@ -927,6 +981,14 @@ export async function renderDocumentToPdf(
     const chunks: Buffer[] = [];
     const state: RenderDocumentState = {
       fontCache: new Map(),
+      targetDpi: options.targetDpi ?? document.metadata.dpi ?? DEFAULT_TARGET_DPI,
+      minAssetDpi:
+        options.minAssetDpi ?? document.metadata.minAssetDpi ?? DEFAULT_MIN_ASSET_DPI,
+    };
+    const effectiveOptions: RenderDocumentToPdfOptions = {
+      ...options,
+      targetDpi: state.targetDpi,
+      minAssetDpi: state.minAssetDpi,
     };
     const doc = new PDFDocument({
       autoFirstPage: false,
@@ -981,7 +1043,7 @@ export async function renderDocumentToPdf(
             : offset;
 
           for (const element of elements) {
-            await renderElement(doc, element, surface, unit, elementOffset, options, state);
+            await renderElement(doc, element, surface, unit, elementOffset, effectiveOptions, state);
           }
 
           if (clipped) {
@@ -1001,3 +1063,6 @@ export async function renderDocumentToPdf(
     });
   });
 }
+
+export const DEFAULT_TARGET_DPI = 300;
+export const DEFAULT_MIN_ASSET_DPI = 150;

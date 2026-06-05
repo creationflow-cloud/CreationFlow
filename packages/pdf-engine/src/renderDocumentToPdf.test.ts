@@ -18,6 +18,7 @@ import type {
 
 import {
   convertTopLeftToPdfY,
+  DEFAULT_TARGET_DPI,
   renderDocumentToPdf,
   toPdfUnits,
 } from "./renderDocumentToPdf.js";
@@ -1719,6 +1720,66 @@ describe("convertTopLeftToPdfY", () => {
   });
 });
 
+describe("DPI configuration", () => {
+  it("emits a low-resolution warning when an image falls below the minimum DPI", async () => {
+    const warnings: RenderDocumentWarning[] = [];
+    const image = createImageElement("img-1", "asset-low");
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [createSurface("surface-1", [image])])]),
+      {
+        compress: false,
+        minAssetDpi: 300,
+        onWarning: (warning) => warnings.push(warning),
+        resolveAsset: async () => ({ data: TINY_PNG, mimeType: "image/png", width: 1, height: 1 }),
+      },
+    );
+
+    expect(pdf.length).toBeGreaterThan(0);
+    expect(warnings).toMatchObject([
+      {
+        code: "image_low_resolution",
+        elementId: "img-1",
+        assetId: "asset-low",
+      },
+    ]);
+  });
+
+  it("does not warn when an image meets the minimum DPI", async () => {
+    const warnings: RenderDocumentWarning[] = [];
+    const image = createImageElement("img-1", "asset-high");
+
+    await renderDocumentToPdf(
+      createDocument([createPage("page-1", [createSurface("surface-1", [image])])]),
+      {
+        compress: false,
+        minAssetDpi: 72,
+        onWarning: (warning) => warnings.push(warning),
+        resolveAsset: async () => ({ data: TINY_PNG, mimeType: "image/png", width: 100, height: 100 }),
+      },
+    );
+
+    expect(warnings).toEqual([]);
+  });
+
+  it("warns using the document's minAssetDpi when no render option overrides it", async () => {
+    const warnings: RenderDocumentWarning[] = [];
+    const image = createImageElement("img-1", "asset-1");
+    const document = createDocument([
+      createPage("page-1", [createSurface("surface-1", [image])]),
+    ]);
+    document.metadata = { ...document.metadata, minAssetDpi: 300 };
+
+    await renderDocumentToPdf(document, {
+      compress: false,
+      onWarning: (warning) => warnings.push(warning),
+      resolveAsset: async () => ({ data: TINY_PNG, mimeType: "image/png", width: 10, height: 10 }),
+    });
+
+    expect(warnings).toMatchObject([{ code: "image_low_resolution" }]);
+  });
+});
+
 describe("renderDocumentToPdf coordinate system", () => {
   it("places a rect element at the given top-left coordinates in pt", async () => {
     const pdf = await renderDocumentToPdf(
@@ -1770,5 +1831,12 @@ describe("renderDocumentToPdf coordinate system", () => {
 
     const streams = extractPdfStreams(pdf).join("\n");
     expect(streams).toContain("1 0 0 1 25");
+  });
+});
+
+describe("DPI configuration", () => {
+  it("exposes a positive default target DPI", () => {
+    expect(typeof DEFAULT_TARGET_DPI).toBe("number");
+    expect(DEFAULT_TARGET_DPI).toBeGreaterThan(0);
   });
 });
