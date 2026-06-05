@@ -293,6 +293,24 @@ describe("renderDocumentToPdf", () => {
     await expect(getPageCount(pdf)).resolves.toBe(1);
   });
 
+  it.each([
+    ["fill", "30 0 0 -40 10 60 cm"],
+    ["contain", "30 0 0 -30 10 50 cm"],
+    ["cover", "40 0 0 -40 10 60 cm"],
+  ] as const)("renders image fit mode %s with the expected placement", async (fit, expectedMatrix) => {
+    const pdf = await renderDocumentToPdf(
+      createDocument([
+        createPage("page-1", [createSurface("surface-1", [createImageElement("image-1", "asset-1", fit)])]),
+      ]),
+      {
+        compress: false,
+        resolveAsset: async () => ({ data: TINY_PNG, mimeType: "image/png" }),
+      },
+    );
+
+    expect(extractPdfStreams(pdf).join("\n")).toContain(expectedMatrix);
+  });
+
   it("calls the image resolver with the image assetId", async () => {
     const resolvedAssetIds: string[] = [];
 
