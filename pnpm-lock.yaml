@@ -224,6 +224,9 @@ importers:
       '@creationflow/core':
         specifier: workspace:*
         version: link:../core
+      '@creationflow/rules-engine':
+        specifier: workspace:*
+        version: link:../rules-engine
       '@creationflow/schema':
         specifier: workspace:*
         version: link:../schema

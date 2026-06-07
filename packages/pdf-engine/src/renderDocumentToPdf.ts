@@ -1,17 +1,28 @@
 import PDFDocument from "pdfkit";
 import { getElementZIndex } from "@creationflow/core";
+import { evaluateRules } from "@creationflow/rules-engine";
+import type {
+  RuleEvaluationError,
+  RuleEvaluationResult,
+  RuleEvaluationWarning,
+  RuleMandatoryViolation,
+  RuleVariableValue,
+} from "@creationflow/rules-engine";
 import type {
   CreationFlowDocument,
   CreationFlowElement,
   CreationFlowGroupElement,
   CreationFlowImageElement,
   CreationFlowPatternElement,
+  CreationFlowPage,
   CreationFlowShapeElement,
   CreationFlowSurface,
   CreationFlowTextElement,
   CreationFlowUnit,
   AssetId,
   ElementId,
+  PageId,
+  SurfaceId,
 } from "@creationflow/schema";
 
 const DEFAULT_PAGE_WIDTH = 595.28;
@@ -68,7 +79,104 @@ export interface RenderDocumentToPdfOptions {
   readonly resolveFont?: (fontFamily: string, fontWeight?: string) => Promise<ResolvedPdfFont | null | undefined>;
   readonly onWarning?: (warning: RenderDocumentWarning) => void;
   readonly debugSurfaces?: boolean;
+  readonly variables?: Readonly<Record<string, RuleVariableValue>>;
 }
+
+export interface RuleEffectSummary {
+  readonly hiddenSurfaceKeys: ReadonlySet<string>;
+  readonly variableOverrides: Readonly<Record<string, RuleVariableValue>>;
+  readonly appliedRuleNames: readonly string[];
+}
+
+export interface RuleEffectWarning {
+  readonly code: "rule_evaluation_failed" | "rule_mandatory_violation";
+  readonly ruleId?: string;
+  readonly message: string;
+  readonly variableName?: string;
+}
+
+function makeSurfaceKey(pageId: PageId, surfaceId: SurfaceId): string {
+  return `${pageId}::${surfaceId}`;
+}
+
+function collectHiddenSurfaces(
+  document: CreationFlowDocument,
+  variables: Readonly<Record<string, RuleVariableValue>>,
+): RuleEffectSummary {
+  const result: RuleEvaluationResult = evaluateRules(document, { variables });
+  const hiddenKeys = new Set<string>();
+  const overrides: Record<string, RuleVariableValue> = {};
+  const applied: string[] = [];
+
+  for (const rule of result.appliedRules) {
+    applied.push(rule.name);
+    for (const action of rule.actions) {
+      if (action.type === "hideSurface") {
+        hiddenKeys.add(makeSurfaceKey(action.pageId, action.surfaceId));
+      }
+      if (action.type === "setVariable" && !(action.name in variables)) {
+        overrides[action.name] = action.value;
+      }
+    }
+  }
+
+  return {
+    hiddenSurfaceKeys: hiddenKeys,
+    variableOverrides: overrides,
+    appliedRuleNames: applied,
+  };
+}
+
+export function buildRuleEffectSummary(
+  document: CreationFlowDocument,
+  variables: Readonly<Record<string, RuleVariableValue>> = {},
+): RuleEffectSummary {
+  return collectHiddenSurfaces(document, variables);
+}
+
+function toRuleWarnings(
+  evaluation: RuleEvaluationResult,
+): readonly RuleEffectWarning[] {
+  const warnings: RuleEffectWarning[] = [];
+  for (const error of evaluation.errors) {
+    warnings.push({
+      code: "rule_evaluation_failed",
+      ...(error.ruleId !== undefined ? { ruleId: error.ruleId } : {}),
+      message: error.message,
+    });
+  }
+  for (const warning of evaluation.warnings) {
+    const ruleWarning: RuleEffectWarning = {
+      code: "rule_evaluation_failed",
+      ruleId: warning.ruleId,
+      message: warning.message,
+    };
+    warnings.push(ruleWarning);
+  }
+  for (const violation of evaluation.mandatoryViolations) {
+    const mandatoryWarning: RuleEffectWarning = {
+      code: "rule_mandatory_violation",
+      ruleId: violation.ruleId,
+      message: violation.message ?? `Mandatory variable "${violation.variableName}" is missing.`,
+      variableName: violation.variableName,
+    };
+    warnings.push(mandatoryWarning);
+  }
+  return warnings;
+}
+
+function isSurfaceVisible(
+  page: CreationFlowPage,
+  surface: CreationFlowSurface,
+  hiddenKeys: ReadonlySet<string>,
+): boolean {
+  if (!hiddenKeys.has(makeSurfaceKey(page.id, surface.id))) {
+    return true;
+  }
+  return false;
+}
+
+export type { RuleEvaluationError, RuleEvaluationWarning, RuleMandatoryViolation };
 
 interface RenderDocumentState {
   readonly fontCache: Map<string, string>;
@@ -1080,6 +1188,19 @@ export async function renderDocumentToPdf(
       minAssetDpi:
         options.minAssetDpi ?? document.metadata.minAssetDpi ?? DEFAULT_MIN_ASSET_DPI,
     };
+    const effectSummary = options.variables
+      ? collectHiddenSurfaces(document, options.variables)
+      : { hiddenSurfaceKeys: new Set<string>(), variableOverrides: {}, appliedRuleNames: [] };
+    const ruleWarnings = options.variables
+      ? toRuleWarnings(evaluateRules(document, { variables: options.variables }))
+      : [];
+    for (const ruleWarning of ruleWarnings) {
+      warn(options, {
+        code: "path_render_failed",
+        elementId: "__rules__" as unknown as ElementId,
+        message: `[${ruleWarning.code}] ${ruleWarning.message}`,
+      });
+    }
     const effectiveOptions: RenderDocumentToPdfOptions = {
       ...options,
       targetDpi: state.targetDpi,
@@ -1113,6 +1234,10 @@ export async function renderDocumentToPdf(
 
         for (const surface of surfaces) {
           if (surface.role === "overlay") {
+            continue;
+          }
+
+          if (!isSurfaceVisible(page, surface, effectSummary.hiddenSurfaceKeys)) {
             continue;
           }
 
@@ -1152,6 +1277,10 @@ export async function renderDocumentToPdf(
 
         for (const surface of surfaces) {
           if (surface.role !== "overlay") {
+            continue;
+          }
+
+          if (!isSurfaceVisible(page, surface, effectSummary.hiddenSurfaceKeys)) {
             continue;
           }
 

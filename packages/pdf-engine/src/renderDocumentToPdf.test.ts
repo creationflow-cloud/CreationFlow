@@ -12,11 +12,13 @@ import type {
   DocumentId,
   ElementId,
   PageId,
+  RuleId,
   SurfaceId,
   WorkspaceId,
 } from "@creationflow/schema";
 
 import {
+  buildRuleEffectSummary,
   convertTopLeftToPdfY,
   DEFAULT_TARGET_DPI,
   parseColor,
@@ -2019,5 +2021,95 @@ describe("runDocumentPreflight", () => {
     );
 
     expect(warnings).toMatchObject([{ code: "bleed_violation" }]);
+  });
+});
+
+describe("renderDocumentToPdf with rules", () => {
+  function createTextElementWithContent(id: string, text: string): CreationFlowElement {
+    return { ...createTextElement(id, 10, 10), text } as CreationFlowElement;
+  }
+
+  function createRuleDocument(): CreationFlowDocument {
+    const frontSurface: CreationFlowSurface = {
+      ...createSurface("front", [createTextElementWithContent("front-text", "FRONT")]),
+      name: "Front",
+    };
+    const backSurface: CreationFlowSurface = {
+      ...createSurface("back", [createTextElementWithContent("back-text", "BACK")]),
+      name: "Back",
+    };
+
+    return {
+      ...createDocument([createPage("page-1", [frontSurface, backSurface])]),
+      rules: [
+        {
+          id: "r-hide-back" as unknown as RuleId,
+          name: "Hide back when product is tshirt",
+          type: "visibility",
+          enabled: true,
+          condition: { all: [{ kind: "equals", variable: "product", value: "tshirt" }] },
+          actions: [
+            {
+              type: "hideSurface",
+              pageId: "page-1" as unknown as PageId,
+              surfaceId: "back" as unknown as SurfaceId,
+            },
+          ],
+        },
+        {
+          id: "r-mandatory" as unknown as RuleId,
+          name: "Require email",
+          type: "mandatory",
+          enabled: true,
+          condition: { all: [{ kind: "equals", variable: "step", value: "checkout" }] },
+          actions: [{ type: "requireVariable", name: "email" }],
+        },
+      ],
+    };
+  }
+
+  it("builds a rule effect summary that hides matching surfaces", () => {
+    const document = createRuleDocument();
+    const summary = buildRuleEffectSummary(document, { product: "tshirt" });
+    expect(summary.hiddenSurfaceKeys.size).toBe(1);
+    expect(
+      Array.from(summary.hiddenSurfaceKeys)[0]?.includes("back"),
+    ).toBe(true);
+    expect(summary.appliedRuleNames).toContain(
+      "Hide back when product is tshirt",
+    );
+  });
+
+  it("renders a single-page PDF when no variables are provided", async () => {
+    const document = createRuleDocument();
+    const pdf = await renderDocumentToPdf(document, {});
+    await expect(getPageCount(pdf)).resolves.toBe(1);
+  });
+
+  it("emits warnings for mandatory rule violations when variables trigger them", async () => {
+    const document = createRuleDocument();
+    const warnings: RenderDocumentWarning[] = [];
+    await renderDocumentToPdf(document, {
+      variables: { product: "tshirt", step: "checkout" },
+      onWarning: (warning) => warnings.push(warning),
+    });
+    expect(
+      warnings.some(
+        (w) =>
+          w.message.includes("rule_mandatory_violation") && w.message.includes("email"),
+      ),
+    ).toBe(true);
+  });
+
+  it("does not emit mandatory violation warnings when no variables trigger rules", async () => {
+    const document = createRuleDocument();
+    const warnings: RenderDocumentWarning[] = [];
+    await renderDocumentToPdf(document, {
+      variables: { product: "tshirt" },
+      onWarning: (warning) => warnings.push(warning),
+    });
+    expect(
+      warnings.some((w) => w.message.includes("rule_mandatory_violation")),
+    ).toBe(false);
   });
 });

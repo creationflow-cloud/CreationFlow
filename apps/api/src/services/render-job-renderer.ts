@@ -10,6 +10,22 @@ import { getConfigurationById } from "./configurations.js";
 import { getRenderJobById, recordRenderJobAttempt, updateRenderJob } from "./render-jobs.js";
 import type { RenderJobDto } from "./render-jobs.js";
 
+function readRenderVariables(
+  configuration: { readonly variables?: unknown },
+): Record<string, string | number | boolean | null> {
+  const raw = configuration.variables;
+  if (!raw || typeof raw !== "object") {
+    return {};
+  }
+  const out: Record<string, string | number | boolean | null> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
 export class RenderJobTransientError extends Error {
   constructor(
     message: string,
@@ -161,6 +177,7 @@ export async function renderRenderJobToPdf(
     });
     const debugSurfaces = process.env.CREATIONFLOW_PDF_DEBUG_SURFACES === "true";
     const pdf = await renderDocumentToPdf(renderDocument, {
+      variables: readRenderVariables(configuration as unknown as { variables?: unknown }),
       resolveAsset: async (assetId) => {
         const asset = await getAssetById(db, assetId);
 
@@ -243,6 +260,12 @@ export async function renderRenderJobToPdf(
         mimeType: "application/pdf",
         sizeBytes: pdf.byteLength.toString(),
         ...(renderWarnings.length > 0 && { warnings: renderWarnings }),
+        ruleWarnings: renderWarnings
+          .filter((warning) => warning.message.includes("rule_"))
+          .map((warning) => ({
+            code: warning.code,
+            message: warning.message,
+          })),
       },
       errorMessage: null,
     });

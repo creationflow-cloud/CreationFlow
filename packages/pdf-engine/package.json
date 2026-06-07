@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@creationflow/core": "workspace:*",
+    "@creationflow/rules-engine": "workspace:*",
     "@creationflow/schema": "workspace:*",
     "pdfkit": "^0.18.0"
   },
