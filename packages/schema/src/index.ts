@@ -170,11 +170,31 @@ export interface CreationFlowVariable {
   readonly defaultValue?: CreationFlowVariableValue;
 }
 
+export type CreationFlowRuleCondition =
+  | { readonly kind: "equals"; readonly variable: string; readonly value: CreationFlowVariableValue }
+  | { readonly kind: "notEquals"; readonly variable: string; readonly value: CreationFlowVariableValue }
+  | { readonly kind: "present"; readonly variable: string };
+
+export type CreationFlowRuleConditionGroup = {
+  readonly all?: readonly CreationFlowRuleCondition[];
+  readonly any?: readonly CreationFlowRuleCondition[];
+} | readonly CreationFlowRuleCondition[];
+
+export type CreationFlowRuleType = "visibility" | "mandatory" | "valueDependency";
+
+export type CreationFlowRuleAction =
+  | { readonly type: "setVariable"; readonly name: string; readonly value: CreationFlowVariableValue }
+  | { readonly type: "showSurface"; readonly pageId: PageId; readonly surfaceId: SurfaceId }
+  | { readonly type: "hideSurface"; readonly pageId: PageId; readonly surfaceId: SurfaceId }
+  | { readonly type: "requireVariable"; readonly name: string; readonly message?: string }
+  | { readonly type: "validate"; readonly message: string };
+
 export interface CreationFlowRule {
   readonly id: RuleId;
   readonly name: string;
-  readonly condition: Record<string, unknown>;
-  readonly actions: readonly Record<string, unknown>[];
+  readonly type?: CreationFlowRuleType;
+  readonly condition: CreationFlowRuleConditionGroup;
+  readonly actions: readonly CreationFlowRuleAction[];
   readonly enabled: boolean;
 }
 

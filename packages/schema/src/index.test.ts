@@ -229,3 +229,129 @@ describe("CreationFlowSurface schema", () => {
     expect(document.pages[0].surfaces?.[1].elements.length).toBe(1);
   });
 });
+
+describe("CreationFlowRule schema", () => {
+  it("supports visibility rules with showSurface / hideSurface actions", () => {
+    const document: CreationFlowDocument = {
+      id: "doc-1" as any,
+      version: "1.0.0",
+      metadata: {
+        workspaceId: "workspace-1" as any,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+      pages: [],
+      variables: [],
+      assets: [],
+      rules: [
+        {
+          id: "rule-1" as any,
+          name: "Show front, hide back when product is tshirt",
+          type: "visibility",
+          enabled: true,
+          condition: { all: [{ kind: "equals", variable: "product", value: "tshirt" }] },
+          actions: [
+            { type: "showSurface", pageId: "page-1" as any, surfaceId: "front" as any },
+            { type: "hideSurface", pageId: "page-1" as any, surfaceId: "back" as any },
+          ],
+        },
+      ],
+    };
+
+    expect(document.rules[0].type).toBe("visibility");
+    expect(document.rules[0].actions).toHaveLength(2);
+    expect(document.rules[0].actions[0].type).toBe("showSurface");
+  });
+
+  it("supports mandatory field rules with requireVariable actions", () => {
+    const document: CreationFlowDocument = {
+      id: "doc-1" as any,
+      version: "1.0.0",
+      metadata: {
+        workspaceId: "workspace-1" as any,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+      pages: [],
+      variables: [],
+      assets: [],
+      rules: [
+        {
+          id: "rule-1" as any,
+          name: "Require email when checkout starts",
+          type: "mandatory",
+          enabled: true,
+          condition: { all: [{ kind: "equals", variable: "step", value: "checkout" }] },
+          actions: [
+            { type: "requireVariable", name: "email", message: "Email is required" },
+          ],
+        },
+      ],
+    };
+
+    expect(document.rules[0].type).toBe("mandatory");
+    const action = document.rules[0].actions[0];
+    if (action.type === "requireVariable") {
+      expect(action.name).toBe("email");
+      expect(action.message).toBe("Email is required");
+    }
+  });
+
+  it("supports value dependency rules with setVariable actions", () => {
+    const document: CreationFlowDocument = {
+      id: "doc-1" as any,
+      version: "1.0.0",
+      metadata: {
+        workspaceId: "workspace-1" as any,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+      pages: [],
+      variables: [],
+      assets: [],
+      rules: [
+        {
+          id: "rule-1" as any,
+          name: "Auto-select size when color is red",
+          type: "valueDependency",
+          enabled: true,
+          condition: { all: [{ kind: "equals", variable: "color", value: "red" }] },
+          actions: [{ type: "setVariable", name: "size", value: "L" }],
+        },
+      ],
+    };
+
+    expect(document.rules[0].type).toBe("valueDependency");
+    const action = document.rules[0].actions[0];
+    if (action.type === "setVariable") {
+      expect(action.name).toBe("size");
+      expect(action.value).toBe("L");
+    }
+  });
+
+  it("accepts rules without an explicit type (backward compatible)", () => {
+    const document: CreationFlowDocument = {
+      id: "doc-1" as any,
+      version: "1.0.0",
+      metadata: {
+        workspaceId: "workspace-1" as any,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+      pages: [],
+      variables: [],
+      assets: [],
+      rules: [
+        {
+          id: "rule-1" as any,
+          name: "Legacy rule",
+          enabled: true,
+          condition: { all: [] },
+          actions: [],
+        },
+      ],
+    };
+
+    expect(document.rules[0].type).toBeUndefined();
+  });
+});

@@ -3,11 +3,15 @@ import { describe, expect, it } from "vitest";
 import { evaluateRules } from "./evaluateRules.js";
 import type {
   CreationFlowDocument,
+  CreationFlowRule,
+  CreationFlowRuleAction,
   DocumentId,
+  PageId,
   RuleId,
+  SurfaceId,
   WorkspaceId,
 } from "@creationflow/schema";
-import type { RuleCondition, RuleAction } from "./types.js";
+import type { RuleAction } from "./types.js";
 
 const docId = (value: string) => value as unknown as DocumentId;
 const wsId = (value: string) => value as unknown as WorkspaceId;
@@ -15,9 +19,18 @@ const ruleId = (value: string) => value as unknown as RuleId;
 
 function makeDocument(
   conditions: unknown,
-  actions: readonly unknown[] = [],
-  options: { readonly enabled?: boolean; readonly name?: string } = {},
+  actions: readonly CreationFlowRuleAction[] = [],
+  options: { readonly enabled?: boolean; readonly name?: string; readonly type?: CreationFlowRule["type"] } = {},
 ): CreationFlowDocument {
+  const rule: CreationFlowRule = {
+    id: ruleId("r1"),
+    name: options.name ?? "rule-1",
+    enabled: options.enabled ?? true,
+    condition: conditions as CreationFlowRule["condition"],
+    actions,
+    ...(options.type !== undefined && { type: options.type }),
+  };
+
   return {
     id: docId("doc-1"),
     version: "0",
@@ -29,15 +42,7 @@ function makeDocument(
     pages: [],
     variables: [],
     assets: [],
-    rules: [
-      {
-        id: ruleId("r1"),
-        name: options.name ?? "rule-1",
-        enabled: options.enabled ?? true,
-        condition: conditions as Record<string, unknown>,
-        actions: actions as readonly Record<string, unknown>[],
-      },
-    ],
+    rules: [rule],
   };
 }
 
@@ -111,7 +116,7 @@ describe("evaluateRules", () => {
   it("captures errors for unknown action types", () => {
     const document = makeDocument(
       { all: [{ kind: "equals", variable: "color", value: "red" }] },
-      [{ type: "launchMissiles" }],
+      [{ type: "launchMissiles" } as unknown as CreationFlowRuleAction],
     );
 
     const result = evaluateRules(document, { variables: { color: "red" } });
@@ -145,5 +150,99 @@ describe("evaluateRules", () => {
     const document = makeDocument({ all: [{ kind: "present", variable: "x" }] });
     const result = evaluateRules(document, { variables: { x: 1 } });
     expect(result.document).toBe(document);
+  });
+});
+
+describe("evaluateRules rule types", () => {
+  it("supports visibility rules via showSurface / hideSurface actions", () => {
+    const document = makeDocument(
+      { all: [{ kind: "equals", variable: "showFront", value: true }] },
+      [
+        { type: "showSurface", pageId: "page-1" as unknown as PageId, surfaceId: "front" as unknown as SurfaceId },
+        { type: "hideSurface", pageId: "page-1" as unknown as PageId, surfaceId: "back" as unknown as SurfaceId },
+      ],
+      { name: "visibility-rule" },
+    );
+
+    const result = evaluateRules(document, { variables: { showFront: true } });
+    expect(result.appliedRules).toHaveLength(1);
+    expect(result.appliedRules[0]?.actions).toEqual<RuleAction[]>([
+      { type: "showSurface", pageId: "page-1" as unknown as PageId, surfaceId: "front" as unknown as SurfaceId },
+      { type: "hideSurface", pageId: "page-1" as unknown as PageId, surfaceId: "back" as unknown as SurfaceId },
+    ]);
+    expect(result.mandatoryViolations).toEqual([]);
+  });
+
+  it("supports mandatory field rules via requireVariable", () => {
+    const document = makeDocument(
+      { all: [{ kind: "equals", variable: "needsEmail", value: true }] },
+      [{ type: "requireVariable", name: "email", message: "Email is required" }],
+      { name: "mandatory-rule" },
+    );
+
+    const result = evaluateRules(document, { variables: { needsEmail: true } });
+    expect(result.appliedRules).toHaveLength(1);
+    expect(result.mandatoryViolations).toEqual([
+      { ruleId: ruleId("r1"), variableName: "email", message: "Email is required" },
+    ]);
+  });
+
+  it("does not report a mandatory violation when the variable is present", () => {
+    const document = makeDocument(
+      { all: [{ kind: "equals", variable: "needsEmail", value: true }] },
+      [{ type: "requireVariable", name: "email" }],
+    );
+
+    const result = evaluateRules(document, {
+      variables: { needsEmail: true, email: "user@example.com" },
+    });
+    expect(result.mandatoryViolations).toEqual([]);
+  });
+
+  it("supports value dependency rules via setVariable", () => {
+    const document = makeDocument(
+      { all: [{ kind: "equals", variable: "color", value: "red" }] },
+      [
+        { type: "setVariable", name: "size", value: "L" },
+        { type: "setVariable", name: "weight", value: 700 },
+      ],
+      { name: "value-dependency-rule" },
+    );
+
+    const result = evaluateRules(document, { variables: { color: "red" } });
+    expect(result.appliedRules[0]?.actions).toEqual<RuleAction[]>([
+      { type: "setVariable", name: "size", value: "L" },
+      { type: "setVariable", name: "weight", value: 700 },
+    ]);
+    expect(result.mandatoryViolations).toEqual([]);
+  });
+
+  it("surfaces the rule type on the applied rule entry", () => {
+    const document: CreationFlowDocument = {
+      id: docId("doc-1"),
+      version: "0",
+      metadata: {
+        workspaceId: wsId("ws-1"),
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+      pages: [],
+      variables: [],
+      assets: [],
+      rules: [
+        {
+          id: ruleId("r-mandatory"),
+          name: "mandatory-rule",
+          type: "mandatory",
+          enabled: true,
+          condition: { all: [] },
+          actions: [{ type: "requireVariable", name: "name" }],
+        },
+      ],
+    };
+
+    const result = evaluateRules(document, { variables: {} });
+    expect(result.appliedRules[0]?.type).toBe("mandatory");
+    expect(result.mandatoryViolations).toHaveLength(1);
   });
 });

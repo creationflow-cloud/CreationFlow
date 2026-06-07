@@ -13,6 +13,7 @@ import type {
   RuleEvaluationError,
   RuleEvaluationResult,
   RuleEvaluationWarning,
+  RuleMandatoryViolation,
   RuleVariableValue,
 } from "./types.js";
 
@@ -24,6 +25,7 @@ export function evaluateRules(
   const skippedRules: CreationFlowRule[] = [];
   const warnings: RuleEvaluationWarning[] = [];
   const errors: RuleEvaluationError[] = [];
+  const mandatoryViolations: RuleMandatoryViolation[] = [];
 
   for (const rule of document.rules) {
     if (!rule.enabled) {
@@ -58,9 +60,23 @@ export function evaluateRules(
       continue;
     }
 
+    for (const action of actions) {
+      if (action.type === "requireVariable") {
+        const present = isVariablePresent(context.variables[action.name]);
+        if (!present) {
+          mandatoryViolations.push({
+            ruleId: rule.id,
+            variableName: action.name,
+            ...(action.message !== undefined && { message: action.message }),
+          });
+        }
+      }
+    }
+
     appliedRules.push({
       id: rule.id,
       name: rule.name,
+      ...(rule.type !== undefined && { type: rule.type }),
       actions,
     });
   }
@@ -71,6 +87,7 @@ export function evaluateRules(
     skippedRules,
     warnings,
     errors,
+    mandatoryViolations,
   };
 }
 
@@ -155,6 +172,10 @@ function isVariableValue(value: unknown): value is RuleVariableValue {
   );
 }
 
+function isVariablePresent(value: RuleVariableValue | undefined): boolean {
+  return value !== undefined && value !== null && value !== "";
+}
+
 function evaluateCondition(condition: RuleCondition, context: RuleEvaluationContext): boolean {
   const actual = context.variables[condition.variable];
 
@@ -194,6 +215,21 @@ function parseAction(raw: unknown): RuleAction | Error {
       return new Error('Action "setVariable" requires a scalar "value".');
     }
     return { type: "setVariable", name: record.name, value: record.value };
+  }
+
+  if (record.type === "requireVariable") {
+    if (typeof record.name !== "string") {
+      return new Error('Action "requireVariable" requires a string "name".');
+    }
+    if (record.message !== undefined && typeof record.message !== "string") {
+      return new Error('Action "requireVariable" requires a string "message" when provided.');
+    }
+    const action: RuleAction = {
+      type: "requireVariable",
+      name: record.name,
+      ...(typeof record.message === "string" ? { message: record.message } : {}),
+    };
+    return action;
   }
 
   if (record.type === "showSurface" || record.type === "hideSurface") {
