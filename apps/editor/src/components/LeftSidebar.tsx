@@ -59,7 +59,7 @@ export function LeftSidebar({
                 selectSurface(surfaceId, {
                   selectedPageId: selection.selectedPageId,
                   selectedSurfaceId: null,
-                  selectedElementId: null,
+                  selectedElementIds: [],
                 }),
               )
             }
@@ -99,14 +99,14 @@ export function LeftSidebar({
         {selectedSurface ? (
           <LayerList
             elements={selectedSurface.elements}
-            selectedElementId={selection.selectedElementId}
-            onSelectElement={(elementId) =>
+            selectedElementIds={selection.selectedElementIds}
+            onSelectElement={(elementId, modifier) =>
               onSelectionChange(
                 selectElement(elementId, {
                   selectedPageId: selection.selectedPageId,
                   selectedSurfaceId: selection.selectedSurfaceId,
-                  selectedElementId: null,
-                }),
+                  selectedElementIds: selection.selectedElementIds,
+                }, modifier),
               )
             }
             onDuplicateElement={onDuplicateElement}

@@ -50,10 +50,17 @@ import {
 } from "./helpers/element-actions.js";
 import { PatternGallery } from "./components/PatternGallery.js";
 import {
+  clearElementSelection,
+  getSelectionPrimaryElementId,
+  isElementSelected,
+  NO_MODIFIER,
   selectElement,
+  selectElementsInRect,
   selectFirstSurface,
   findFirstDesignRegionSurface,
   findFirstNonOverlaySurface,
+  type SelectionModifier,
+  type SelectionRect,
 } from "./helpers/selection-helpers.js";
 import type { SelectionState } from "./helpers/selection-helpers.js";
 
@@ -69,6 +76,10 @@ function getQueryParam(param: string): string | null {
   return params.get(param);
 }
 
+function emptySelection(): SelectionState {
+  return { selectedPageId: null, selectedSurfaceId: null, selectedElementIds: [] };
+}
+
 export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   const templateId = getQueryParam("templateId");
   const configurationId = getQueryParam("configurationId");
@@ -80,11 +91,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   const [configurationError, setConfigurationError] = useState<string | null>(null);
   const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
   const [currentDocument, setCurrentDocument] = useState<CreationFlowDocument | null>(null);
-  const [selection, setSelection] = useState<SelectionState>({
-    selectedPageId: null,
-    selectedSurfaceId: null,
-    selectedElementId: null,
-  });
+  const [selection, setSelection] = useState<SelectionState>(emptySelection());
 
   const [history, setHistory] = useState<HistoryState>({ undoStack: [], redoStack: [] });
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState<string | null>(null);
@@ -231,19 +238,21 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   }, [templateId, configurationId]);
 
   useEffect(() => {
-    if (selection.selectedElementId && currentDocument) {
-      const exists = findElementById(currentDocument, selection.selectedElementId);
-      if (!exists) {
-        queueMicrotask(() => {
-          setSelection((prev) =>
-            prev.selectedElementId === selection.selectedElementId
-              ? { ...prev, selectedElementId: null }
-              : prev,
-          );
-        });
+    if (!currentDocument) return;
+    if (selection.selectedElementIds.length === 0) return;
+
+    const nextIds: string[] = [];
+    for (const id of selection.selectedElementIds) {
+      if (findElementById(currentDocument, id)) {
+        nextIds.push(id);
       }
     }
-  }, [currentDocument, selection.selectedElementId]);
+    if (nextIds.length !== selection.selectedElementIds.length) {
+      queueMicrotask(() => {
+        setSelection((prev) => ({ ...prev, selectedElementIds: nextIds }));
+      });
+    }
+  }, [currentDocument, selection.selectedElementIds]);
 
   useEffect(() => {
     if (!currentDocument) return;
@@ -302,9 +311,10 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     };
   }
 
+  const primarySelectedElementId = getSelectionPrimaryElementId(selection);
   const selectedElement =
-    currentDocument && selection.selectedElementId
-      ? findElementById(currentDocument, selection.selectedElementId)
+    currentDocument && primarySelectedElementId
+      ? findElementById(currentDocument, primarySelectedElementId)
       : undefined;
 
   const documentName =
@@ -315,136 +325,173 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     setHistory((prev) => pushHistory(prev, doc));
   }
 
+  function handleSelectElement(elementId: string, modifier: SelectionModifier = NO_MODIFIER) {
+    setSelection((prev) => selectElement(elementId, prev, modifier));
+  }
+
+  function handleSelectElementsInRect(rect: SelectionRect, modifier: SelectionModifier = NO_MODIFIER) {
+    if (!currentDocument || !selection.selectedSurfaceId) return;
+    const surface = findSurfaceById(currentDocument, selection.selectedSurfaceId);
+    if (!surface) return;
+    setSelection((prev) => selectElementsInRect(surface, rect, prev, modifier));
+  }
+
+  function handleClearElementSelection() {
+    setSelection((prev) => clearElementSelection(prev));
+  }
+
   function handleUpdateElement(patch: Partial<CreationFlowElement>) {
-    if (!currentDocument || !selection.selectedElementId) {
-      return;
-    }
+    if (!currentDocument) return;
+    if (selection.selectedElementIds.length === 0) return;
 
     commitHistory(currentDocument);
 
-    const updatedDocument = updateElement(
-      currentDocument,
-      selection.selectedElementId as ElementId,
-      patch,
-    );
-
-    setCurrentDocument(updatedDocument);
+    let doc = currentDocument;
+    for (const id of selection.selectedElementIds) {
+      doc = updateElement(doc, id as ElementId, patch);
+    }
+    setCurrentDocument(doc);
   }
 
   function handleUpdateElementById(elementId: string, patch: Partial<CreationFlowElement>) {
     if (!currentDocument) {
       return;
     }
-
     const updatedDocument = updateElement(currentDocument, elementId as ElementId, patch);
-
     setCurrentDocument(updatedDocument);
   }
 
-  function handleDeleteElement(elementId = selection.selectedElementId) {
-    if (!currentDocument || !elementId) {
-      return;
-    }
+  function handleUpdateElements(patches: ReadonlyMap<string, Partial<CreationFlowElement>>) {
+    if (!currentDocument) return;
+    if (patches.size === 0) return;
 
     commitHistory(currentDocument);
 
-    const updatedDocument = deleteElement(currentDocument, elementId as ElementId);
-    setCurrentDocument(updatedDocument);
-    setSelection((prev) =>
-      prev.selectedElementId === elementId ? { ...prev, selectedElementId: null } : prev,
-    );
+    let doc = currentDocument;
+    for (const [elementId, patch] of patches.entries()) {
+      doc = updateElement(doc, elementId as ElementId, patch);
+    }
+    setCurrentDocument(doc);
   }
 
-  function handleDuplicateElement(elementId = selection.selectedElementId) {
+  function handleDeleteElement(elementId?: string) {
+    if (!currentDocument) return;
+
+    const targetIds = (() => {
+      if (elementId) return [elementId];
+      return selection.selectedElementIds;
+    })();
+    if (targetIds.length === 0) return;
+
+    commitHistory(currentDocument);
+
+    let doc = currentDocument;
+    for (const id of targetIds) {
+      doc = deleteElement(doc, id as ElementId);
+    }
+    setCurrentDocument(doc);
+    setSelection((prev) => ({
+      ...prev,
+      selectedElementIds: prev.selectedElementIds.filter((id) => !targetIds.includes(id)),
+    }));
+  }
+
+  function handleDuplicateElement(elementId?: string) {
     if (
       !currentDocument ||
-      !elementId ||
       !selection.selectedSurfaceId ||
       !selection.selectedPageId
     ) {
       return;
     }
 
-    const element = findElementById(currentDocument, elementId);
-    if (!element) {
-      return;
-    }
+    const targetIds = (() => {
+      if (elementId) return [elementId];
+      return selection.selectedElementIds;
+    })();
+    if (targetIds.length === 0) return;
 
     commitHistory(currentDocument);
 
-    const result = duplicateElement(
-      currentDocument,
-      selection.selectedPageId as PageId,
-      selection.selectedSurfaceId as SurfaceId,
-      elementId as ElementId,
-    );
-
-    setCurrentDocument(result.document);
-    setSelection({ ...selection, selectedElementId: result.newElementId });
-  }
-
-  function handleBringForward(elementId = selection.selectedElementId) {
-    if (!currentDocument || !elementId || !selection.selectedSurfaceId) {
-      return;
-    }
-
-    commitHistory(currentDocument);
-
-    setCurrentDocument(
-      bringForward(
-        currentDocument,
-        elementId as ElementId,
+    let doc = currentDocument;
+    const newIds: string[] = [];
+    for (const id of targetIds) {
+      const result = duplicateElement(
+        doc,
+        selection.selectedPageId as PageId,
         selection.selectedSurfaceId as SurfaceId,
-      ),
-    );
-  }
-
-  function handleSendBackward(elementId = selection.selectedElementId) {
-    if (!currentDocument || !elementId || !selection.selectedSurfaceId) {
-      return;
+        id as ElementId,
+      );
+      doc = result.document;
+      newIds.push(result.newElementId);
     }
 
-    commitHistory(currentDocument);
-
-    setCurrentDocument(
-      sendBackward(
-        currentDocument,
-        elementId as ElementId,
-        selection.selectedSurfaceId as SurfaceId,
-      ),
-    );
+    setCurrentDocument(doc);
+    setSelection({ ...selection, selectedElementIds: newIds });
   }
 
-  function handleBringToFront(elementId = selection.selectedElementId) {
-    if (!currentDocument || !elementId || !selection.selectedSurfaceId) {
-      return;
-    }
-
+  function handleBringForward(elementId?: string) {
+    if (!currentDocument || !selection.selectedSurfaceId) return;
+    const targetIds = (() => {
+      if (elementId) return [elementId];
+      return selection.selectedElementIds;
+    })();
+    if (targetIds.length === 0) return;
     commitHistory(currentDocument);
-
-    setCurrentDocument(
-      bringToFront(
-        currentDocument,
-        elementId as ElementId,
-        selection.selectedSurfaceId as SurfaceId,
-      ),
-    );
+    let doc = currentDocument;
+    for (const id of targetIds) {
+      doc = bringForward(doc, id as ElementId, selection.selectedSurfaceId as SurfaceId);
+    }
+    setCurrentDocument(doc);
   }
 
-  function handleSendToBack(elementId = selection.selectedElementId) {
-    if (!currentDocument || !elementId || !selection.selectedSurfaceId) {
-      return;
-    }
-
+  function handleSendBackward(elementId?: string) {
+    if (!currentDocument || !selection.selectedSurfaceId) return;
+    const targetIds = (() => {
+      if (elementId) return [elementId];
+      return selection.selectedElementIds;
+    })();
+    if (targetIds.length === 0) return;
     commitHistory(currentDocument);
+    let doc = currentDocument;
+    for (const id of targetIds) {
+      doc = sendBackward(doc, id as ElementId, selection.selectedSurfaceId as SurfaceId);
+    }
+    setCurrentDocument(doc);
+  }
 
-    setCurrentDocument(
-      sendToBack(currentDocument, elementId as ElementId, selection.selectedSurfaceId as SurfaceId),
-    );
+  function handleBringToFront(elementId?: string) {
+    if (!currentDocument || !selection.selectedSurfaceId) return;
+    const targetIds = (() => {
+      if (elementId) return [elementId];
+      return selection.selectedElementIds;
+    })();
+    if (targetIds.length === 0) return;
+    commitHistory(currentDocument);
+    let doc = currentDocument;
+    for (const id of targetIds) {
+      doc = bringToFront(doc, id as ElementId, selection.selectedSurfaceId as SurfaceId);
+    }
+    setCurrentDocument(doc);
+  }
+
+  function handleSendToBack(elementId?: string) {
+    if (!currentDocument || !selection.selectedSurfaceId) return;
+    const targetIds = (() => {
+      if (elementId) return [elementId];
+      return selection.selectedElementIds;
+    })();
+    if (targetIds.length === 0) return;
+    commitHistory(currentDocument);
+    let doc = currentDocument;
+    for (const id of targetIds) {
+      doc = sendToBack(doc, id as ElementId, selection.selectedSurfaceId as SurfaceId);
+    }
+    setCurrentDocument(doc);
   }
 
   function handleMoveElement(dx: number, dy: number) {
-    if (!currentDocument || !selection.selectedElementId || !selectedElement) {
+    if (!currentDocument || !selectedElement) {
       return;
     }
 
@@ -452,7 +499,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
 
     const updatedDocument = moveElement(
       currentDocument,
-      selection.selectedElementId as ElementId,
+      selectedElement.id as ElementId,
       selectedElement.x,
       selectedElement.y,
       dx,
@@ -460,6 +507,18 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     );
 
     setCurrentDocument(updatedDocument);
+  }
+
+  function handleMoveSelectedElements(dx: number, dy: number) {
+    if (!currentDocument || selection.selectedElementIds.length === 0) return;
+    commitHistory(currentDocument);
+    let doc = currentDocument;
+    for (const id of selection.selectedElementIds) {
+      const el = findElementById(doc, id);
+      if (!el) continue;
+      doc = updateElement(doc, id as ElementId, { x: el.x + dx, y: el.y + dy });
+    }
+    setCurrentDocument(doc);
   }
 
   function getNextZIndex(): number {
@@ -517,7 +576,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     setSelection({
       selectedPageId: target.pageId,
       selectedSurfaceId: target.surfaceId,
-      selectedElementId: elementId,
+      selectedElementIds: [elementId],
     });
   }
 
@@ -567,7 +626,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     setSelection({
       selectedPageId: target.pageId,
       selectedSurfaceId: target.surfaceId,
-      selectedElementId: elementId,
+      selectedElementIds: [elementId],
     });
   }
 
@@ -615,7 +674,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     setSelection({
       selectedPageId: target.pageId,
       selectedSurfaceId: target.surfaceId,
-      selectedElementId: elementId,
+      selectedElementIds: [elementId],
     });
   }
 
@@ -676,7 +735,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     setSelection({
       selectedPageId: target.pageId,
       selectedSurfaceId: target.surfaceId,
-      selectedElementId: elementId,
+      selectedElementIds: [elementId],
     });
     setShowPatternGallery(false);
   }
@@ -898,17 +957,22 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       if (
         (e.key === "Delete" || e.key === "Backspace") &&
         !isInput &&
-        selection.selectedElementId
+        selection.selectedElementIds.length > 0
       ) {
         e.preventDefault();
         handleDeleteRef.current();
         return;
       }
+
+      if (e.key === "Escape" && selection.selectedElementIds.length > 0) {
+        e.preventDefault();
+        setSelection((prev) => clearElementSelection(prev));
+      }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selection.selectedElementId]);
+  }, [selection.selectedElementIds.length]);
 
   useEffect(() => {
     return () => {
@@ -919,6 +983,11 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   }, [pdfPreviewUrl]);
 
   const noIdProvided = !templateId && !configurationId && !loading && !configurationLoading;
+
+  const isElementSelectedCallback = useCallback(
+    (id: string) => isElementSelected(id, selection),
+    [selection],
+  );
 
   return (
     <main className="editor-shell">
@@ -988,17 +1057,11 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
 
         <CanvasWorkspace
           surface={selectedSurface}
-          selectedElementId={selection.selectedElementId}
-          onSelectElement={(elementId) =>
-            setSelection(
-              selectElement(elementId, {
-                selectedPageId: selection.selectedPageId,
-                selectedSurfaceId: selection.selectedSurfaceId,
-                selectedElementId: null,
-              }),
-            )
-          }
-          onUpdateElement={handleUpdateElementById}
+          selectedElementIds={selection.selectedElementIds}
+          onSelectElement={handleSelectElement}
+          onSelectElementsInRect={handleSelectElementsInRect}
+          onClearElementSelection={handleClearElementSelection}
+          onUpdateElements={handleUpdateElements}
           onDragStart={() => {
             if (currentDocument) commitHistory(currentDocument);
           }}
@@ -1006,7 +1069,9 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
 
         <RightSidebar
           selectedElement={selectedElement}
+          selectedElementCount={selection.selectedElementIds.length}
           onUpdateElement={handleUpdateElement}
+          onUpdateElementsCommon={handleUpdateElement}
           onDeleteElement={handleDeleteElement}
           onDuplicateElement={handleDuplicateElement}
           onBringForward={handleBringForward}
@@ -1014,6 +1079,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
           onBringToFront={handleBringToFront}
           onSendToBack={handleSendToBack}
           onMoveElement={handleMoveElement}
+          onMoveSelectedElements={handleMoveSelectedElements}
           onUploadAsset={handleUploadAsset}
           configuration={configuration}
           template={template}

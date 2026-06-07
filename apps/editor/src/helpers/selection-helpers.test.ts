@@ -1,10 +1,26 @@
 import { describe, expect, it } from "vitest";
-import type { CreationFlowDocument, CreationFlowPage, CreationFlowSurface, PageId, SurfaceId } from "@creationflow/schema";
+import type {
+  CreationFlowDocument,
+  CreationFlowElement,
+  CreationFlowPage,
+  CreationFlowSurface,
+  ElementId,
+  PageId,
+  SurfaceId,
+} from "@creationflow/schema";
 
 import {
   selectFirstSurface,
   findFirstDesignRegionSurface,
   findFirstNonOverlaySurface,
+  selectElement,
+  selectElementsInRect,
+  makeSelectionRect,
+  rectIntersectsElement,
+  clearElementSelection,
+  isElementSelected,
+  getSelectionPrimaryElementId,
+  NO_MODIFIER,
 } from "./selection-helpers.js";
 
 function createSurface(
@@ -218,7 +234,158 @@ describe("findFirstNonOverlaySurface", () => {
     ]);
 
     const result = findFirstNonOverlaySurface(doc, "non-existent-page");
-
     expect(result).toBeUndefined();
+  });
+});
+
+function createElement(
+  id: string,
+  x: number,
+  y: number,
+  width = 50,
+  height = 30,
+): CreationFlowElement {
+  return {
+    id: id as ElementId,
+    type: "text",
+    name: id,
+    x,
+    y,
+    width,
+    height,
+    rotation: 0,
+    opacity: 1,
+    visible: true,
+    locked: false,
+    zIndex: 0,
+    text: "",
+  } as unknown as CreationFlowElement;
+}
+
+function createSurfaceWithElements(
+  id: string,
+  elements: CreationFlowElement[],
+): CreationFlowSurface {
+  return {
+    id: id as SurfaceId,
+    name: id,
+    width: 600,
+    height: 400,
+    unit: "px",
+    elements,
+  };
+}
+
+describe("selectElement with modifier", () => {
+  it("replaces selection when no modifier is pressed", () => {
+    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["a"] as readonly string[] };
+    const next = selectElement("b", start);
+    expect(next.selectedElementIds).toEqual(["b"]);
+  });
+
+  it("adds to selection when shift is pressed", () => {
+    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["a"] as readonly string[] };
+    const next = selectElement("b", start, { additive: true, toggle: true, range: true });
+    expect(next.selectedElementIds).toEqual(["a", "b"]);
+  });
+
+  it("toggles selection when shift is pressed twice", () => {
+    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["a", "b"] as readonly string[] };
+    const next = selectElement("a", start, { additive: true, toggle: true, range: true });
+    expect(next.selectedElementIds).toEqual(["b"]);
+  });
+
+  it("keeps selection when selecting already selected element without modifier", () => {
+    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["a"] as readonly string[] };
+    const next = selectElement("a", start);
+    expect(next).toBe(start);
+  });
+});
+
+describe("clearElementSelection and isElementSelected", () => {
+  it("clears selection and returns same state when already empty", () => {
+    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: [] as readonly string[] };
+    expect(clearElementSelection(start)).toBe(start);
+
+    const filled = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["a"] as readonly string[] };
+    const cleared = clearElementSelection(filled);
+    expect(cleared.selectedElementIds).toEqual([]);
+    expect(isElementSelected("a", cleared)).toBe(false);
+  });
+
+  it("isElementSelected returns true for members and false otherwise", () => {
+    const state = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["a", "b"] as readonly string[] };
+    expect(isElementSelected("a", state)).toBe(true);
+    expect(isElementSelected("c", state)).toBe(false);
+  });
+});
+
+describe("makeSelectionRect", () => {
+  it("normalises direction-independent rect", () => {
+    const r = makeSelectionRect(50, 80, 10, 20);
+    expect(r).toEqual({ minX: 10, minY: 20, maxX: 50, maxY: 80 });
+  });
+});
+
+describe("rectIntersectsElement", () => {
+  it("returns true for overlapping rects", () => {
+    const el = createElement("e", 10, 10, 50, 30);
+    const rect = makeSelectionRect(20, 20, 100, 100);
+    expect(rectIntersectsElement(rect, el)).toBe(true);
+  });
+
+  it("returns false for non-overlapping rects", () => {
+    const el = createElement("e", 0, 0, 10, 10);
+    const rect = makeSelectionRect(50, 50, 100, 100);
+    expect(rectIntersectsElement(rect, el)).toBe(false);
+  });
+});
+
+describe("selectElementsInRect", () => {
+  const elements: CreationFlowElement[] = [
+    createElement("a", 0, 0, 40, 40),
+    createElement("b", 50, 50, 40, 40),
+    createElement("c", 200, 200, 40, 40),
+  ];
+  const surface = createSurfaceWithElements("s1", elements);
+
+  it("replaces selection with all matching elements", () => {
+    const rect = makeSelectionRect(-10, -10, 100, 100);
+    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["c"] as readonly string[] };
+    const next = selectElementsInRect(surface, rect, start, NO_MODIFIER);
+    expect([...next.selectedElementIds].sort()).toEqual(["a", "b"]);
+  });
+
+  it("supports fully-contained mode to exclude partially overlapping", () => {
+    const rect = makeSelectionRect(0, 0, 60, 60);
+    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: [] as readonly string[] };
+    const next = selectElementsInRect(surface, rect, start, NO_MODIFIER, { fullyContained: true });
+    expect(next.selectedElementIds).toEqual(["a"]);
+  });
+
+  it("appends to selection with shift modifier", () => {
+    const rect = makeSelectionRect(-10, -10, 100, 100);
+    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["c"] as readonly string[] };
+    const next = selectElementsInRect(surface, rect, start, { additive: true, toggle: true, range: false });
+    expect([...next.selectedElementIds].sort()).toEqual(["a", "b", "c"]);
+  });
+
+  it("toggles off elements when shift modifier is active", () => {
+    const rect = makeSelectionRect(-10, -10, 100, 100);
+    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["a", "b", "c"] as readonly string[] };
+    const next = selectElementsInRect(surface, rect, start, { additive: true, toggle: true, range: false });
+    expect(next.selectedElementIds).toEqual(["c"]);
+  });
+});
+
+describe("getSelectionPrimaryElementId", () => {
+  it("returns null for empty selection", () => {
+    const state = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: [] as readonly string[] };
+    expect(getSelectionPrimaryElementId(state)).toBeNull();
+  });
+
+  it("returns the first element id for multi-selection", () => {
+    const state = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["a", "b"] as readonly string[] };
+    expect(getSelectionPrimaryElementId(state)).toBe("a");
   });
 });

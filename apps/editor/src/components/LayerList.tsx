@@ -1,10 +1,17 @@
 import type { CreationFlowElement } from "@creationflow/schema";
 import { getElementZIndex } from "@creationflow/core";
 
+import {
+  isElementSelected,
+  modifierFromEvent,
+  NO_MODIFIER,
+  type SelectionModifier,
+} from "../helpers/selection-helpers.js";
+
 interface LayerListProps {
   readonly elements: readonly CreationFlowElement[];
-  readonly selectedElementId: string | null;
-  readonly onSelectElement: (elementId: string) => void;
+  readonly selectedElementIds: readonly string[];
+  readonly onSelectElement: (elementId: string, modifier: SelectionModifier) => void;
   readonly onDuplicateElement: (elementId: string) => void;
   readonly onDeleteElement: (elementId: string) => void;
   readonly onBringForward: (elementId: string) => void;
@@ -15,7 +22,7 @@ interface LayerListProps {
 
 export function LayerList({
   elements,
-  selectedElementId,
+  selectedElementIds,
   onSelectElement,
   onDuplicateElement,
   onDeleteElement,
@@ -29,20 +36,25 @@ export function LayerList({
   }
 
   const sortedElements = [...elements].sort((a, b) => getElementZIndex(b) - getElementZIndex(a));
+  const selectionState = { selectedPageId: null, selectedSurfaceId: null, selectedElementIds };
 
   return (
     <div className="layer-list">
+      {selectedElementIds.length > 1 && (
+        <div className="layer-multi-summary">
+          {selectedElementIds.length} layers selected
+        </div>
+      )}
       {sortedElements.map((el) => (
         <div
-          className={`layer-item ${selectedElementId === el.id ? "selected" : ""}`}
+          className={`layer-item ${isElementSelected(el.id, selectionState) ? "selected" : ""}`}
           key={el.id}
         >
           <button
             className="layer-select-btn"
             type="button"
-            onClick={() =>
-              onSelectElement(el.id)
-            }
+            onClick={(event) => onSelectElement(el.id, modifierFromEvent(event))}
+            onMouseDown={(event) => onSelectElement(el.id, modifierFromEvent(event))}
             title={el.name ?? el.id.slice(0, 8)}
           >
             <span className="layer-type-badge">{el.type}</span>
@@ -54,7 +66,7 @@ export function LayerList({
               type="button"
               title="Duplicate layer"
               onClick={() => {
-                onSelectElement(el.id);
+                onSelectElement(el.id, NO_MODIFIER);
                 onDuplicateElement(el.id);
               }}
             >
@@ -65,7 +77,7 @@ export function LayerList({
               type="button"
               title="Delete layer"
               onClick={() => {
-                onSelectElement(el.id);
+                onSelectElement(el.id, NO_MODIFIER);
                 onDeleteElement(el.id);
               }}
             >
@@ -76,7 +88,7 @@ export function LayerList({
               type="button"
               title="Bring to front"
               onClick={() => {
-                onSelectElement(el.id);
+                onSelectElement(el.id, NO_MODIFIER);
                 onBringToFront(el.id);
               }}
             >
@@ -87,7 +99,7 @@ export function LayerList({
               type="button"
               title="Bring forward"
               onClick={() => {
-                onSelectElement(el.id);
+                onSelectElement(el.id, NO_MODIFIER);
                 onBringForward(el.id);
               }}
             >
@@ -98,7 +110,7 @@ export function LayerList({
               type="button"
               title="Send backward"
               onClick={() => {
-                onSelectElement(el.id);
+                onSelectElement(el.id, NO_MODIFIER);
                 onSendBackward(el.id);
               }}
             >
@@ -109,7 +121,7 @@ export function LayerList({
               type="button"
               title="Send to back"
               onClick={() => {
-                onSelectElement(el.id);
+                onSelectElement(el.id, NO_MODIFIER);
                 onSendToBack(el.id);
               }}
             >

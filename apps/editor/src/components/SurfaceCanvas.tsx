@@ -3,38 +3,58 @@ import { useCallback, useEffect, useRef, useState, useId } from "react";
 import type { CreationFlowElement, CreationFlowSurface } from "@creationflow/schema";
 import { getElementZIndex } from "@creationflow/core";
 
+import {
+  isElementSelected,
+  makeSelectionRect,
+  modifierFromEvent,
+  rectIntersectsElement,
+  type SelectionModifier,
+  type SelectionRect,
+} from "../helpers/selection-helpers.js";
+
 import { ElementView } from "./ElementView.js";
 
 interface DragState {
   readonly elementId: string;
   readonly startMouseX: number;
   readonly startMouseY: number;
-  readonly startElemX: number;
-  readonly startElemY: number;
-  readonly startElemWidth: number;
-  readonly startElemHeight: number;
+  readonly startPositions: ReadonlyMap<string, { x: number; y: number }>;
+  readonly startSizes: ReadonlyMap<string, { width: number; height: number }>;
   readonly mode: "move" | "resize";
+}
+
+interface RubberBandState {
+  readonly startDocX: number;
+  readonly startDocY: number;
+  readonly currentDocX: number;
+  readonly currentDocY: number;
+  readonly modifier: SelectionModifier;
 }
 
 interface SurfaceCanvasProps {
   readonly surface: CreationFlowSurface;
-  readonly selectedElementId: string | null;
-  readonly onSelectElement: (elementId: string) => void;
-  readonly onUpdateElement: (elementId: string, patch: Partial<CreationFlowElement>) => void;
+  readonly selectedElementIds: readonly string[];
+  readonly onSelectElement: (elementId: string, modifier: SelectionModifier) => void;
+  readonly onSelectElementsInRect: (rect: SelectionRect, modifier: SelectionModifier) => void;
+  readonly onClearElementSelection: () => void;
+  readonly onUpdateElements: (patches: ReadonlyMap<string, Partial<CreationFlowElement>>) => void;
   readonly onDragStart?: () => void;
   readonly previewScale?: number;
 }
 
 export function SurfaceCanvas({
   surface,
-  selectedElementId,
+  selectedElementIds,
   onSelectElement,
-  onUpdateElement,
+  onSelectElementsInRect,
+  onClearElementSelection,
+  onUpdateElements,
   onDragStart,
   previewScale = 1,
 }: SurfaceCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const [rubberBand, setRubberBand] = useState<RubberBandState | null>(null);
   const clipPathId = useId();
 
   const sortedElements = [...surface.elements].sort(
@@ -68,6 +88,28 @@ export function SurfaceCanvas({
       const element = surface.elements.find((el) => el.id === elementId);
       if (!element) return;
 
+      const modifier = modifierFromEvent(e);
+      onSelectElement(elementId, modifier);
+
+      const targetIds = (() => {
+        if (modifier.additive && selectedElementIds.includes(elementId)) {
+          return selectedElementIds;
+        }
+        if (modifier.additive) {
+          return Array.from(new Set([...selectedElementIds, elementId]));
+        }
+        return [elementId];
+      })();
+
+      const startPositions = new Map<string, { x: number; y: number }>();
+      const startSizes = new Map<string, { width: number; height: number }>();
+      for (const id of targetIds) {
+        const el = surface.elements.find((entry) => entry.id === id);
+        if (!el) continue;
+        startPositions.set(id, { x: el.x, y: el.y });
+        startSizes.set(id, { width: Math.max(el.width, 10), height: Math.max(el.height, 10) });
+      }
+
       onDragStart?.();
 
       const coords = getDocCoords(e.clientX, e.clientY);
@@ -76,14 +118,12 @@ export function SurfaceCanvas({
         elementId,
         startMouseX: coords.x,
         startMouseY: coords.y,
-        startElemX: element.x,
-        startElemY: element.y,
-        startElemWidth: element.width,
-        startElemHeight: element.height,
+        startPositions,
+        startSizes,
         mode: "move",
       });
     },
-    [surface.elements, getDocCoords, onDragStart],
+    [surface.elements, getDocCoords, onDragStart, onSelectElement, selectedElementIds],
   );
 
   const handleResizeMouseDown = useCallback(
@@ -99,49 +139,99 @@ export function SurfaceCanvas({
 
       const coords = getDocCoords(e.clientX, e.clientY);
 
+      const startPositions = new Map<string, { x: number; y: number }>();
+      const startSizes = new Map<string, { width: number; height: number }>();
+      startPositions.set(elementId, { x: element.x, y: element.y });
+      startSizes.set(elementId, { width: Math.max(element.width, 10), height: Math.max(element.height, 10) });
+
       setDragState({
         elementId,
         startMouseX: coords.x,
         startMouseY: coords.y,
-        startElemX: element.x,
-        startElemY: element.y,
-        startElemWidth: Math.max(element.width, 10),
-        startElemHeight: Math.max(element.height, 10),
+        startPositions,
+        startSizes,
         mode: "resize",
       });
     },
     [surface.elements, getDocCoords, onDragStart],
   );
 
+  const handleCanvasMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.button !== 0) return;
+      if (e.target !== canvasRef.current) return;
+      const modifier = modifierFromEvent(e);
+      if (!modifier.additive) {
+        onClearElementSelection();
+      }
+      const coords = getDocCoords(e.clientX, e.clientY);
+      setRubberBand({
+        startDocX: coords.x,
+        startDocY: coords.y,
+        currentDocX: coords.x,
+        currentDocY: coords.y,
+        modifier,
+      });
+    },
+    [getDocCoords, onClearElementSelection],
+  );
+
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
-      if (!dragState) return;
-
-      const coords = getDocCoords(e.clientX, e.clientY);
-      const dx = coords.x - dragState.startMouseX;
-      const dy = coords.y - dragState.startMouseY;
-
-      if (dragState.mode === "move") {
-        onUpdateElement(dragState.elementId, {
-          x: dragState.startElemX + dx,
-          y: dragState.startElemY + dy,
-        });
-      } else {
-        onUpdateElement(dragState.elementId, {
-          width: Math.max(dragState.startElemWidth + dx, 10),
-          height: Math.max(dragState.startElemHeight + dy, 10),
-        });
+      if (dragState) {
+        const coords = getDocCoords(e.clientX, e.clientY);
+        const dx = coords.x - dragState.startMouseX;
+        const dy = coords.y - dragState.startMouseY;
+        const patches = new Map<string, Partial<CreationFlowElement>>();
+        for (const [id, start] of dragState.startPositions.entries()) {
+          if (dragState.mode === "move") {
+            patches.set(id, { x: start.x + dx, y: start.y + dy });
+          } else if (id === dragState.elementId) {
+            const size = dragState.startSizes.get(id) ?? { width: 10, height: 10 };
+            patches.set(id, {
+              width: Math.max(size.width + dx, 10),
+              height: Math.max(size.height + dy, 10),
+            });
+          }
+        }
+        onUpdateElements(patches);
+        return;
+      }
+      if (rubberBand) {
+        const coords = getDocCoords(e.clientX, e.clientY);
+        setRubberBand((prev) =>
+          prev
+            ? { ...prev, currentDocX: coords.x, currentDocY: coords.y }
+            : prev,
+        );
       }
     },
-    [dragState, getDocCoords, onUpdateElement],
+    [dragState, rubberBand, getDocCoords, onUpdateElements],
   );
 
   const handleMouseUp = useCallback(() => {
+    if (rubberBand) {
+      const rect = makeSelectionRect(
+        rubberBand.startDocX,
+        rubberBand.startDocY,
+        rubberBand.currentDocX,
+        rubberBand.currentDocY,
+      );
+      const width = rect.maxX - rect.minX;
+      const height = rect.maxY - rect.minY;
+      if (width > 2 || height > 2) {
+        const hits = surface.elements.filter((el) => rectIntersectsElement(rect, el));
+        if (hits.length > 0) {
+          onSelectElementsInRect(rect, rubberBand.modifier);
+        }
+      }
+      setRubberBand(null);
+    }
     setDragState(null);
-  }, []);
+  }, [rubberBand, surface.elements, onSelectElementsInRect]);
 
   useEffect(() => {
-    if (dragState) {
+    if (dragState || rubberBand) {
       window.addEventListener("mousemove", handleMouseMove);
       window.addEventListener("mouseup", handleMouseUp);
       document.body.style.userSelect = "none";
@@ -152,11 +242,12 @@ export function SurfaceCanvas({
         document.body.style.userSelect = "";
       };
     }
-  }, [dragState, handleMouseMove, handleMouseUp]);
+  }, [dragState, rubberBand, handleMouseMove, handleMouseUp]);
 
-  const selectedElement = selectedElementId
-    ? surface.elements.find((el) => el.id === selectedElementId)
+  const singleSelected = selectedElementIds.length === 1
+    ? surface.elements.find((el) => el.id === selectedElementIds[0])
     : undefined;
+  const primarySelectedId = selectedElementIds[0] ?? null;
 
   const surfaceRole = surface.role ?? "default";
 
@@ -296,11 +387,36 @@ export function SurfaceCanvas({
     );
   };
 
+  const renderRubberBand = () => {
+    if (!rubberBand) return null;
+    const left = Math.min(rubberBand.startDocX, rubberBand.currentDocX) * previewScale;
+    const top = Math.min(rubberBand.startDocY, rubberBand.currentDocY) * previewScale;
+    const width = Math.abs(rubberBand.currentDocX - rubberBand.startDocX) * previewScale;
+    const height = Math.abs(rubberBand.currentDocY - rubberBand.startDocY) * previewScale;
+    return (
+      <div
+        className="surface-rubber-band"
+        style={{
+          position: "absolute",
+          left,
+          top,
+          width,
+          height,
+          border: "1px solid #243b68",
+          background: "rgba(36, 59, 104, 0.08)",
+          pointerEvents: "none",
+          zIndex: 9999,
+        }}
+      />
+    );
+  };
+
   return (
     <div
       ref={canvasRef}
       className="surface-canvas"
       style={getSurfaceStyle()}
+      onMouseDown={handleCanvasMouseDown}
     >
       {renderSurfaceBackground()}
       {renderPathOverlay()}
@@ -311,8 +427,8 @@ export function SurfaceCanvas({
           <ElementView
             key={element.id}
             element={element}
-            isSelected={selectedElementId === element.id}
-            onSelect={() => onSelectElement(element.id)}
+            isSelected={isElementSelected(element.id, { selectedPageId: null, selectedSurfaceId: null, selectedElementIds })}
+            onSelect={(modifier) => onSelectElement(element.id, modifier)}
             onMouseDown={(e) => handleElementMouseDown(element.id, e)}
             surfaceWidth={surface.width}
             surfaceHeight={surface.height}
@@ -322,16 +438,18 @@ export function SurfaceCanvas({
         ))}
       </div>
 
-      {selectedElement && selectedElementId && dragState?.mode !== "move" && (
+      {singleSelected && primarySelectedId && dragState?.mode !== "move" && (
         <div
           className="resize-handle"
           style={{
-            left: `${selectedElement.x * previewScale + selectedElement.width * previewScale - 6}px`,
-            top: `${selectedElement.y * previewScale + selectedElement.height * previewScale - 6}px`,
+            left: `${singleSelected.x * previewScale + singleSelected.width * previewScale - 6}px`,
+            top: `${singleSelected.y * previewScale + singleSelected.height * previewScale - 6}px`,
           }}
-          onMouseDown={(e) => handleResizeMouseDown(selectedElementId, e)}
+          onMouseDown={(e) => handleResizeMouseDown(primarySelectedId, e)}
         />
       )}
+
+      {renderRubberBand()}
     </div>
   );
 }

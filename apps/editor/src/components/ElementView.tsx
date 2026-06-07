@@ -8,6 +8,12 @@ import type {
 } from "@creationflow/schema";
 import { getElementZIndex } from "@creationflow/core";
 
+import {
+  modifierFromEvent,
+  NO_MODIFIER,
+  type SelectionModifier,
+} from "../helpers/selection-helpers.js";
+
 import { ImageElementView } from "./ImageElementView.js";
 import { ShapeElementView } from "./ShapeElementView.js";
 import { TextElementView } from "./TextElementView.js";
@@ -16,7 +22,7 @@ import { PatternElementView } from "./PatternElementView.js";
 interface ElementViewProps {
   readonly element: CreationFlowElement;
   readonly isSelected: boolean;
-  readonly onSelect: () => void;
+  readonly onSelect: (modifier: SelectionModifier) => void;
   readonly onMouseDown: (e: React.MouseEvent) => void;
   readonly surfaceWidth: number;
   readonly surfaceHeight: number;
@@ -56,6 +62,11 @@ export function ElementView({
     baseStyle.boxShadow = "0 0 0 2px rgba(36, 59, 104, 0.25)";
   }
 
+  const handleClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    onSelect(modifierFromEvent(event));
+  };
+
   if (element.type === "pattern") {
     return (
       <PatternElementView
@@ -65,7 +76,7 @@ export function ElementView({
         clipPathId={clipPathId}
         previewScale={previewScale}
         isSelected={isSelected}
-        onSelect={onSelect}
+        onSelect={() => onSelect(NO_MODIFIER)}
       />
     );
   }
@@ -74,7 +85,7 @@ export function ElementView({
     return (
       <div
         style={baseStyle}
-        onClick={onSelect}
+        onClick={handleClick}
         onMouseDown={onMouseDown}
         className="canvas-element-absolute"
       >
@@ -88,7 +99,7 @@ export function ElementView({
     return (
       <div
         style={baseStyle}
-        onClick={onSelect}
+        onClick={handleClick}
         onMouseDown={onMouseDown}
         className="canvas-element-absolute"
       >
@@ -102,7 +113,7 @@ export function ElementView({
     return (
       <div
         style={baseStyle}
-        onClick={onSelect}
+        onClick={handleClick}
         onMouseDown={onMouseDown}
         className="canvas-element-absolute"
       >
@@ -116,7 +127,7 @@ export function ElementView({
     return (
       <div
         style={baseStyle}
-        onClick={onSelect}
+        onClick={handleClick}
         onMouseDown={onMouseDown}
         className="canvas-element-absolute canvas-group"
       >
@@ -130,7 +141,7 @@ export function ElementView({
     return (
       <div
         style={baseStyle}
-        onClick={onSelect}
+        onClick={handleClick}
         onMouseDown={onMouseDown}
         className="canvas-element-absolute"
       >

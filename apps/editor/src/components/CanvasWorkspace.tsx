@@ -1,19 +1,24 @@
 import type { CreationFlowSurface, CreationFlowElement } from "@creationflow/schema";
+import type { SelectionModifier, SelectionRect } from "../helpers/selection-helpers.js";
 import { SurfaceCanvas } from "./SurfaceCanvas.js";
 
 interface CanvasWorkspaceProps {
   readonly surface: CreationFlowSurface | undefined;
-  readonly selectedElementId: string | null;
-  readonly onSelectElement: (elementId: string) => void;
-  readonly onUpdateElement: (elementId: string, patch: Partial<CreationFlowElement>) => void;
+  readonly selectedElementIds: readonly string[];
+  readonly onSelectElement: (elementId: string, modifier: SelectionModifier) => void;
+  readonly onSelectElementsInRect: (rect: SelectionRect, modifier: SelectionModifier) => void;
+  readonly onClearElementSelection: () => void;
+  readonly onUpdateElements: (patches: ReadonlyMap<string, Partial<CreationFlowElement>>) => void;
   readonly onDragStart: () => void;
 }
 
 export function CanvasWorkspace({
   surface,
-  selectedElementId,
+  selectedElementIds,
   onSelectElement,
-  onUpdateElement,
+  onSelectElementsInRect,
+  onClearElementSelection,
+  onUpdateElements,
   onDragStart,
 }: CanvasWorkspaceProps) {
   if (!surface) {
@@ -38,9 +43,11 @@ export function CanvasWorkspace({
         </div>
         <SurfaceCanvas
           surface={surface}
-          selectedElementId={selectedElementId}
+          selectedElementIds={selectedElementIds}
           onSelectElement={onSelectElement}
-          onUpdateElement={onUpdateElement}
+          onSelectElementsInRect={onSelectElementsInRect}
+          onClearElementSelection={onClearElementSelection}
+          onUpdateElements={onUpdateElements}
           onDragStart={onDragStart}
         />
       </div>
