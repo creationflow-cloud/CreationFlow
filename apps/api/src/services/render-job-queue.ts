@@ -28,9 +28,29 @@ function getRedisConnectionOptions(redisUrl = process.env.REDIS_URL ?? "redis://
   };
 }
 
+function readEnvInt(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const value = Number.parseInt(raw, 10);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+export function getRenderJobMaxAttempts(): number {
+  return readEnvInt("RENDER_JOB_MAX_ATTEMPTS", 3);
+}
+
 export function getRenderJobQueue(): Queue<RenderJobQueuePayload> {
   queue ??= new Queue<RenderJobQueuePayload>(RENDER_JOB_QUEUE_NAME, {
     connection: getRedisConnectionOptions(),
+    defaultJobOptions: {
+      attempts: getRenderJobMaxAttempts(),
+      backoff: {
+        type: "exponential",
+        delay: 1_000,
+      },
+      removeOnComplete: 100,
+      removeOnFail: 100,
+    },
   });
 
   return queue;
@@ -42,7 +62,7 @@ export async function enqueueRenderJob(jobId: string): Promise<void> {
     { jobId },
     {
       jobId,
-      attempts: 3,
+      attempts: getRenderJobMaxAttempts(),
       backoff: {
         type: "exponential",
         delay: 1_000,

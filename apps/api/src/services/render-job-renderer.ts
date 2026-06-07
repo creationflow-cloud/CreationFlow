@@ -7,8 +7,42 @@ import type { CreationFlowDocument } from "@creationflow/schema";
 import { createAsset } from "./assets.js";
 import { getAssetById } from "./assets.js";
 import { getConfigurationById } from "./configurations.js";
-import { getRenderJobById, updateRenderJob } from "./render-jobs.js";
+import { getRenderJobById, recordRenderJobAttempt, updateRenderJob } from "./render-jobs.js";
 import type { RenderJobDto } from "./render-jobs.js";
+
+export class RenderJobTransientError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string,
+  ) {
+    super(message);
+  }
+}
+
+const TRANSIENT_ERROR_CODES: ReadonlySet<string> = new Set([
+  "storage_unavailable",
+  "asset_resolve_failed",
+  "render_failed",
+  "internal_error",
+]);
+
+function classifyRenderError(error: unknown): { code: string; transient: boolean } {
+  if (error instanceof RenderJobTransientError) {
+    return { code: error.code, transient: true };
+  }
+
+  if (error instanceof Error) {
+    const code = error.name && error.name !== "Error" ? error.name : "render_failed";
+    return {
+      code,
+      transient: error.message.toLowerCase().includes("timeout")
+        || error.message.toLowerCase().includes("storage")
+        || error.message.toLowerCase().includes("network"),
+    };
+  }
+
+  return { code: "render_failed", transient: true };
+}
 
 export class RenderJobNotFoundError extends Error {
   constructor() {
@@ -220,6 +254,14 @@ export async function renderRenderJobToPdf(
     return completed;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to render PDF.";
+    const classification = classifyRenderError(error);
+
+    const recorded = await recordRenderJobAttempt(db, job.id, {
+      errorCode: classification.code,
+      transient: classification.transient,
+      errorMessage: message,
+    });
+
     const failed = await updateRenderJob(db, job.id, {
       status: "failed",
       errorMessage: message,
@@ -227,6 +269,10 @@ export async function renderRenderJobToPdf(
 
     if (!failed) {
       throw new RenderJobNotFoundError();
+    }
+
+    if (recorded && classification.transient) {
+      throw new RenderJobTransientError(message, classification.code);
     }
 
     return failed;

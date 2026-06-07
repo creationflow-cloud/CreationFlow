@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PrismaClient } from "@creationflow/database";
 
-import { InvalidRenderJobStatusTransitionError, updateRenderJob } from "./render-jobs.js";
+import { InvalidRenderJobStatusTransitionError, recordRenderJobAttempt, updateRenderJob } from "./render-jobs.js";
 
 function createFakeDb(status: string) {
   const state = {
@@ -78,5 +78,38 @@ describe("render job status transitions", () => {
 
     expect(result?.status).toBe("failed");
     expect(result?.errorMessage).toBe("Renderer crashed.");
+  });
+});
+
+describe("recordRenderJobAttempt", () => {
+  it("increments the attempt counter and surfaces error metadata", async () => {
+    const { db, state } = createFakeDb("PROCESSING");
+
+    const result = await recordRenderJobAttempt(db, "job-1", {
+      errorCode: "asset_resolve_failed",
+      transient: true,
+      errorMessage: "Storage was unreachable.",
+    });
+
+    expect(result?.attempts).toBe(1);
+    expect(result?.errorCode).toBe("asset_resolve_failed");
+    expect(result?.transient).toBe(true);
+    expect(result?.errorMessage).toBe("Storage was unreachable.");
+    expect(state.job.errorMessage).toBe("Storage was unreachable.");
+  });
+
+  it("preserves prior output and only patches attempt-related fields", async () => {
+    const { db, state } = createFakeDb("PROCESSING");
+    state.job.output = { filename: "out.pdf", assetId: "asset-1" };
+
+    const result = await recordRenderJobAttempt(db, "job-1", {
+      errorCode: "render_failed",
+      transient: false,
+    });
+
+    expect(result?.attempts).toBe(1);
+    expect(result?.output?.filename).toBe("out.pdf");
+    expect(result?.output?.assetId).toBe("asset-1");
+    expect(result?.output?.errorCode).toBe("render_failed");
   });
 });

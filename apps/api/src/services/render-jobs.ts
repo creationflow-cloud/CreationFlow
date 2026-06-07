@@ -10,6 +10,9 @@ export interface RenderJobDto {
   readonly status: ApiRenderJobStatus;
   readonly output?: Record<string, unknown>;
   readonly errorMessage?: string;
+  readonly errorCode?: string;
+  readonly transient?: boolean;
+  readonly attempts: number;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -24,6 +27,9 @@ export interface UpdateRenderJobInput {
   readonly status?: ApiRenderJobStatus;
   readonly output?: Record<string, unknown>;
   readonly errorMessage?: string | null;
+  readonly errorCode?: string;
+  readonly transient?: boolean;
+  readonly attempts?: number;
 }
 
 export class InvalidRenderJobStatusTransitionError extends Error {
@@ -67,13 +73,21 @@ function toRenderJobDto(job: {
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }): RenderJobDto {
+  const output = toOutputValue(job.output);
+  const errorCode = typeof output?.errorCode === "string" ? (output.errorCode as string) : undefined;
+  const transient = typeof output?.transient === "boolean" ? (output.transient as boolean) : undefined;
+  const attempts = typeof output?.attempts === "number" ? (output.attempts as number) : 0;
+
   return {
     id: job.id,
     workspaceId: job.workspaceId,
     configurationId: job.configurationId ?? undefined,
     status: toApiRenderJobStatus(job.status),
-    output: toOutputValue(job.output),
+    output,
     errorMessage: job.errorMessage ?? undefined,
+    errorCode,
+    transient,
+    attempts,
     createdAt: job.createdAt.toISOString(),
     updatedAt: job.updatedAt.toISOString(),
   };
@@ -169,4 +183,28 @@ export async function updateRenderJob(
   });
 
   return toRenderJobDto(job);
+}
+
+export async function recordRenderJobAttempt(
+  db: PrismaClient,
+  id: string,
+  patch: { readonly errorCode?: string; readonly transient?: boolean; readonly errorMessage?: string },
+): Promise<RenderJobDto | null> {
+  const existing = await db.renderJob.findUnique({ where: { id } });
+  if (!existing) {
+    return null;
+  }
+
+  const previousOutput = toOutputValue(existing.output) ?? {};
+  const attempts = typeof previousOutput.attempts === "number" ? (previousOutput.attempts as number) : 0;
+
+  return updateRenderJob(db, id, {
+    errorMessage: patch.errorMessage ?? null,
+    output: {
+      ...previousOutput,
+      attempts: attempts + 1,
+      ...(patch.errorCode !== undefined && { errorCode: patch.errorCode }),
+      ...(patch.transient !== undefined && { transient: patch.transient }),
+    },
+  });
 }
