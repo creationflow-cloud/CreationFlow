@@ -113,4 +113,12 @@ final class ProductMapping
 
         return $result['body'] ?? null;
     }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function list_available_templates(string $workspace_id): array
+    {
+        return $this->api->list_product_templates($workspace_id);
+    }
 }

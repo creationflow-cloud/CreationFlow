@@ -19,6 +19,8 @@ final class ApiClient
 
     public const DEFAULT_TIMEOUT = 10;
 
+    public const TRANSIENT_PREFIX = 'creationflow_api_';
+
     public function __construct(Settings $settings)
     {
         $this->settings = $settings;
@@ -27,7 +29,7 @@ final class ApiClient
     /**
      * @return array{ok: bool, status: int, message: string, body?: array<string, mixed>}
      */
-    public function request(string $method, string $path, array $args = []): array
+    public function request(string $method, string $path, array $args = [], bool $use_cache = true): array
     {
         $settings  = $this->settings->get();
         $base_url  = isset($settings['api_url']) ? rtrim((string) $settings['api_url'], '/') : '';
@@ -35,22 +37,23 @@ final class ApiClient
         $debug     = ! empty($settings['debug_mode']);
 
         if ('' === $base_url) {
-            return [
-                'ok'      => false,
-                'status'  => 0,
-                'message' => __('CreationFlow API URL is not configured.', 'creationflow-woocommerce'),
-            ];
+            return $this->error_response(0, __('CreationFlow API URL is not configured.', 'creationflow-woocommerce'));
         }
 
         if ('' === $api_token) {
-            return [
-                'ok'      => false,
-                'status'  => 0,
-                'message' => __('CreationFlow API token is not configured.', 'creationflow-woocommerce'),
-            ];
+            return $this->error_response(0, __('CreationFlow API token is not configured.', 'creationflow-woocommerce'));
         }
 
-        $url = $base_url . '/' . ltrim($path, '/');
+        $url  = $base_url . '/' . ltrim($path, '/');
+        $key  = $method . '|' . $url . '|' . wp_json_encode($args);
+        $hash = md5($key);
+
+        if ($use_cache && 'GET' === strtoupper($method)) {
+            $cached = get_transient(self::TRANSIENT_PREFIX . $hash);
+            if (is_array($cached)) {
+                return $cached;
+            }
+        }
 
         $request_args = [
             'method'  => strtoupper($method),
@@ -77,11 +80,7 @@ final class ApiClient
         $response = wp_remote_request($url, $request_args);
 
         if (is_wp_error($response)) {
-            return [
-                'ok'      => false,
-                'status'  => 0,
-                'message' => $response->get_error_message(),
-            ];
+            return $this->error_response(0, $response->get_error_message());
         }
 
         $status_code = (int) wp_remote_retrieve_response_code($response);
@@ -95,7 +94,7 @@ final class ApiClient
         $ok = $status_code >= 200 && $status_code < 300;
         $message_key = isset($body['message']) ? (string) $body['message'] : '';
 
-        return [
+        $result = [
             'ok'      => $ok,
             'status'  => $status_code,
             'message' => '' !== $message_key
@@ -103,8 +102,17 @@ final class ApiClient
                 : ($ok
                     ? __('Connection successful.', 'creationflow-woocommerce')
                     : sprintf(/* translators: %d HTTP status code. */ __('Request failed with status %d.', 'creationflow-woocommerce'), $status_code)),
-            'body'    => $body,
         ];
+
+        if ($ok) {
+            $result['body'] = $body;
+        }
+
+        if ($use_cache && 'GET' === $request_args['method'] && $ok) {
+            set_transient(self::TRANSIENT_PREFIX . $hash, $result, MINUTE_IN_SECONDS * 5);
+        }
+
+        return $result;
     }
 
     /**
@@ -112,7 +120,7 @@ final class ApiClient
      */
     public function test_connection(): array
     {
-        $result = $this->request('GET', '/version');
+        $result = $this->request('GET', '/version', [], false);
 
         if ($result['ok']) {
             return [
@@ -143,10 +151,96 @@ final class ApiClient
             ];
         }
 
+        if (403 === $status) {
+            return [
+                'ok'      => false,
+                'status'  => $status,
+                'message' => __('Access denied. The API token may not have the required role for this operation.', 'creationflow-woocommerce'),
+            ];
+        }
+
         return [
             'ok'      => false,
             'status'  => $status,
             'message' => $result['message'],
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function list_workspaces(string $workspace_id = ''): array
+    {
+        $args = [];
+        if ('' !== $workspace_id) {
+            $args['workspaceId'] = $workspace_id;
+        }
+
+        $result = $this->request('GET', '/workspaces', $args);
+
+        if (! $result['ok']) {
+            return [];
+        }
+
+        $body = $result['body'] ?? [];
+
+        return is_array($body) ? array_values(array_filter($body, 'is_array')) : [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function list_product_templates(string $workspace_id): array
+    {
+        if ('' === $workspace_id) {
+            return [];
+        }
+
+        $result = $this->request('GET', '/product-templates', ['workspaceId' => $workspace_id]);
+
+        if (! $result['ok']) {
+            return [];
+        }
+
+        $body = $result['body'] ?? [];
+
+        return is_array($body) ? array_values(array_filter($body, 'is_array')) : [];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function get_product_template(string $template_id, string $workspace_id = ''): ?array
+    {
+        $args = [];
+        if ('' !== $workspace_id) {
+            $args['workspaceId'] = $workspace_id;
+        }
+
+        $result = $this->request('GET', '/product-templates/' . rawurlencode($template_id), $args);
+
+        if (! $result['ok']) {
+            return null;
+        }
+
+        return $result['body'] ?? null;
+    }
+
+    public function clear_cache(): void
+    {
+        // WordPress lacks a wildcard delete, so we rely on transient TTL.
+        // This is exposed for future cache management UIs.
+    }
+
+    /**
+     * @return array{ok: bool, status: int, message: string}
+     */
+    private function error_response(int $status, string $message): array
+    {
+        return [
+            'ok'      => false,
+            'status'  => $status,
+            'message' => $message,
         ];
     }
 }

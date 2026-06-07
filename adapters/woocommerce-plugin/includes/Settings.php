@@ -38,7 +38,7 @@ final class Settings
             'creationflow_woocommerce_connection',
             __('Connection Settings', 'creationflow-woocommerce'),
             static function (): void {
-                echo '<p>' . esc_html__('Configure how this adapter will connect to your self-hosted CreationFlow server. The real API connection will be added later.', 'creationflow-woocommerce') . '</p>';
+                echo '<p>' . esc_html__('Configure how this adapter connects to your self-hosted CreationFlow server. Use the "Test connection now" button to verify your credentials.', 'creationflow-woocommerce') . '</p>';
             },
             'creationflow_woocommerce'
         );
@@ -60,6 +60,14 @@ final class Settings
         );
 
         add_settings_field(
+            'default_workspace_id',
+            __('Default Workspace ID', 'creationflow-woocommerce'),
+            [$this, 'render_default_workspace_field'],
+            'creationflow_woocommerce',
+            'creationflow_woocommerce_connection'
+        );
+
+        add_settings_field(
             'debug_mode',
             __('Debug Mode', 'creationflow-woocommerce'),
             [$this, 'render_debug_mode_field'],
@@ -71,19 +79,25 @@ final class Settings
     /**
      * @param array<string, mixed> $input Raw settings input.
      *
-     * @return array{api_url: string, api_token: string, debug_mode: bool}
+     * @return array{api_url: string, api_token: string, debug_mode: bool, default_workspace_id: string, connection_status: string, last_connection_check: string, plugin_version: string}
      */
     public function sanitize(array $input): array
     {
+        $current = $this->get();
+
         return [
-            'api_url'    => isset($input['api_url']) ? esc_url_raw((string) $input['api_url']) : '',
-            'api_token'  => isset($input['api_token']) ? sanitize_text_field((string) $input['api_token']) : '',
-            'debug_mode' => ! empty($input['debug_mode']),
+            'api_url'              => isset($input['api_url']) ? esc_url_raw((string) $input['api_url']) : '',
+            'api_token'            => isset($input['api_token']) ? sanitize_text_field((string) $input['api_token']) : '',
+            'debug_mode'           => ! empty($input['debug_mode']),
+            'default_workspace_id' => isset($input['default_workspace_id']) ? sanitize_text_field((string) $input['default_workspace_id']) : '',
+            'connection_status'    => isset($current['connection_status']) ? (string) $current['connection_status'] : 'unknown',
+            'last_connection_check' => isset($current['last_connection_check']) ? (string) $current['last_connection_check'] : '',
+            'plugin_version'       => CREATIONFLOW_WOOCOMMERCE_VERSION,
         ];
     }
 
     /**
-     * @return array{api_url: string, api_token: string, debug_mode: bool}
+     * @return array{api_url: string, api_token: string, debug_mode: bool, default_workspace_id: string, connection_status: string, last_connection_check: string, plugin_version: string}
      */
     public function get(): array
     {
@@ -130,18 +144,33 @@ final class Settings
         );
     }
 
+    public function render_default_workspace_field(): void
+    {
+        $settings = $this->get();
+        $value    = isset($settings['default_workspace_id']) ? (string) $settings['default_workspace_id'] : '';
+
+        printf(
+            '<input class="regular-text" type="text" name="%1$s[default_workspace_id]" value="%2$s" placeholder="%3$s" />',
+            esc_attr(self::OPTION_NAME),
+            esc_attr($value),
+            esc_attr__('e.g. ws-1', 'creationflow-woocommerce')
+        );
+        echo '<p class="description">' . esc_html__('Optional: workspace used when no per-product workspace is set.', 'creationflow-woocommerce') . '</p>';
+    }
+
     /**
-     * @return array{api_url: string, api_token: string, debug_mode: bool, connection_status: string, last_connection_check: string, plugin_version: string}
+     * @return array{api_url: string, api_token: string, debug_mode: bool, default_workspace_id: string, connection_status: string, last_connection_check: string, plugin_version: string}
      */
     private function defaults(): array
     {
         return [
-            'api_url'              => '',
-            'api_token'            => '',
-            'debug_mode'           => false,
-            'connection_status'    => 'unknown',
+            'api_url'               => '',
+            'api_token'             => '',
+            'debug_mode'            => false,
+            'default_workspace_id'  => '',
+            'connection_status'     => 'unknown',
             'last_connection_check' => '',
-            'plugin_version'       => CREATIONFLOW_WOOCOMMERCE_VERSION,
+            'plugin_version'        => CREATIONFLOW_WOOCOMMERCE_VERSION,
         ];
     }
 

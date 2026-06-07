@@ -34,6 +34,8 @@ final class Admin
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('admin_post_creationflow_test_connection', [$this, 'handle_test_connection']);
         add_action('admin_notices', [$this, 'render_test_notice']);
+        add_action('wp_ajax_creationflow_test_connection', [$this, 'handle_ajax_test_connection']);
+        add_action('wp_ajax_creationflow_list_workspaces', [$this, 'handle_ajax_list_workspaces']);
     }
 
     public function register_menu(): void
@@ -58,6 +60,29 @@ final class Admin
             CREATIONFLOW_WOOCOMMERCE_URL . 'assets/admin.css',
             [],
             CREATIONFLOW_WOOCOMMERCE_VERSION
+        );
+
+        wp_enqueue_script(
+            'creationflow-woocommerce-admin',
+            CREATIONFLOW_WOOCOMMERCE_URL . 'assets/admin.js',
+            ['jquery'],
+            CREATIONFLOW_WOOCOMMERCE_VERSION,
+            true
+        );
+
+        wp_localize_script(
+            'creationflow-woocommerce-admin',
+            'CreationFlowAdmin',
+            [
+                'ajaxUrl'      => admin_url('admin-ajax.php'),
+                'testNonce'    => wp_create_nonce('creationflow_ajax_test'),
+                'workspacesNonce' => wp_create_nonce('creationflow_ajax_workspaces'),
+                'i18n'         => [
+                    'testing'   => __('Testing connection…', 'creationflow-woocommerce'),
+                    'success'   => __('Connection successful.', 'creationflow-woocommerce'),
+                    'error'     => __('Connection failed.', 'creationflow-woocommerce'),
+                ],
+            ]
         );
     }
 
@@ -87,6 +112,40 @@ final class Admin
 
         wp_safe_redirect($redirect);
         exit;
+    }
+
+    public function handle_ajax_test_connection(): void
+    {
+        if (! current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Insufficient permissions.', 'creationflow-woocommerce')], 403);
+        }
+
+        check_ajax_referer('creationflow_ajax_test', 'nonce');
+
+        $result = $this->api->test_connection();
+
+        $this->settings->update_connection_status(
+            $result['ok'] ? 'ok' : 'error',
+            current_time('mysql', true)
+        );
+
+        wp_send_json([
+            'ok'      => $result['ok'],
+            'status'  => $result['status'],
+            'message' => $result['message'],
+        ]);
+    }
+
+    public function handle_ajax_list_workspaces(): void
+    {
+        if (! current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Insufficient permissions.', 'creationflow-woocommerce')], 403);
+        }
+
+        check_ajax_referer('creationflow_ajax_workspaces', 'nonce');
+
+        $workspaces = $this->api->list_workspaces();
+        wp_send_json(['workspaces' => $workspaces]);
     }
 
     public function render_test_notice(): void
@@ -137,7 +196,10 @@ final class Admin
             add_query_arg(['action' => 'creationflow_test_connection'], admin_url('admin-post.php')),
             'creationflow_test_connection'
         );
-        echo '<p><a class="button" href="' . esc_url($test_url) . '">' . esc_html__('Test connection now', 'creationflow-woocommerce') . '</a></p>';
+        echo '<p>';
+        echo '<a class="button" id="creationflow-test-connection" href="' . esc_url($test_url) . '">' . esc_html__('Test connection now', 'creationflow-woocommerce') . '</a> ';
+        echo '<a class="button button-secondary" href="' . esc_url($test_url) . '">' . esc_html__('View details (new tab)', 'creationflow-woocommerce') . '</a>';
+        echo '</p>';
         echo '</div>';
 
         echo '<form action="options.php" method="post">';
