@@ -36,6 +36,7 @@ final class Admin
         add_action('admin_notices', [$this, 'render_test_notice']);
         add_action('wp_ajax_creationflow_test_connection', [$this, 'handle_ajax_test_connection']);
         add_action('wp_ajax_creationflow_list_workspaces', [$this, 'handle_ajax_list_workspaces']);
+        add_action('admin_post_creationflow_sync_mappings', [$this, 'handle_sync_mappings']);
     }
 
     public function register_menu(): void
@@ -153,6 +154,12 @@ final class Admin
         if (! isset($_GET['page']) || 'creationflow-woocommerce' !== $_GET['page']) {
             return;
         }
+        if (isset($_GET['creationflow_synced']) && '1' === $_GET['creationflow_synced']) {
+            echo '<div class="notice notice-success"><p>';
+            echo esc_html__('API cache cleared.', 'creationflow-woocommerce');
+            echo '</p></div>';
+            return;
+        }
         if (! isset($_GET['creationflow_test'])) {
             return;
         }
@@ -196,11 +203,17 @@ final class Admin
             add_query_arg(['action' => 'creationflow_test_connection'], admin_url('admin-post.php')),
             'creationflow_test_connection'
         );
+        $sync_url = wp_nonce_url(
+            add_query_arg(['action' => 'creationflow_sync_mappings'], admin_url('admin-post.php')),
+            'creationflow_sync_mappings'
+        );
         echo '<p>';
         echo '<a class="button" id="creationflow-test-connection" href="' . esc_url($test_url) . '">' . esc_html__('Test connection now', 'creationflow-woocommerce') . '</a> ';
-        echo '<a class="button button-secondary" href="' . esc_url($test_url) . '">' . esc_html__('View details (new tab)', 'creationflow-woocommerce') . '</a>';
+        echo '<a class="button button-secondary" href="' . esc_url($sync_url) . '">' . esc_html__('Clear API cache', 'creationflow-woocommerce') . '</a>';
         echo '</p>';
         echo '</div>';
+
+        $this->render_mappings_overview();
 
         echo '<form action="options.php" method="post">';
         settings_fields('creationflow_woocommerce');
@@ -220,5 +233,79 @@ final class Admin
             default:
                 return __('Not tested', 'creationflow-woocommerce');
         }
+    }
+
+    private function render_mappings_overview(): void
+    {
+        $args = [
+            'post_type'      => 'product',
+            'post_status'    => 'any',
+            'posts_per_page' => 50,
+            'meta_query'     => [
+                [
+                    'key'     => ProductMapping::META_KEY,
+                    'compare' => 'EXISTS',
+                ],
+            ],
+        ];
+
+        $query = new WP_Query($args);
+        $count = (int) $query->found_posts;
+
+        echo '<div class="creationflow-admin__status">';
+        echo '<h2>' . esc_html__('Product Mappings', 'creationflow-woocommerce') . '</h2>';
+        echo '<p>' . sprintf(
+            /* translators: %d product count. */
+            esc_html(_n('%d product is mapped to a CreationFlow template.', '%d products are mapped to a CreationFlow template.', $count, 'creationflow-woocommerce')),
+            (int) $count
+        ) . '</p>';
+
+        if ($query->have_posts()) {
+            echo '<table class="widefat striped creationflow-mappings-table">';
+            echo '<thead><tr>';
+            echo '<th>' . esc_html__('Product', 'creationflow-woocommerce') . '</th>';
+            echo '<th>' . esc_html__('Template ID', 'creationflow-woocommerce') . '</th>';
+            echo '<th>' . esc_html__('Workspace', 'creationflow-woocommerce') . '</th>';
+            echo '<th>' . esc_html__('Edit', 'creationflow-woocommerce') . '</th>';
+            echo '</tr></thead><tbody>';
+            while ($query->have_posts()) {
+                $query->the_post();
+                $product_id   = (int) get_the_ID();
+                $template_id  = (string) get_post_meta($product_id, ProductMapping::META_KEY, true);
+                $workspace_id = (string) get_post_meta($product_id, ProductMapping::WORKSPACE_META_KEY, true);
+                $edit_url     = get_edit_post_link($product_id, 'raw');
+                echo '<tr>';
+                echo '<td><strong>' . esc_html(get_the_title()) . '</strong></td>';
+                echo '<td><code>' . esc_html($template_id) . '</code></td>';
+                echo '<td>' . ($workspace_id !== '' ? '<code>' . esc_html($workspace_id) . '</code>' : '&mdash;') . '</td>';
+                echo '<td><a class="button button-small" href="' . esc_url($edit_url ?: '') . '">' . esc_html__('Edit', 'creationflow-woocommerce') . '</a></td>';
+                echo '</tr>';
+            }
+            echo '</tbody></table>';
+            wp_reset_postdata();
+        }
+        echo '</div>';
+    }
+
+    public function handle_sync_mappings(): void
+    {
+        if (! current_user_can('manage_options')) {
+            wp_die(esc_html__('Insufficient permissions.', 'creationflow-woocommerce'));
+        }
+
+        check_admin_referer('creationflow_sync_mappings');
+
+        $this->api->clear_cache();
+
+        $redirect = add_query_arg(
+            [
+                'page'                   => 'creationflow-woocommerce',
+                'creationflow_synced'    => '1',
+            ],
+            admin_url('options-general.php')
+        );
+
+        wp_safe_redirect($redirect);
+        exit;
     }
 }

@@ -1,0 +1,71 @@
+.creationflow-mapping .creationflow-search-template,
+.creationflow-mapping .creationflow-template-status {
+  margin-left: 8px;
+}
+
+.creationflow-template-status {
+  display: inline-block;
+  margin-left: 8px;
+  font-style: italic;
+  color: #50575e;
+}
+
+.creationflow-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.creationflow-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.creationflow-modal__content {
+  position: relative;
+  background: #fff;
+  border-radius: 6px;
+  padding: 20px 24px;
+  width: min(560px, 90vw);
+  max-height: 80vh;
+  overflow: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.creationflow-modal__content h2 {
+  margin-top: 0;
+}
+
+.creationflow-template-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.creationflow-template-results li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f0f1;
+}
+
+.creationflow-template-results li:last-child {
+  border-bottom: 0;
+}
+
+.creationflow-template-results code {
+  background: #f0f0f1;
+  padding: 0 4px;
+  border-radius: 2px;
+  color: #50575e;
+  font-size: 0.8em;
+}
+
+.creationflow-error {
+  color: #c92a2a;
+}

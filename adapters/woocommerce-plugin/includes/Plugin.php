@@ -27,6 +27,8 @@ final class Plugin
 
     private CartMeta $cart_meta;
 
+    private MappingUI $mapping_ui;
+
     private Admin $admin;
 
     public function __construct()
@@ -37,6 +39,7 @@ final class Plugin
         $this->product_mapping = new ProductMapping($this->api);
         $this->editor_embed    = new EditorEmbed($this->api);
         $this->cart_meta       = new CartMeta($this->product_mapping);
+        $this->mapping_ui      = new MappingUI($this->product_mapping);
         $this->admin           = new Admin($this->settings, $this->woocommerce, $this->api);
     }
 
@@ -46,6 +49,7 @@ final class Plugin
         $this->product_mapping->register();
         $this->editor_embed->register();
         $this->cart_meta->register();
+        $this->mapping_ui->register();
 
         if (is_admin()) {
             $this->admin->register();
