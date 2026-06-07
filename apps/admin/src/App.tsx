@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { listProducts, createProduct, type ProductDto } from "./api/products.js";
 import {
   listProductTemplates,
@@ -15,6 +15,16 @@ import {
 import { listWorkspaces, type WorkspaceDto } from "./api/workspaces.js";
 import { createDefaultDocument } from "./api/default-document.js";
 import { importSvgSurfaces, type SvgSurfaceImportResult } from "@creationflow/importers";
+
+const ACTIVE_WORKSPACE_KEY = "creationflow.admin.activeWorkspaceId";
+
+function readStoredActiveWorkspaceId(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const value = window.localStorage.getItem(ACTIVE_WORKSPACE_KEY);
+  return value && value.length > 0 ? value : null;
+}
 
 type Page = "dashboard" | "products" | "templates" | "configurations";
 
@@ -146,7 +156,10 @@ function pagesToDoc(
 
 export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   const [activePage, setActivePage] = useState<Page>("dashboard");
-  const [workspace, setWorkspace] = useState<WorkspaceDto | null>(null);
+  const [workspaces, setWorkspaces] = useState<WorkspaceDto[]>([]);
+  const [activeWorkspaceId, setActiveWorkspaceIdState] = useState<string | null>(
+    readStoredActiveWorkspaceId(),
+  );
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [templates, setTemplates] = useState<ProductTemplateDto[]>([]);
   const [configurations, setConfigurations] = useState<ConfigurationDto[]>([]);
@@ -183,23 +196,13 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     setError(null);
     try {
       const wsList = await listWorkspaces();
-      const ws = wsList[0] ?? null;
-      setWorkspace(ws);
-
-      if (ws) {
-        const [p, t, c] = await Promise.all([
-          listProducts(ws.id),
-          listProductTemplates(ws.id),
-          listConfigurations(ws.id),
-        ]);
-        setProducts(p);
-        setTemplates(t);
-        setConfigurations(c);
-      } else {
-        setProducts([]);
-        setTemplates([]);
-        setConfigurations([]);
-      }
+      setWorkspaces(wsList);
+      setActiveWorkspaceIdState((current) => {
+        if (current && wsList.some((ws) => ws.id === current)) {
+          return current;
+        }
+        return wsList[0]?.id ?? null;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -212,6 +215,55 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       void loadData();
     });
   }, [loadData]);
+
+  const workspace = useMemo(
+    () => workspaces.find((ws) => ws.id === activeWorkspaceId) ?? null,
+    [workspaces, activeWorkspaceId],
+  );
+
+  useEffect(() => {
+    if (!activeWorkspaceId) {
+      setProducts([]);
+      setTemplates([]);
+      setConfigurations([]);
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(ACTIVE_WORKSPACE_KEY, activeWorkspaceId);
+    }
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([
+      listProducts(activeWorkspaceId),
+      listProductTemplates(activeWorkspaceId),
+      listConfigurations(activeWorkspaceId),
+    ])
+      .then(([p, t, c]) => {
+        if (cancelled) return;
+        setProducts(p);
+        setTemplates(t);
+        setConfigurations(c);
+        setError(null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : String(err));
+        setProducts([]);
+        setTemplates([]);
+        setConfigurations([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeWorkspaceId]);
+
+  const handleSwitchWorkspace = (id: string) => {
+    if (id === activeWorkspaceId) return;
+    setActiveWorkspaceIdState(id);
+  };
 
   const openInEditor = (id: string, param: "templateId" | "configurationId") => {
     window.open(`${editorBaseUrl}/?${param}=${id}`, "_blank");
@@ -804,7 +856,24 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
             <h1>{pageTitle[activePage]}</h1>
           </div>
           <div className="header-actions">
-            <span className="environment-pill">{loading ? "Loading..." : `${workspaceLabel}`}</span>
+            {workspaces.length > 1 && workspace ? (
+              <label className="workspace-switcher">
+                <span className="visually-hidden">Workspace</span>
+                <select
+                  className="workspace-select"
+                  value={workspace.id}
+                  onChange={(e) => handleSwitchWorkspace(e.target.value)}
+                >
+                  {workspaces.map((ws) => (
+                    <option key={ws.id} value={ws.id}>
+                      {ws.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <span className="environment-pill">{loading ? "Loading..." : `${workspaceLabel}`}</span>
+            )}
             {onSignOut && (
               <button type="button" className="signout-btn" onClick={onSignOut}>
                 Sign out
