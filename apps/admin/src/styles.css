@@ -1104,3 +1104,237 @@ button {
   color: #6b7280;
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
+
+.template-detail-section {
+  margin-top: 24px;
+}
+
+.rules-editor {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 16px;
+}
+
+.rules-editor__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.rules-editor__header h3 {
+  margin: 0 0 4px 0;
+  font-size: 1rem;
+}
+
+.rules-editor__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.rules-editor__empty {
+  margin: 12px 0;
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.add-rule-btn {
+  background: #243b68;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.add-rule-btn:hover {
+  background: #1a2a4a;
+}
+
+.rules-editor__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rule-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rule-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rule-name-input {
+  flex: 1 1 200px;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.rule-type-select,
+.rule-enabled-label {
+  font-size: 0.8rem;
+  color: #374151;
+}
+
+.rule-enabled-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rule-card__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rule-move-btn,
+.rule-delete-btn,
+.rule-remove-btn,
+.rule-add-btn {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: #374151;
+}
+
+.rule-move-btn:disabled,
+.rule-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rule-delete-btn {
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.rule-section {
+  border-top: 1px dashed #e5e7eb;
+  padding-top: 8px;
+}
+
+.rule-section__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.rule-section__header h5 {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #374151;
+}
+
+.rule-section__add-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.rule-section__empty {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.condition-row,
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 6px;
+  background: #f9fafb;
+  border-radius: 4px;
+  border: 1px solid #f3f4f6;
+}
+
+.condition-variable,
+.condition-value,
+.action-input {
+  padding: 4px 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  min-width: 120px;
+  flex: 1 1 120px;
+}
+
+.action-type-pill {
+  background: #243b68;
+  color: #fff;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.7rem;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+.rules-editor__feedback {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rules-editor__group {
+  padding: 8px 10px;
+  border-left: 3px solid #d1d5db;
+  background: #f9fafb;
+  border-radius: 4px;
+}
+
+.rules-editor__group h4 {
+  margin: 0 0 4px 0;
+  font-size: 0.85rem;
+}
+
+.rules-editor__group ul {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 0.8rem;
+  color: #374151;
+}
+
+.rules-editor__group code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+.rules-editor__group--error {
+  border-left-color: #b91c1c;
+  background: rgba(185, 28, 28, 0.06);
+}
+
+.rules-editor__group--warning {
+  border-left-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.06);
+}

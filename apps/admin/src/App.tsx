@@ -15,6 +15,7 @@ import {
 import { listWorkspaces, type WorkspaceDto } from "./api/workspaces.js";
 import { createDefaultDocument } from "./api/default-document.js";
 import { importSvgSurfaces, type SvgSurfaceImportResult } from "@creationflow/importers";
+import { RulesEditor } from "./RulesEditor.js";
 
 const ACTIVE_WORKSPACE_KEY = "creationflow.admin.activeWorkspaceId";
 
@@ -823,6 +824,16 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                     )}
                   </div>
                 )}
+              </section>
+
+              <section className="template-detail-section">
+                <RulesEditor
+                  document={detailDoc}
+                  onChange={(doc) => {
+                    setDetailDoc(doc);
+                    setDetailPages(docToPages(doc));
+                  }}
+                />
               </section>
             </section>
           )}
