@@ -1,21 +1,38 @@
 import Fastify from "fastify";
 import type { FastifyInstance } from "fastify";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { registerAuth, type ApiAuthConfig } from "./auth.js";
+import { registerAuth, WorkspaceScopeError, type ApiAuthConfig } from "./auth.js";
 
 interface TestServer {
   readonly server: FastifyInstance;
   readonly auth: ApiAuthConfig;
 }
 
-async function buildTestServer(options: { apiKey?: string; authDisabled?: boolean }): Promise<TestServer> {
+async function buildTestServer(
+  options: {
+    apiKey?: string;
+    authDisabled?: boolean;
+    allowedWorkspaces?: ReadonlySet<string> | "all";
+  } = {},
+): Promise<TestServer> {
   const auth: ApiAuthConfig = {
     apiKey: options.apiKey,
     authDisabled: options.authDisabled ?? false,
+    allowedWorkspaces: options.allowedWorkspaces ?? new Set(),
   };
 
   const server = Fastify({ logger: false });
+  server.setErrorHandler((error, _request, reply) => {
+    if (error instanceof WorkspaceScopeError) {
+      return reply.code(403).send({ status: "error", message: error.message });
+    }
+    if (!reply.sent) {
+      return reply.code(500).send({ status: "error", message: "Internal server error." });
+    }
+    return reply;
+  });
+
   await registerAuth(server, auth);
 
   server.get(
@@ -27,6 +44,22 @@ async function buildTestServer(options: { apiKey?: string; authDisabled?: boolea
   server.get(
     "/health",
     async () => ({ status: "ok" }),
+  );
+
+  server.get<{ Querystring: { workspaceId?: string } }>(
+    "/by-query",
+    async (request) => ({
+      status: "ok",
+      workspaceId: request.query.workspaceId,
+    }),
+  );
+
+  server.post<{ Body: { workspaceId?: string } }>(
+    "/by-body",
+    async (request) => ({
+      status: "ok",
+      workspaceId: request.body.workspaceId,
+    }),
   );
 
   return { server, auth };
@@ -122,5 +155,66 @@ describe("auth plugin", () => {
     const response = await current.server.inject({ method: "GET", url: "/health" });
 
     expect(response.statusCode).toBe(200);
+  });
+
+  it("returns 403 for query workspaceId outside allowed set", async () => {
+    current = await buildTestServer({
+      apiKey: "key",
+      allowedWorkspaces: new Set(["ws-a"]),
+    });
+
+    const response = await current.server.inject({
+      method: "GET",
+      url: "/by-query?workspaceId=ws-b",
+      headers: { "x-api-key": "key" },
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("allows query workspaceId in allowed set", async () => {
+    current = await buildTestServer({
+      apiKey: "key",
+      allowedWorkspaces: new Set(["ws-a"]),
+    });
+
+    const response = await current.server.inject({
+      method: "GET",
+      url: "/by-query?workspaceId=ws-a",
+      headers: { "x-api-key": "key" },
+    });
+
+    expect(response.statusCode).toBe(200);
+  });
+
+  it("allows all workspaces when configured as all", async () => {
+    current = await buildTestServer({
+      apiKey: "key",
+      allowedWorkspaces: "all",
+    });
+
+    const response = await current.server.inject({
+      method: "GET",
+      url: "/by-query?workspaceId=ws-anywhere",
+      headers: { "x-api-key": "key" },
+    });
+
+    expect(response.statusCode).toBe(200);
+  });
+
+  it("returns 403 for body workspaceId outside allowed set", async () => {
+    current = await buildTestServer({
+      apiKey: "key",
+      allowedWorkspaces: new Set(["ws-a"]),
+    });
+
+    const response = await current.server.inject({
+      method: "POST",
+      url: "/by-body",
+      headers: { "x-api-key": "key", "content-type": "application/json" },
+      payload: JSON.stringify({ workspaceId: "ws-b" }),
+    });
+
+    expect(response.statusCode).toBe(403);
   });
 });

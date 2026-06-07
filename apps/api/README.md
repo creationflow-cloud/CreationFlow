@@ -29,6 +29,7 @@ pnpm check      # Type-check
 - `PORT` — Server port (default: 3000)
 - `HOST` — Server host (default: 0.0.0.0)
 - `CREATIONFLOW_API_KEY` — required API key used to authenticate non-public requests
+- `CREATIONFLOW_API_WORKSPACES` — comma separated list of workspace IDs the API key may access, or `*` for all (default: empty)
 - `CREATIONFLOW_AUTH_DISABLED` — set to `true` to bypass authentication (development only)
 - `MAX_UPLOAD_BYTES` — Upload size limit (default: 10 MiB)
 - `UPLOAD_DIR` — Local upload directory (default: `./uploads`)

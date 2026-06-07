@@ -5,12 +5,14 @@ import fp from "fastify-plugin";
 export interface ApiAuthConfig {
   readonly apiKey: string | undefined;
   readonly authDisabled: boolean;
+  readonly allowedWorkspaces: ReadonlySet<string> | "all";
 }
 
 declare module "fastify" {
   interface FastifyInstance {
     auth: {
       readonly requireAuth: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+      readonly enforceWorkspaceScope: (workspaceId: string | null | undefined) => void;
     };
   }
   interface FastifyRequest {
@@ -26,6 +28,15 @@ class AuthError extends Error {
     this.name = "AuthError";
   }
 }
+
+class WorkspaceScopeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "WorkspaceScopeError";
+  }
+}
+
+export { WorkspaceScopeError };
 
 function safeEqual(a: string, b: string): boolean {
   const aBuf = Buffer.from(a, "utf8");
@@ -90,11 +101,66 @@ async function authPluginImpl(server: FastifyInstance, options: ApiAuthConfig): 
     request.auth = { authenticated: true };
   };
 
-  server.decorate("auth", { requireAuth });
+  const enforceWorkspaceScope = (workspaceId: string | null | undefined): void => {
+    if (options.allowedWorkspaces === "all") {
+      return;
+    }
+
+    if (!workspaceId || !options.allowedWorkspaces.has(workspaceId)) {
+      const error = new WorkspaceScopeError(
+        workspaceId ? "Workspace not allowed for this API key." : "Workspace ID is required.",
+      );
+      throw error;
+    }
+  };
+
+  server.addHook("preHandler", async (request) => {
+    const config = (request.routeOptions?.config ?? {}) as { skipWorkspaceScope?: boolean };
+    if (config.skipWorkspaceScope === true) {
+      return;
+    }
+
+    const query = request.query as Record<string, unknown> | undefined;
+    const body = request.body as Record<string, unknown> | undefined;
+
+    const workspaceId =
+      typeof query?.workspaceId === "string"
+        ? (query.workspaceId as string)
+        : typeof body?.workspaceId === "string"
+          ? (body.workspaceId as string)
+          : undefined;
+
+    if (workspaceId === undefined) {
+      return;
+    }
+
+    enforceWorkspaceScope(workspaceId);
+  });
+
+  server.decorate("auth", { requireAuth, enforceWorkspaceScope });
 }
 
 export const registerAuth = fp(authPluginImpl, { name: "creationflow-auth" });
 
 export function isAuthConfigured(config: ApiAuthConfig): boolean {
   return config.authDisabled || Boolean(config.apiKey);
+}
+
+export function parseAllowedWorkspaces(value: string | undefined): ReadonlySet<string> | "all" {
+  if (!value) {
+    return new Set();
+  }
+
+  const trimmed = value.trim();
+
+  if (trimmed === "*" || trimmed.toLowerCase() === "all") {
+    return "all";
+  }
+
+  const entries = trimmed
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+  return new Set(entries);
 }

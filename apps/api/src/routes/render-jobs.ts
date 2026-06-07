@@ -180,6 +180,15 @@ export async function registerRenderJobRoutes(server: FastifyInstance): Promise<
     },
     async (request, reply) => {
       try {
+        const existing = await getRenderJobById(server.db, request.params.id);
+        if (!existing) {
+          return reply.code(404).send({
+            status: "error",
+            message: "Render job not found.",
+          });
+        }
+        server.auth.enforceWorkspaceScope(existing.workspaceId);
+
         return await renderRenderJobToPdf(server.db, server.storage, request.params.id);
       } catch (error) {
         server.log.error(error);
@@ -230,6 +239,8 @@ export async function registerRenderJobRoutes(server: FastifyInstance): Promise<
           });
         }
 
+        server.auth.enforceWorkspaceScope(job.workspaceId);
+
         return job;
       } catch (error) {
         server.log.error(error);
@@ -276,6 +287,15 @@ export async function registerRenderJobRoutes(server: FastifyInstance): Promise<
     },
     async (request, reply) => {
       try {
+        const existing = await getRenderJobById(server.db, request.params.id);
+        if (!existing) {
+          return reply.code(404).send({
+            status: "error",
+            message: "Render job not found.",
+          });
+        }
+        server.auth.enforceWorkspaceScope(existing.workspaceId);
+
         const job = await updateRenderJob(server.db, request.params.id, request.body);
 
         if (!job) {

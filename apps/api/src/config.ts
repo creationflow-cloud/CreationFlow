@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 
+import { parseAllowedWorkspaces } from "./plugins/auth.js";
+
 interface ApiPackageJson {
   readonly version?: string;
 }
@@ -13,6 +15,7 @@ export interface ApiConfig {
   readonly uploadDir: string;
   readonly apiKey: string | undefined;
   readonly authDisabled: boolean;
+  readonly allowedWorkspaces: ReadonlySet<string> | "all";
 }
 
 function readPackageVersion(): string {
@@ -34,5 +37,6 @@ export function getApiConfig(): ApiConfig {
     uploadDir: process.env.UPLOAD_DIR ?? "./uploads",
     apiKey: apiKey && apiKey.length > 0 ? apiKey : undefined,
     authDisabled: process.env.CREATIONFLOW_AUTH_DISABLED === "true",
+    allowedWorkspaces: parseAllowedWorkspaces(process.env.CREATIONFLOW_API_WORKSPACES),
   };
 }
