@@ -1,5 +1,9 @@
-import { createRenderJobPlaceholder } from "./render-plan.js";
+import { createRenderJobPlaceholder, renderDocument } from "./render-plan.js";
 
-createRenderJobPlaceholder();
+export { createRenderJobPlaceholder, renderDocument };
+export type { RenderDocumentResult, RenderJobPlaceholder } from "./render-plan.js";
 
-console.log("CreationFlow Renderer placeholder started");
+if (import.meta.url === `file://${process.argv[1]}`) {
+  createRenderJobPlaceholder();
+  console.log("CreationFlow Renderer ready (use renderDocument to render documents to PDF).");
+}
