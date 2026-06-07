@@ -1219,6 +1219,63 @@ describe("path-based surfaces", () => {
   });
 });
 
+describe("surface role handling", () => {
+  it("renders an overlay surface after the default content", async () => {
+    const defaultSurface = createSurface("default-1", [createShapeElement("shape-default", 10, 10, 20, 20)]);
+    const overlaySurface: CreationFlowSurface = {
+      ...createSurface("overlay-1", [createShapeElement("shape-overlay", 30, 30, 20, 20)]),
+      role: "overlay" as const,
+    };
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [defaultSurface, overlaySurface])]),
+      { compress: false },
+    );
+
+    const streams = extractPdfStreams(pdf).join("\n");
+    const defaultIndex = streams.indexOf("10 10 20 20 re");
+    const overlayIndex = streams.indexOf("30 30 20 20 re");
+
+    expect(defaultIndex).toBeGreaterThanOrEqual(0);
+    expect(overlayIndex).toBeGreaterThan(defaultIndex);
+  });
+
+  it("renders path-based color regions like other surfaces", async () => {
+    const colorRegion: CreationFlowSurface = {
+      ...createSurface("color-1", [createShapeElement("shape-1", 5, 5, 20, 20)]),
+      role: "colorRegion" as const,
+      shape: "path" as const,
+      pathData: "M0 0 L100 0 L100 100 L0 100 Z",
+    };
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [colorRegion])]),
+      { compress: false },
+    );
+
+    const streams = extractPdfStreams(pdf).join("\n");
+    expect(streams).toContain("0.8666666666666667 0.9333333333333333 1 scn");
+    expect(streams).toContain("5 5 20 20 re");
+  });
+
+  it("respects clipContent on rect-based designRegions", async () => {
+    const designRegion: CreationFlowSurface = {
+      ...createSurface("design-1", [createShapeElement("shape-1", 5, 5, 20, 20)]),
+      role: "designRegion" as const,
+      clipContent: true,
+    };
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [designRegion])]),
+      { compress: false },
+    );
+
+    const streams = extractPdfStreams(pdf).join("\n");
+    expect(streams).toContain("W");
+    expect(streams).toContain("n");
+  });
+});
+
 describe("realistic apparel template clipping", () => {
   it("clips designRegion elements while leaving colorRegion unclipped", async () => {
     const pdf = await renderDocumentToPdf(

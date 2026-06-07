@@ -1110,6 +1110,10 @@ export async function renderDocumentToPdf(
         doc.addPage({ size: [width, height], margin: 0 });
 
         for (const surface of surfaces) {
+          if (surface.role === "overlay") {
+            continue;
+          }
+
           const surfaceOffset = getSurfaceOffset(surface, unit);
           const offset = { x: surfaceOffset.x + pageBleed, y: surfaceOffset.y + pageBleed };
 
@@ -1141,6 +1145,27 @@ export async function renderDocumentToPdf(
 
           if (clipped) {
             doc.restore();
+          }
+        }
+
+        for (const surface of surfaces) {
+          if (surface.role !== "overlay") {
+            continue;
+          }
+
+          const surfaceOffset = getSurfaceOffset(surface, unit);
+          const offset = { x: surfaceOffset.x + pageBleed, y: surfaceOffset.y + pageBleed };
+
+          if (surface.shape === "path" && surface.pathData) {
+            renderPathSurface(doc, surface, unit, offset, options);
+          }
+
+          const elements = [...surface.elements].sort(
+            (a, b) => getElementZIndex(a) - getElementZIndex(b),
+          );
+
+          for (const element of elements) {
+            await renderElement(doc, element, surface, unit, offset, effectiveOptions, state);
           }
         }
 
