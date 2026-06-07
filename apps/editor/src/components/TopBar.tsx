@@ -15,6 +15,7 @@ interface TopBarProps {
   readonly renderJob: RenderJobDto | null;
   readonly renderError: string | null;
   readonly pdfOutput: { downloadUrl: string; filename: string } | null;
+  readonly blockingIssues: number;
   readonly onUndo: () => void;
   readonly onRedo: () => void;
   readonly onSave: () => void;
@@ -36,12 +37,20 @@ export function TopBar({
   renderJob,
   renderError,
   pdfOutput,
+  blockingIssues,
   onUndo,
   onRedo,
   onSave,
   onRenderPdf,
   onSignOut,
 }: TopBarProps) {
+  const saveDisabled = !dirty || saving || blockingIssues > 0;
+  const renderDisabled = rendering || saving || blockingIssues > 0;
+  const blockHint =
+    blockingIssues > 0
+      ? `Save and render blocked: ${blockingIssues} mandatory rule violation(s).`
+      : undefined;
+
   return (
     <header className="editor-header">
       <div className="header-brand">
@@ -70,14 +79,20 @@ export function TopBar({
             >
               Redo
             </button>
+            {blockingIssues > 0 && (
+              <span className="dirty-indicator dirty" title={blockHint}>
+                {blockingIssues} blocking rule violation{blockingIssues === 1 ? "" : "s"}
+              </span>
+            )}
             <span className={`dirty-indicator ${dirty ? "dirty" : "clean"}`}>
               {dirty ? "Unsaved changes" : saveStatus === "saved" ? "Saved" : "No changes"}
             </span>
             <button
               type="button"
               className={`save-btn ${saveStatus}`}
-              disabled={!dirty || saving}
+              disabled={saveDisabled}
               onClick={onSave}
+              title={blockHint}
             >
               {saving
                 ? "Saving..."
@@ -91,9 +106,11 @@ export function TopBar({
               <button
                 type="button"
                 className="render-btn"
-                disabled={rendering || saving}
+                disabled={renderDisabled}
                 onClick={onRenderPdf}
-                title={dirty ? "Will save and render PDF" : "Render saved configuration to PDF"}
+                title={
+                  blockHint ?? (dirty ? "Will save and render PDF" : "Render saved configuration to PDF")
+                }
               >
                 {rendering ? "Rendering..." : renderJob?.status === "done" ? "PDF Ready" : "Render PDF"}
               </button>

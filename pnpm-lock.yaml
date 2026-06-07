@@ -120,6 +120,9 @@ importers:
       '@creationflow/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@creationflow/rules-engine':
+        specifier: workspace:*
+        version: link:../../packages/rules-engine
       '@creationflow/schema':
         specifier: workspace:*
         version: link:../../packages/schema

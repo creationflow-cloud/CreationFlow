@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   addElement,
@@ -12,6 +12,8 @@ import type {
   AddShapeElementInput,
   AddTextElementInput,
 } from "@creationflow/core";
+import { evaluateRules } from "@creationflow/rules-engine";
+import type { RuleVariableValue } from "@creationflow/rules-engine";
 import type {
   AssetId,
   CreationFlowDocument,
@@ -36,6 +38,7 @@ import type { RenderJobDto } from "./api/render-jobs.js";
 import { findElementById, findSurfaceById } from "./helpers/document-helpers.js";
 import { canRedo, canUndo, pushHistory, redo, undo } from "./helpers/document-history.js";
 import type { HistoryState } from "./helpers/document-history.js";
+import { collectEditorVariables } from "./helpers/rule-variables.js";
 import {
   bringForward,
   bringToFront,
@@ -59,6 +62,7 @@ import { LeftSidebar } from "./components/LeftSidebar.js";
 import { CanvasWorkspace } from "./components/CanvasWorkspace.js";
 import { RightSidebar } from "./components/RightSidebar.js";
 import { PageFooter } from "./components/PageFooter.js";
+import { RulesValidationPanel } from "./components/RulesValidationPanel.js";
 
 function getQueryParam(param: string): string | null {
   const params = new URLSearchParams(window.location.search);
@@ -102,6 +106,20 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     currentDocument && lastSavedSnapshot
       ? JSON.stringify(currentDocument) !== lastSavedSnapshot
       : false;
+
+  const editorVariables = useMemo<Record<string, RuleVariableValue>>(() => {
+    if (!currentDocument) return {};
+    return collectEditorVariables(currentDocument, configuration);
+  }, [currentDocument, configuration]);
+
+  const ruleEvaluation = useMemo(() => {
+    if (!currentDocument) return null;
+    return evaluateRules(currentDocument, {
+      variables: editorVariables,
+    });
+  }, [currentDocument, editorVariables]);
+
+  const hasBlockingIssues = (ruleEvaluation?.mandatoryViolations.length ?? 0) > 0;
 
   useEffect(() => {
     if (!configurationId) {
@@ -755,6 +773,14 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       return;
     }
 
+    if (hasBlockingIssues) {
+      setSaveStatus("error");
+      setSaveError(
+        `Cannot save: ${ruleEvaluation?.mandatoryViolations.length ?? 0} mandatory rule violation(s) need to be resolved.`,
+      );
+      return;
+    }
+
     setSaving(true);
     setSaveError(null);
 
@@ -776,10 +802,17 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     } finally {
       setSaving(false);
     }
-  }, [configuration, currentDocument, refreshPdfPreview]);
+  }, [configuration, currentDocument, refreshPdfPreview, hasBlockingIssues, ruleEvaluation]);
 
   const handleRenderPdf = useCallback(async () => {
     if (!configuration || !currentDocument) {
+      return;
+    }
+
+    if (hasBlockingIssues) {
+      setRenderError(
+        `Cannot render: ${ruleEvaluation?.mandatoryViolations.length ?? 0} mandatory rule violation(s) need to be resolved.`,
+      );
       return;
     }
 
@@ -811,7 +844,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     } finally {
       setRendering(false);
     }
-  }, [configuration, currentDocument, dirty]);
+  }, [configuration, currentDocument, dirty, hasBlockingIssues, ruleEvaluation]);
 
   const handleSaveRef = useRef(handleSave);
   const handleUndoRef = useRef(handleUndo);
@@ -903,6 +936,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
         renderJob={renderJob}
         renderError={renderError}
         pdfOutput={pdfOutput}
+        blockingIssues={ruleEvaluation?.mandatoryViolations.length ?? 0}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onSave={handleSave}
@@ -926,6 +960,13 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
             Dismiss
           </button>
         </section>
+      )}
+
+      {currentDocument && (
+        <RulesValidationPanel
+          document={currentDocument}
+          variables={editorVariables}
+        />
       )}
 
       <section className="editor-workspace" aria-label="Editor workspace">

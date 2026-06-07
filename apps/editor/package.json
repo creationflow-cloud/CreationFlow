@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@creationflow/core": "workspace:*",
+    "@creationflow/rules-engine": "workspace:*",
     "@creationflow/schema": "workspace:*",
     "@vitejs/plugin-react": "^5.0.0",
     "pdfjs-dist": "^4.8.69",
