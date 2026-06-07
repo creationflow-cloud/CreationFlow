@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 
 import type { ApiConfig } from "./config.js";
+import { registerAuth } from "./plugins/auth.js";
 import { registerDatabase } from "./plugins/database.js";
 import { registerOpenApi } from "./plugins/openapi.js";
 import { registerStorage } from "./plugins/storage.js";
@@ -32,6 +33,7 @@ export async function createServer(config: ApiConfig) {
     },
   });
 
+  await registerAuth(server, { apiKey: config.apiKey, authDisabled: config.authDisabled });
   await registerOpenApi(server, config);
   await registerDatabase(server, config);
   await registerStorage(server);

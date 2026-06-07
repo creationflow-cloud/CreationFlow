@@ -16,13 +16,18 @@ export async function registerRoutes(server: FastifyInstance, config: ApiConfig)
   await registerHealthRoute(server);
   await registerHealthDbRoute(server);
   await registerVersionRoute(server, config.version);
-  await registerWorkspaceRoutes(server);
-  await registerConfigurationRoutes(server);
-  await registerProductRoutes(server);
-  await registerProductTemplateRoutes(server);
-  await registerRenderJobRoutes(server);
-  await registerAssetRoutes(server);
-  await registerAssetFileRoutes(server);
+
+  await server.register(async (protectedScope) => {
+    protectedScope.addHook("preHandler", server.auth.requireAuth);
+
+    await registerWorkspaceRoutes(protectedScope);
+    await registerConfigurationRoutes(protectedScope);
+    await registerProductRoutes(protectedScope);
+    await registerProductTemplateRoutes(protectedScope);
+    await registerRenderJobRoutes(protectedScope);
+    await registerAssetRoutes(protectedScope);
+    await registerAssetFileRoutes(protectedScope);
+  });
 
   // Future API groups:
   // - /orders
