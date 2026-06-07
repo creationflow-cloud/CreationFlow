@@ -19,6 +19,7 @@ interface TopBarProps {
   readonly onRedo: () => void;
   readonly onSave: () => void;
   readonly onRenderPdf: () => void;
+  readonly onSignOut?: () => void;
 }
 
 export function TopBar({
@@ -39,6 +40,7 @@ export function TopBar({
   onRedo,
   onSave,
   onRenderPdf,
+  onSignOut,
 }: TopBarProps) {
   return (
     <header className="editor-header">
@@ -121,6 +123,16 @@ export function TopBar({
               ? `Template: ${templateId.slice(0, 8)}...`
               : "No document"}
         </span>
+        {onSignOut && (
+          <button
+            type="button"
+            className="signout-btn"
+            onClick={onSignOut}
+            title="Clear stored API key"
+          >
+            Sign out
+          </button>
+        )}
       </div>
     </header>
   );

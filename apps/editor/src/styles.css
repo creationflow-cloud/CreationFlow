@@ -125,6 +125,101 @@ button {
   flex-shrink: 0;
 }
 
+.signout-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border, #cbd5e1);
+  border-radius: 8px;
+  color: var(--color-text, #1e293b);
+  background: transparent;
+  cursor: pointer;
+}
+
+.signout-btn:hover {
+  border-color: var(--color-text-muted, #94a3b8);
+}
+
+.login-shell {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px;
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.login-card {
+  display: grid;
+  gap: 12px;
+  width: min(420px, 100%);
+  padding: 32px;
+  border: 1px solid #1e293b;
+  border-radius: 24px;
+  background: #111827;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.4);
+}
+
+.login-card h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.login-subtitle {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.login-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.5);
+  font-size: 0.9rem;
+}
+
+.login-submit {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 12px;
+  color: #0f172a;
+  background: #5eead4;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.login-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  color: #0f172a;
+  background: #5eead4;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.form-label {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+}
+
+.form-input {
+  padding: 10px 12px;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  color: #f8fafc;
+  background: #0f172a;
+  font-size: 0.95rem;
+}
+
 /* ── Workspace Grid ───────────────────────────────────── */
 
 .editor-workspace {

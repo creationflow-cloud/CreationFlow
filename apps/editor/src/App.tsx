@@ -65,7 +65,7 @@ function getQueryParam(param: string): string | null {
   return params.get(param);
 }
 
-export function App() {
+export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   const templateId = getQueryParam("templateId");
   const configurationId = getQueryParam("configurationId");
   const [loading, setLoading] = useState(false);
@@ -907,6 +907,7 @@ export function App() {
         onRedo={handleRedo}
         onSave={handleSave}
         onRenderPdf={handleRenderPdf}
+        onSignOut={onSignOut}
       />
 
       {noIdProvided && (
