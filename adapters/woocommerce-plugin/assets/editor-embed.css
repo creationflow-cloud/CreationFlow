@@ -1,0 +1,26 @@
+.creationflow-editor {
+  width: 100%;
+  margin: 1.5rem 0;
+  border: 1px solid #dcdcde;
+  border-radius: 4px;
+  background: #f6f7f7;
+  padding: 0;
+  overflow: hidden;
+}
+
+.creationflow-editor__frame {
+  display: block;
+  width: 100%;
+  min-height: 480px;
+  border: 0;
+  background: #fff;
+}
+
+@media (max-width: 600px) {
+  .creationflow-editor {
+    margin: 1rem 0;
+  }
+  .creationflow-editor__frame {
+    min-height: 320px;
+  }
+}

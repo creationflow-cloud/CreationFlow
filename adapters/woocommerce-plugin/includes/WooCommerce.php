@@ -17,7 +17,12 @@ final class WooCommerce
 {
     public function is_active(): bool
     {
-        return class_exists('WooCommerce');
+        return class_exists('WooCommerce') && defined('WC_VERSION');
+    }
+
+    public function version(): string
+    {
+        return defined('WC_VERSION') ? (string) WC_VERSION : '';
     }
 
     public function register_admin_notice(): void

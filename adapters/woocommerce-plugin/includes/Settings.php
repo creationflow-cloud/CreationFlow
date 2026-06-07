@@ -131,14 +131,41 @@ final class Settings
     }
 
     /**
-     * @return array{api_url: string, api_token: string, debug_mode: bool}
+     * @return array{api_url: string, api_token: string, debug_mode: bool, connection_status: string, last_connection_check: string, plugin_version: string}
      */
     private function defaults(): array
     {
         return [
-            'api_url'    => '',
-            'api_token'  => '',
-            'debug_mode' => false,
+            'api_url'              => '',
+            'api_token'            => '',
+            'debug_mode'           => false,
+            'connection_status'    => 'unknown',
+            'last_connection_check' => '',
+            'plugin_version'       => CREATIONFLOW_WOOCOMMERCE_VERSION,
         ];
+    }
+
+    public function install_defaults(): void
+    {
+        $existing = get_option(self::OPTION_NAME);
+
+        if ($existing === false) {
+            add_option(self::OPTION_NAME, $this->defaults());
+            return;
+        }
+
+        $merged = array_merge($this->defaults(), is_array($existing) ? $existing : []);
+        $merged['plugin_version'] = CREATIONFLOW_WOOCOMMERCE_VERSION;
+
+        update_option(self::OPTION_NAME, $merged);
+    }
+
+    public function update_connection_status(string $status, string $timestamp): void
+    {
+        $current = $this->get();
+        $current['connection_status']     = $status;
+        $current['last_connection_check'] = $timestamp;
+
+        update_option(self::OPTION_NAME, $current);
     }
 }

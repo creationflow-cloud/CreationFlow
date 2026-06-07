@@ -19,21 +19,60 @@ final class Plugin
 
     private WooCommerce $woocommerce;
 
+    private ApiClient $api;
+
+    private ProductMapping $product_mapping;
+
+    private EditorEmbed $editor_embed;
+
+    private CartMeta $cart_meta;
+
     private Admin $admin;
 
     public function __construct()
     {
-        $this->settings    = new Settings();
-        $this->woocommerce = new WooCommerce();
-        $this->admin       = new Admin($this->settings, $this->woocommerce);
+        $this->settings        = new Settings();
+        $this->woocommerce     = new WooCommerce();
+        $this->api             = new ApiClient($this->settings);
+        $this->product_mapping = new ProductMapping($this->api);
+        $this->editor_embed    = new EditorEmbed($this->api);
+        $this->cart_meta       = new CartMeta($this->product_mapping);
+        $this->admin           = new Admin($this->settings, $this->woocommerce, $this->api);
     }
 
     public function register(): void
     {
+        $this->settings->register();
+        $this->product_mapping->register();
+        $this->editor_embed->register();
+        $this->cart_meta->register();
+
         if (is_admin()) {
-            $this->settings->register();
             $this->admin->register();
             $this->woocommerce->register_admin_notice();
         }
+    }
+
+    public static function on_activate(): void
+    {
+        if (! Requirements::is_satisfied()) {
+            deactivate_plugins(plugin_basename(CREATIONFLOW_WOOCOMMERCE_FILE));
+
+            wp_die(
+                esc_html__('CreationFlow WooCommerce could not be activated because required dependencies are missing.', 'creationflow-woocommerce'),
+                esc_html__('Plugin activation error', 'creationflow-woocommerce'),
+                ['back_link' => true]
+            );
+        }
+
+        $settings = new Settings();
+        $settings->install_defaults();
+
+        flush_rewrite_rules();
+    }
+
+    public static function on_deactivate(): void
+    {
+        flush_rewrite_rules();
     }
 }

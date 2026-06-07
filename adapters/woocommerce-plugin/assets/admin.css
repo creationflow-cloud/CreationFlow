@@ -1,3 +1,4 @@
+.creationflow-admin__status,
 .creationflow-admin__notice {
   max-width: 760px;
   margin: 16px 0 24px;
@@ -5,6 +6,27 @@
   border-left: 4px solid #2271b1;
   background: #ffffff;
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.creationflow-admin__status h2 {
+  margin: 0 0 8px;
+  font-size: 1.1em;
+}
+
+.creationflow-admin__status ul {
+  margin: 0 0 12px;
+  padding-left: 1.25em;
+  list-style: disc;
+}
+
+.creationflow-admin__status li {
+  margin-bottom: 4px;
+}
+
+.creationflow-admin__status code {
+  background: #f0f0f1;
+  padding: 0 4px;
+  border-radius: 2px;
 }
 
 .creationflow-admin__notice p {
