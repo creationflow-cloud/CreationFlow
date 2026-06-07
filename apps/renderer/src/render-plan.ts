@@ -10,11 +10,6 @@ export interface RenderDocumentResult {
   readonly warnings: readonly RenderDocumentWarning[];
 }
 
-export interface RenderJobPlaceholder {
-  readonly status: "placeholder";
-  readonly document?: CreationFlowDocument;
-}
-
 export async function renderDocument(
   document: CreationFlowDocument,
   options: RenderDocumentToPdfOptions = {},
@@ -37,12 +32,5 @@ export async function renderDocument(
     status: "rendered",
     pdf,
     warnings,
-  };
-}
-
-export function createRenderJobPlaceholder(document?: CreationFlowDocument): RenderJobPlaceholder {
-  return {
-    status: "placeholder",
-    document,
   };
 }

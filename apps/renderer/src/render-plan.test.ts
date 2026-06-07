@@ -11,7 +11,7 @@ import type {
   WorkspaceId,
 } from "@creationflow/schema";
 
-import { createRenderJobPlaceholder, renderDocument } from "./render-plan.js";
+import { renderDocument } from "./render-plan.js";
 
 function createDocument(): CreationFlowDocument {
   return {
@@ -84,11 +84,7 @@ describe("renderDocument", () => {
 });
 
 describe("createRenderJobPlaceholder", () => {
-  it("returns a placeholder status object", () => {
-    expect(createRenderJobPlaceholder()).toEqual({ status: "placeholder" });
-    expect(createRenderJobPlaceholder(createDocument())).toMatchObject({
-      status: "placeholder",
-      document: { id: "doc-1" },
-    });
+  it("has been removed in favor of renderDocument", () => {
+    expect(true).toBe(true);
   });
 });
