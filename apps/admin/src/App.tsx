@@ -144,7 +144,7 @@ function pagesToDoc(
   };
 }
 
-export function App() {
+export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   const [activePage, setActivePage] = useState<Page>("dashboard");
   const [workspace, setWorkspace] = useState<WorkspaceDto | null>(null);
   const [products, setProducts] = useState<ProductDto[]>([]);
@@ -803,7 +803,14 @@ export function App() {
             <p className="eyebrow">CreationFlow Admin</p>
             <h1>{pageTitle[activePage]}</h1>
           </div>
-          <span className="environment-pill">{loading ? "Loading..." : `${workspaceLabel}`}</span>
+          <div className="header-actions">
+            <span className="environment-pill">{loading ? "Loading..." : `${workspaceLabel}`}</span>
+            {onSignOut && (
+              <button type="button" className="signout-btn" onClick={onSignOut}>
+                Sign out
+              </button>
+            )}
+          </div>
         </header>
 
         {loading && (

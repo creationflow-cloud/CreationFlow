@@ -29,6 +29,92 @@ button {
   font: inherit;
 }
 
+.login-shell {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px;
+  background: #111827;
+}
+
+.login-card {
+  display: grid;
+  gap: 12px;
+  width: min(420px, 100%);
+  padding: 32px;
+  border: 1px solid #dbe1ea;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 18px 50px rgba(17, 24, 39, 0.4);
+}
+
+.login-card h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.login-subtitle {
+  margin: 0;
+  color: #475569;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.login-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #991b1b;
+  background: #fee2e2;
+  font-size: 0.9rem;
+}
+
+.login-submit {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 12px;
+  color: #111827;
+  background: #94f3c4;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.login-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-hint {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.login-hint code {
+  background: #e2e8f0;
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.signout-btn {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  color: #1e293b;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.signout-btn:hover {
+  border-color: #94a3b8;
+}
+
 .admin-shell {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);

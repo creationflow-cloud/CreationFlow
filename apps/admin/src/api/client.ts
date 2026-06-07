@@ -1,18 +1,52 @@
 const BASE_URL = import.meta.env.VITE_CREATIONFLOW_API_URL ?? "http://localhost:3000";
+const STORAGE_KEY = "creationflow.admin.apiKey";
+
+export function getStoredApiKey(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const value = window.localStorage.getItem(STORAGE_KEY);
+  return value && value.length > 0 ? value : null;
+}
+
+export function setStoredApiKey(apiKey: string | null): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (!apiKey) {
+    window.localStorage.removeItem(STORAGE_KEY);
+    return;
+  }
+  window.localStorage.setItem(STORAGE_KEY, apiKey);
+}
+
+export function clearStoredApiKey(): void {
+  setStoredApiKey(null);
+}
 
 interface RequestOptions {
   readonly method?: string;
   readonly body?: unknown;
+  readonly skipAuth?: boolean;
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const url = `${BASE_URL}${path}`;
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (!options.skipAuth) {
+    const apiKey = getStoredApiKey();
+    if (apiKey) {
+      headers["X-API-Key"] = apiKey;
+    }
+  }
+
   const init: RequestInit = {
     method: options.method ?? "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
   };
 
   if (options.body !== undefined) {
@@ -38,4 +72,13 @@ export function post<T>(path: string, body: unknown): Promise<T> {
 
 export function put<T>(path: string, body: unknown): Promise<T> {
   return request<T>(path, { method: "PUT", body });
+}
+
+export async function pingWithApiKey(apiKey: string): Promise<boolean> {
+  const headers: Record<string, string> = {
+    "X-API-Key": apiKey,
+  };
+
+  const response = await fetch(`${BASE_URL}/workspaces?workspaceId=__probe__`, { headers });
+  return response.status !== 401 && response.status !== 500;
 }
