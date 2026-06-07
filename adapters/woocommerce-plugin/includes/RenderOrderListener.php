@@ -288,6 +288,8 @@ final class RenderOrderListener
         if ($changed) {
             $order->update_meta_data(self::ORDER_META_RENDER_JOBS, wp_json_encode(array_values($jobs)));
             $order->save();
+
+            do_action('creationflow_refresh_render_jobs', $order_id, $changed);
         }
 
         return $changed;

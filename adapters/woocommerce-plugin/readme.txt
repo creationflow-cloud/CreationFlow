@@ -54,6 +54,7 @@ The customer-specific configuration ID is stored in cart items and copied to ord
 * Added admin order action "Retry CreationFlow render" for manual re-enqueue.
 * Added scheduled retry via Action Scheduler for transient render failures.
 * Added "Recent Render Jobs" overview in the admin settings page.
+* Added OrderPdfAttacher that downloads finished PDFs and stores them on the order.
 
 = 0.0.0 =
 * Initial installable WooCommerce adapter skeleton.

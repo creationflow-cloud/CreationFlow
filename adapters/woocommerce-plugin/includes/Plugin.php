@@ -31,6 +31,8 @@ final class Plugin
 
     private RenderOrderListener $render_listener;
 
+    private OrderPdfAttacher $pdf_attacher;
+
     private Admin $admin;
 
     public function __construct()
@@ -40,10 +42,11 @@ final class Plugin
         $this->api             = new ApiClient($this->settings);
         $this->product_mapping = new ProductMapping($this->api);
         $this->editor_embed    = new EditorEmbed($this->api);
-        $this->cart_meta       = new CartMeta($this->product_mapping);
-        $this->mapping_ui      = new MappingUI($this->product_mapping);
         $this->render_listener = new RenderOrderListener($this->api, $this->settings);
-        $this->admin           = new Admin($this->settings, $this->woocommerce, $this->api, $this->render_listener);
+        $this->pdf_attacher    = new OrderPdfAttacher($this->api, $this->settings);
+        $this->cart_meta       = new CartMeta($this->product_mapping, $this->pdf_attacher);
+        $this->mapping_ui      = new MappingUI($this->product_mapping);
+        $this->admin           = new Admin($this->settings, $this->woocommerce, $this->api, $this->render_listener, $this->pdf_attacher);
     }
 
     public function register(): void
@@ -54,6 +57,7 @@ final class Plugin
         $this->cart_meta->register();
         $this->mapping_ui->register();
         $this->render_listener->register();
+        $this->pdf_attacher->register();
 
         if (is_admin()) {
             $this->admin->register();

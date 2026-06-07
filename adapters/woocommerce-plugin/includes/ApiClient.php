@@ -285,6 +285,54 @@ final class ApiClient
     /**
      * @return array{ok: bool, status: int, message: string}
      */
+    public function download_binary_to_disk(string $url, string $destination): array
+    {
+        if ('' === $url || '' === $destination) {
+            return $this->error_response(0, __('Missing URL or destination path.', 'creationflow-woocommerce'));
+        }
+
+        $settings  = $this->settings->get();
+        $api_token = isset($settings['api_token']) ? (string) $settings['api_token'] : '';
+
+        $response = wp_remote_get($url, [
+            'timeout' => self::DEFAULT_TIMEOUT,
+            'headers' => array_filter([
+                'X-API-Key' => $api_token,
+                'Accept'    => 'application/pdf,*/*',
+            ]),
+        ]);
+
+        if (is_wp_error($response)) {
+            return $this->error_response(0, $response->get_error_message());
+        }
+
+        $code = (int) wp_remote_retrieve_response_code($response);
+        $body = (string) wp_remote_retrieve_body($response);
+
+        if ($code < 200 || $code >= 300) {
+            return $this->error_response($code, sprintf(/* translators: %d HTTP code. */ __('HTTP %d'), $code));
+        }
+
+        $dir = dirname($destination);
+        if (! is_dir($dir) && ! wp_mkdir_p($dir)) {
+            return $this->error_response(0, __('Could not create target directory.', 'creationflow-woocommerce'));
+        }
+
+        $written = file_put_contents($destination, $body);
+        if (false === $written) {
+            return $this->error_response(0, __('Could not write to destination.', 'creationflow-woocommerce'));
+        }
+
+        return [
+            'ok'      => true,
+            'status'  => $code,
+            'message' => __('Download complete.', 'creationflow-woocommerce'),
+        ];
+    }
+
+    /**
+     * @return array{ok: bool, status: int, message: string}
+     */
     private function error_response(int $status, string $message): array
     {
         return [

@@ -26,9 +26,12 @@ final class CartMeta
 
     private ProductMapping $product_mapping;
 
-    public function __construct(ProductMapping $product_mapping)
+    private ?OrderPdfAttacher $pdf_attacher;
+
+    public function __construct(ProductMapping $product_mapping, ?OrderPdfAttacher $pdf_attacher = null)
     {
         $this->product_mapping = $product_mapping;
+        $this->pdf_attacher    = $pdf_attacher;
     }
 
     public function register(): void
@@ -195,6 +198,9 @@ final class CartMeta
             return;
         }
 
+        $pdf_attacher = $this->pdf_attacher;
+        $pdfs = $pdf_attacher ? $pdf_attacher->get_order_pdfs($order) : [];
+
         echo '<div class="creationflow-order-summary">';
         echo '<h3>' . esc_html__('CreationFlow Configurations', 'creationflow-woocommerce') . '</h3>';
         echo '<table class="widefat striped">';
@@ -214,6 +220,27 @@ final class CartMeta
         }
         echo '</tbody></table>';
         echo '</div>';
+
+        if (! empty($pdfs)) {
+            echo '<div class="creationflow-order-pdfs">';
+            echo '<h3>' . esc_html__('CreationFlow PDFs', 'creationflow-woocommerce') . '</h3>';
+            echo '<table class="widefat striped">';
+            echo '<thead><tr>';
+            echo '<th>' . esc_html__('Filename', 'creationflow-woocommerce') . '</th>';
+            echo '<th>' . esc_html__('Render Job', 'creationflow-woocommerce') . '</th>';
+            echo '<th>' . esc_html__('Download', 'creationflow-woocommerce') . '</th>';
+            echo '</tr></thead><tbody>';
+            foreach ($pdfs as $pdf) {
+                $url = isset($pdf['url']) ? (string) $pdf['url'] : '';
+                echo '<tr>';
+                echo '<td><code>' . esc_html((string) $pdf['filename']) . '</code></td>';
+                echo '<td><code>' . esc_html((string) $pdf['job_id']) . '</code></td>';
+                echo '<td>' . ($url !== '' ? '<a class="button button-small" href="' . esc_url($url) . '" target="_blank" rel="noopener">' . esc_html__('Download', 'creationflow-woocommerce') . '</a>' : '&mdash;') . '</td>';
+                echo '</tr>';
+            }
+            echo '</tbody></table>';
+            echo '</div>';
+        }
     }
 
     /**

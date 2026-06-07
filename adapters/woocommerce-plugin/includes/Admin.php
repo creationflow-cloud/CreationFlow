@@ -23,16 +23,20 @@ final class Admin
 
     private RenderOrderListener $render_listener;
 
+    private OrderPdfAttacher $pdf_attacher;
+
     public function __construct(
         Settings $settings,
         WooCommerce $woocommerce,
         ApiClient $api,
-        RenderOrderListener $render_listener
+        RenderOrderListener $render_listener,
+        OrderPdfAttacher $pdf_attacher
     ) {
         $this->settings        = $settings;
         $this->woocommerce     = $woocommerce;
         $this->api             = $api;
         $this->render_listener = $render_listener;
+        $this->pdf_attacher    = $pdf_attacher;
     }
 
     public function register(): void
@@ -332,13 +336,17 @@ final class Admin
         }
 
         $changed = $this->render_listener->refresh_render_jobs($order_id);
-        $order   = wc_get_order($order_id);
-        $jobs    = $order instanceof WC_Order ? $this->render_listener->get_order_render_jobs($order) : [];
+        $this->pdf_attacher->attach_for_order($order_id);
+
+        $order = wc_get_order($order_id);
+        $jobs  = $order instanceof WC_Order ? $this->render_listener->get_order_render_jobs($order) : [];
+        $pdfs  = $order instanceof WC_Order ? $this->pdf_attacher->get_order_pdfs($order) : [];
 
         wp_send_json([
             'ok'      => true,
             'changed' => $changed,
             'jobs'    => array_values($jobs),
+            'pdfs'    => $pdfs,
         ]);
     }
 
