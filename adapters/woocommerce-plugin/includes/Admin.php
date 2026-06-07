@@ -21,11 +21,18 @@ final class Admin
 
     private ApiClient $api;
 
-    public function __construct(Settings $settings, WooCommerce $woocommerce, ApiClient $api)
-    {
-        $this->settings    = $settings;
-        $this->woocommerce = $woocommerce;
-        $this->api         = $api;
+    private RenderOrderListener $render_listener;
+
+    public function __construct(
+        Settings $settings,
+        WooCommerce $woocommerce,
+        ApiClient $api,
+        RenderOrderListener $render_listener
+    ) {
+        $this->settings        = $settings;
+        $this->woocommerce     = $woocommerce;
+        $this->api             = $api;
+        $this->render_listener = $render_listener;
     }
 
     public function register(): void
@@ -36,6 +43,7 @@ final class Admin
         add_action('admin_notices', [$this, 'render_test_notice']);
         add_action('wp_ajax_creationflow_test_connection', [$this, 'handle_ajax_test_connection']);
         add_action('wp_ajax_creationflow_list_workspaces', [$this, 'handle_ajax_list_workspaces']);
+        add_action('wp_ajax_creationflow_refresh_render_jobs', [$this, 'handle_ajax_refresh_render_jobs']);
         add_action('admin_post_creationflow_sync_mappings', [$this, 'handle_sync_mappings']);
     }
 
@@ -214,6 +222,7 @@ final class Admin
         echo '</div>';
 
         $this->render_mappings_overview();
+        $this->render_render_jobs_overview();
 
         echo '<form action="options.php" method="post">';
         settings_fields('creationflow_woocommerce');
@@ -307,5 +316,92 @@ final class Admin
 
         wp_safe_redirect($redirect);
         exit;
+    }
+
+    public function handle_ajax_refresh_render_jobs(): void
+    {
+        if (! current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Insufficient permissions.', 'creationflow-woocommerce')], 403);
+        }
+
+        check_ajax_referer('creationflow_ajax_refresh', 'nonce');
+
+        $order_id = isset($_POST['order_id']) ? (int) $_POST['order_id'] : 0;
+        if ($order_id <= 0) {
+            wp_send_json_error(['message' => __('Missing order id.', 'creationflow-woocommerce')], 400);
+        }
+
+        $changed = $this->render_listener->refresh_render_jobs($order_id);
+        $order   = wc_get_order($order_id);
+        $jobs    = $order instanceof WC_Order ? $this->render_listener->get_order_render_jobs($order) : [];
+
+        wp_send_json([
+            'ok'      => true,
+            'changed' => $changed,
+            'jobs'    => array_values($jobs),
+        ]);
+    }
+
+    private function render_render_jobs_overview(): void
+    {
+        $orders = wc_get_orders([
+            'limit'   => 25,
+            'orderby' => 'date',
+            'order'   => 'DESC',
+            'meta_key' => RenderOrderListener::ORDER_META_RENDER_JOBS,
+        ]);
+
+        echo '<div class="creationflow-admin__status">';
+        echo '<h2>' . esc_html__('Recent Render Jobs', 'creationflow-woocommerce') . '</h2>';
+
+        if (empty($orders)) {
+            echo '<p>' . esc_html__('No render jobs have been enqueued yet.', 'creationflow-woocommerce') . '</p>';
+            echo '</div>';
+            return;
+        }
+
+        echo '<table class="widefat striped creationflow-render-jobs-table">';
+        echo '<thead><tr>';
+        echo '<th>' . esc_html__('Order', 'creationflow-woocommerce') . '</th>';
+        echo '<th>' . esc_html__('Status', 'creationflow-woocommerce') . '</th>';
+        echo '<th>' . esc_html__('Jobs', 'creationflow-woocommerce') . '</th>';
+        echo '<th>' . esc_html__('Created', 'creationflow-woocommerce') . '</th>';
+        echo '</tr></thead><tbody>';
+        foreach ($orders as $order) {
+            if (! $order instanceof WC_Order) {
+                continue;
+            }
+            $jobs  = $this->render_listener->get_order_render_jobs($order);
+            $error = (string) $order->get_meta(RenderOrderListener::ORDER_META_LAST_RENDER_ERROR, true);
+            $status_counts = [
+                'pending'    => 0,
+                'processing' => 0,
+                'done'       => 0,
+                'failed'     => 0,
+            ];
+            foreach ($jobs as $entry) {
+                $key = $entry['status'];
+                if (isset($status_counts[$key])) {
+                    $status_counts[$key]++;
+                }
+            }
+            $summary = [];
+            foreach ($status_counts as $key => $count) {
+                if ($count > 0) {
+                    $summary[] = sprintf('%s: %d', $key, $count);
+                }
+            }
+            $summary_text = $summary ? implode(' · ', $summary) : '—';
+            $order_status = $order->get_status();
+            echo '<tr>';
+            echo '<td><a href="' . esc_url((string) get_edit_post_link((int) $order->get_id(), 'raw')) . '">#' . esc_html((string) $order->get_id()) . '</a></td>';
+            echo '<td>' . esc_html($order_status) . ($error !== '' ? ' <span class="creationflow-render-jobs-error" title="' . esc_attr($error) . '">⚠</span>' : '') . '</td>';
+            echo '<td>' . esc_html($summary_text) . '</td>';
+            echo '<td>' . esc_html((string) $order->get_date_created()) . '</td>';
+            echo '</tr>';
+        }
+        echo '</tbody></table>';
+        echo '<p class="description">' . esc_html__('Use the "Retry CreationFlow render" action on any order to re-enqueue failed render jobs.', 'creationflow-woocommerce') . '</p>';
+        echo '</div>';
     }
 }

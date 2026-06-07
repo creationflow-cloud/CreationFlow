@@ -29,6 +29,8 @@ final class Plugin
 
     private MappingUI $mapping_ui;
 
+    private RenderOrderListener $render_listener;
+
     private Admin $admin;
 
     public function __construct()
@@ -40,7 +42,8 @@ final class Plugin
         $this->editor_embed    = new EditorEmbed($this->api);
         $this->cart_meta       = new CartMeta($this->product_mapping);
         $this->mapping_ui      = new MappingUI($this->product_mapping);
-        $this->admin           = new Admin($this->settings, $this->woocommerce, $this->api);
+        $this->render_listener = new RenderOrderListener($this->api, $this->settings);
+        $this->admin           = new Admin($this->settings, $this->woocommerce, $this->api, $this->render_listener);
     }
 
     public function register(): void
@@ -50,6 +53,7 @@ final class Plugin
         $this->editor_embed->register();
         $this->cart_meta->register();
         $this->mapping_ui->register();
+        $this->render_listener->register();
 
         if (is_admin()) {
             $this->admin->register();

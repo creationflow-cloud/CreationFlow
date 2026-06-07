@@ -233,6 +233,56 @@ final class ApiClient
     }
 
     /**
+     * @return array{ok: bool, status: int, message: string, body?: array<string, mixed>}
+     */
+    public function create_render_job(string $workspace_id, string $configuration_id): array
+    {
+        if ('' === $workspace_id) {
+            return $this->error_response(0, __('A workspace ID is required to enqueue a render job.', 'creationflow-woocommerce'));
+        }
+
+        if ('' === $configuration_id) {
+            return $this->error_response(0, __('A configuration ID is required to enqueue a render job.', 'creationflow-woocommerce'));
+        }
+
+        $payload = [
+            'workspaceId'     => $workspace_id,
+            'configurationId' => $configuration_id,
+        ];
+
+        return $this->request('POST', '/render-jobs', $payload, false);
+    }
+
+    /**
+     * @return array{ok: bool, status: int, message: string, body?: array<string, mixed>}
+     */
+    public function get_render_job(string $job_id): array
+    {
+        if ('' === $job_id) {
+            return $this->error_response(0, __('A render job ID is required.', 'creationflow-woocommerce'));
+        }
+
+        return $this->request('GET', '/render-jobs/' . rawurlencode($job_id), [], true);
+    }
+
+    /**
+     * @return array{ok: bool, status: int, message: string, body?: array<string, mixed>}
+     */
+    public function get_render_job_pdf_url(string $job_id): ?string
+    {
+        $result = $this->get_render_job($job_id);
+        if (! $result['ok']) {
+            return null;
+        }
+
+        $body = $result['body'] ?? [];
+        $output = isset($body['output']) && is_array($body['output']) ? $body['output'] : [];
+        $download = isset($output['downloadUrl']) ? (string) $output['downloadUrl'] : '';
+
+        return '' !== $download ? $download : null;
+    }
+
+    /**
      * @return array{ok: bool, status: int, message: string}
      */
     private function error_response(int $status, string $message): array

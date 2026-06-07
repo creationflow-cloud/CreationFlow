@@ -50,6 +50,10 @@ The customer-specific configuration ID is stored in cart items and copied to ord
 * Added product meta field for mapping products to CreationFlow templates.
 * Added editor iframe embed on product pages with responsive layout.
 * Added cart/order meta for the customer-specific configuration ID.
+* Added automatic render job creation on order status `processing` and `completed`.
+* Added admin order action "Retry CreationFlow render" for manual re-enqueue.
+* Added scheduled retry via Action Scheduler for transient render failures.
+* Added "Recent Render Jobs" overview in the admin settings page.
 
 = 0.0.0 =
 * Initial installable WooCommerce adapter skeleton.
