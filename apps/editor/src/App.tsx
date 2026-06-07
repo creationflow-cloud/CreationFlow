@@ -48,6 +48,7 @@ import {
   sendBackward,
   sendToBack,
 } from "./helpers/element-actions.js";
+import { useKeyboardShortcuts } from "./helpers/use-keyboard-shortcuts.js";
 import { PatternGallery } from "./components/PatternGallery.js";
 import {
   clearElementSelection,
@@ -905,74 +906,31 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     }
   }, [configuration, currentDocument, dirty, hasBlockingIssues, ruleEvaluation]);
 
-  const handleSaveRef = useRef(handleSave);
-  const handleUndoRef = useRef(handleUndo);
-  const handleRedoRef = useRef(handleRedo);
-  const handleDeleteRef = useRef(handleDeleteElement);
-  const handleDuplicateRef = useRef(handleDuplicateElement);
+  function handleSelectAll() {
+    if (!currentDocument || !selection.selectedSurfaceId) return;
+    const surface = findSurfaceById(currentDocument, selection.selectedSurfaceId);
+    if (!surface) return;
+    setSelection((prev) => ({
+      ...prev,
+      selectedElementIds: surface.elements.map((el) => el.id),
+    }));
+  }
 
-  useEffect(() => {
-    handleSaveRef.current = handleSave;
-    handleUndoRef.current = handleUndo;
-    handleRedoRef.current = handleRedo;
-    handleDeleteRef.current = handleDeleteElement;
-    handleDuplicateRef.current = handleDuplicateElement;
+  function handleNudge(dx: number, dy: number) {
+    if (selection.selectedElementIds.length === 0) return;
+    handleMoveSelectedElements(dx, dy);
+  }
+
+  useKeyboardShortcuts(selection, {
+    onUndo: handleUndo,
+    onRedo: handleRedo,
+    onSave: handleSave,
+    onDuplicate: handleDuplicateElement,
+    onDelete: () => handleDeleteElement(),
+    onSelectAll: handleSelectAll,
+    onClearSelection: () => setSelection((prev) => clearElementSelection(prev)),
+    onNudgeSelection: handleNudge,
   });
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      const target = e.target as HTMLElement;
-      const isInput =
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.tagName === "SELECT" ||
-        target.isContentEditable;
-
-      const mod = e.ctrlKey || e.metaKey;
-
-      if (mod && e.key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        handleUndoRef.current();
-        return;
-      }
-
-      if (mod && (e.key === "y" || (e.key === "z" && e.shiftKey))) {
-        e.preventDefault();
-        handleRedoRef.current();
-        return;
-      }
-
-      if (mod && e.key === "s") {
-        e.preventDefault();
-        handleSaveRef.current();
-        return;
-      }
-
-      if (mod && e.key === "d") {
-        e.preventDefault();
-        handleDuplicateRef.current();
-        return;
-      }
-
-      if (
-        (e.key === "Delete" || e.key === "Backspace") &&
-        !isInput &&
-        selection.selectedElementIds.length > 0
-      ) {
-        e.preventDefault();
-        handleDeleteRef.current();
-        return;
-      }
-
-      if (e.key === "Escape" && selection.selectedElementIds.length > 0) {
-        e.preventDefault();
-        setSelection((prev) => clearElementSelection(prev));
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selection.selectedElementIds.length]);
 
   useEffect(() => {
     return () => {
