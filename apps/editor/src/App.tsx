@@ -49,6 +49,7 @@ import {
   sendToBack,
 } from "./helpers/element-actions.js";
 import { useKeyboardShortcuts } from "./helpers/use-keyboard-shortcuts.js";
+import { useZoomPan } from "./helpers/use-zoom-pan.js";
 import { PatternGallery } from "./components/PatternGallery.js";
 import {
   clearElementSelection,
@@ -906,6 +907,13 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     }
   }, [configuration, currentDocument, dirty, hasBlockingIssues, ruleEvaluation]);
 
+  const [viewportSize, setViewportSize] = useState<{ width: number; height: number } | null>(null);
+
+  const zoomPan = useZoomPan({
+    surface: selectedSurface ? { width: selectedSurface.width, height: selectedSurface.height } : undefined,
+    viewport: viewportSize,
+  });
+
   function handleSelectAll() {
     if (!currentDocument || !selection.selectedSurfaceId) return;
     const surface = findSurfaceById(currentDocument, selection.selectedSurfaceId);
@@ -1023,6 +1031,8 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
           onDragStart={() => {
             if (currentDocument) commitHistory(currentDocument);
           }}
+          zoomPan={zoomPan}
+          onViewportSizeChange={setViewportSize}
         />
 
         <RightSidebar
