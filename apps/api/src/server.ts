@@ -3,7 +3,7 @@ import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 
 import type { ApiConfig } from "./config.js";
-import { registerAuth, WorkspaceScopeError } from "./plugins/auth.js";
+import { registerAuth, RoleError, WorkspaceScopeError } from "./plugins/auth.js";
 import { registerDatabase } from "./plugins/database.js";
 import { registerOpenApi } from "./plugins/openapi.js";
 import { registerStorage } from "./plugins/storage.js";
@@ -15,6 +15,8 @@ declare module "fastify" {
   }
 }
 
+export { RoleError };
+
 export async function createServer(config: ApiConfig) {
   const server = Fastify({
     logger: true,
@@ -23,7 +25,7 @@ export async function createServer(config: ApiConfig) {
   server.decorate("config", config);
 
   server.setErrorHandler((error, _request, reply) => {
-    if (error instanceof WorkspaceScopeError) {
+    if (error instanceof WorkspaceScopeError || error instanceof RoleError) {
       return reply.code(403).send({
         status: "error",
         message: error.message,
@@ -55,6 +57,8 @@ export async function createServer(config: ApiConfig) {
     apiKey: config.apiKey,
     authDisabled: config.authDisabled,
     allowedWorkspaces: config.allowedWorkspaces,
+    apiKeyRoles: config.apiKeyRoles,
+    defaultRole: config.defaultRole,
   });
   await registerOpenApi(server, config);
   await registerDatabase(server, config);

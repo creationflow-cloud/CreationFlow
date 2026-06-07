@@ -2,7 +2,14 @@ import Fastify from "fastify";
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { registerAuth, WorkspaceScopeError, type ApiAuthConfig } from "./auth.js";
+import {
+  registerAuth,
+  RoleError,
+  WorkspaceScopeError,
+  type ApiAuthConfig,
+  type ApiKeyRoleEntry,
+  type ApiRole,
+} from "./auth.js";
 
 interface TestServer {
   readonly server: FastifyInstance;
@@ -14,17 +21,21 @@ async function buildTestServer(
     apiKey?: string;
     authDisabled?: boolean;
     allowedWorkspaces?: ReadonlySet<string> | "all";
+    apiKeyRoles?: readonly ApiKeyRoleEntry[];
+    defaultRole?: ApiRole;
   } = {},
 ): Promise<TestServer> {
   const auth: ApiAuthConfig = {
     apiKey: options.apiKey,
     authDisabled: options.authDisabled ?? false,
     allowedWorkspaces: options.allowedWorkspaces ?? new Set(),
+    apiKeyRoles: options.apiKeyRoles ?? [],
+    defaultRole: options.defaultRole ?? "admin",
   };
 
   const server = Fastify({ logger: false });
   server.setErrorHandler((error, _request, reply) => {
-    if (error instanceof WorkspaceScopeError) {
+    if (error instanceof WorkspaceScopeError || error instanceof RoleError) {
       return reply.code(403).send({ status: "error", message: error.message });
     }
     if (!reply.sent) {
@@ -56,6 +67,7 @@ async function buildTestServer(
 
   server.post<{ Body: { workspaceId?: string } }>(
     "/by-body",
+    { preHandler: [server.auth.requireAuth, server.auth.requireRole("editor")] },
     async (request) => ({
       status: "ok",
       workspaceId: request.body.workspaceId,
@@ -216,5 +228,76 @@ describe("auth plugin", () => {
     });
 
     expect(response.statusCode).toBe(403);
+  });
+});
+
+describe("auth plugin role permissions", () => {
+  it("maps an editor key to the editor role and allows editor-only routes", async () => {
+    current = await buildTestServer({
+      apiKey: "admin-key",
+      allowedWorkspaces: "all",
+      apiKeyRoles: [{ key: "editor-key", role: "editor" }],
+      defaultRole: "admin",
+    });
+
+    const response = await current.server.inject({
+      method: "POST",
+      url: "/by-body",
+      headers: { "x-api-key": "editor-key", "content-type": "application/json" },
+      payload: JSON.stringify({ workspaceId: "ws-a" }),
+    });
+
+    expect(response.statusCode).toBe(200);
+  });
+
+  it("blocks a viewer key from editor-only routes", async () => {
+    current = await buildTestServer({
+      apiKey: "admin-key",
+      allowedWorkspaces: "all",
+      apiKeyRoles: [{ key: "viewer-key", role: "viewer" }],
+    });
+
+    const response = await current.server.inject({
+      method: "POST",
+      url: "/by-body",
+      headers: { "x-api-key": "viewer-key", "content-type": "application/json" },
+      payload: JSON.stringify({ workspaceId: "ws-a" }),
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("falls back to the default role for the legacy single API key", async () => {
+    current = await buildTestServer({
+      apiKey: "default-key",
+      allowedWorkspaces: "all",
+      defaultRole: "viewer",
+    });
+
+    const response = await current.server.inject({
+      method: "POST",
+      url: "/by-body",
+      headers: { "x-api-key": "default-key", "content-type": "application/json" },
+      payload: JSON.stringify({ workspaceId: "ws-a" }),
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("admin key can access editor-only routes", async () => {
+    current = await buildTestServer({
+      apiKey: "admin-key",
+      allowedWorkspaces: "all",
+      apiKeyRoles: [{ key: "admin-key", role: "admin" }],
+    });
+
+    const response = await current.server.inject({
+      method: "POST",
+      url: "/by-body",
+      headers: { "x-api-key": "admin-key", "content-type": "application/json" },
+      payload: JSON.stringify({ workspaceId: "ws-a" }),
+    });
+
+    expect(response.statusCode).toBe(200);
   });
 });

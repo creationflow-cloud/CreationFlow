@@ -12,6 +12,8 @@ import { registerRenderJobRoutes } from "./render-jobs.js";
 import { registerVersionRoute } from "./version.js";
 import { registerWorkspaceRoutes } from "./workspaces.js";
 
+const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
 export async function registerRoutes(server: FastifyInstance, config: ApiConfig): Promise<void> {
   await registerHealthRoute(server);
   await registerHealthDbRoute(server);
@@ -19,6 +21,14 @@ export async function registerRoutes(server: FastifyInstance, config: ApiConfig)
 
   await server.register(async (protectedScope) => {
     protectedScope.addHook("preHandler", server.auth.requireAuth);
+    protectedScope.addHook("preHandler", async (request, reply) => {
+      const method = request.method.toUpperCase();
+      if (READ_METHODS.has(method)) {
+        return;
+      }
+      const requireEditor = server.auth.requireRole("editor");
+      await requireEditor(request, reply);
+    });
 
     await registerWorkspaceRoutes(protectedScope);
     await registerConfigurationRoutes(protectedScope);

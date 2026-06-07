@@ -1,6 +1,12 @@
 import { readFileSync } from "node:fs";
 
-import { parseAllowedWorkspaces } from "./plugins/auth.js";
+import {
+  parseAllowedWorkspaces,
+  parseApiKeyRoles,
+  parseDefaultRole,
+  type ApiKeyRoleEntry,
+  type ApiRole,
+} from "./plugins/auth.js";
 
 interface ApiPackageJson {
   readonly version?: string;
@@ -16,6 +22,8 @@ export interface ApiConfig {
   readonly apiKey: string | undefined;
   readonly authDisabled: boolean;
   readonly allowedWorkspaces: ReadonlySet<string> | "all";
+  readonly apiKeyRoles: readonly ApiKeyRoleEntry[];
+  readonly defaultRole: ApiRole;
 }
 
 function readPackageVersion(): string {
@@ -38,5 +46,7 @@ export function getApiConfig(): ApiConfig {
     apiKey: apiKey && apiKey.length > 0 ? apiKey : undefined,
     authDisabled: process.env.CREATIONFLOW_AUTH_DISABLED === "true",
     allowedWorkspaces: parseAllowedWorkspaces(process.env.CREATIONFLOW_API_WORKSPACES),
+    apiKeyRoles: parseApiKeyRoles(process.env.CREATIONFLOW_API_KEYS),
+    defaultRole: parseDefaultRole(process.env.CREATIONFLOW_API_DEFAULT_ROLE),
   };
 }
