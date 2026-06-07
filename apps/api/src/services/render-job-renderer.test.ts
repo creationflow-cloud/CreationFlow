@@ -275,6 +275,30 @@ describe("renderRenderJobToPdf", () => {
     expect(state.assets).toHaveLength(0);
   });
 
+  it("exposes preflight warnings on the rendered render job", async () => {
+    const document = createSampleDocument() as Record<string, unknown>;
+    const pages = document.pages as Array<Record<string, unknown>>;
+    const surface = (pages[0].surfaces as Array<Record<string, unknown>>)[0];
+    surface.printArea = {
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 100,
+      bleed: 10,
+      safeArea: { x: 0, y: 0, width: 50, height: 50 },
+    };
+
+    const { db } = createFakeDb(document);
+    const storage = new MemoryStorageProvider();
+
+    const result = await renderRenderJobToPdf(db, storage, "job-1");
+
+    expect(result.status).toBe("done");
+    expect(result.output?.warnings).toMatchObject([
+      expect.objectContaining({ code: "text_outside_safe_area" }),
+    ]);
+  });
+
   it("renders a configuration containing an image asset", async () => {
     const { db, state } = createFakeDb(createSampleDocument(true));
     const storage = new MemoryStorageProvider();

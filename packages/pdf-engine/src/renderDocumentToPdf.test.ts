@@ -21,6 +21,7 @@ import {
   DEFAULT_TARGET_DPI,
   parseColor,
   renderDocumentToPdf,
+  runDocumentPreflight,
   toPdfUnits,
 } from "./renderDocumentToPdf.js";
 import type { RenderDocumentWarning } from "./renderDocumentToPdf.js";
@@ -1947,5 +1948,76 @@ describe("CMYK color support", () => {
     const streams = extractPdfStreams(pdf).join("\n");
     expect(streams).toContain("/DeviceRGB cs");
     expect(streams).not.toContain("/DeviceCMYK cs");
+  });
+});
+
+describe("runDocumentPreflight", () => {
+  it("warns when a text element extends past the safe area", () => {
+    const warnings: RenderDocumentWarning[] = [];
+    const surface: CreationFlowSurface = {
+      ...createSurface("surface-1", [createTextElement("text-1", 80, 80)]),
+      printArea: {
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 200,
+        bleed: 5,
+        safeArea: { x: 10, y: 10, width: 100, height: 50 },
+      },
+    };
+
+    runDocumentPreflight(
+      { document: createDocument([createPage("page-1", [surface])]) },
+      (warning) => warnings.push(warning),
+    );
+
+    expect(warnings).toMatchObject([
+      { code: "text_outside_safe_area", elementId: "text-1" },
+    ]);
+  });
+
+  it("does not warn when a text element stays inside the safe area", () => {
+    const warnings: RenderDocumentWarning[] = [];
+    const surface: CreationFlowSurface = {
+      ...createSurface("surface-1", [createTextElement("text-1", 15, 15)]),
+      printArea: {
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 200,
+        bleed: 5,
+        safeArea: { x: 0, y: 0, width: 200, height: 200 },
+      },
+    };
+
+    runDocumentPreflight(
+      { document: createDocument([createPage("page-1", [surface])]) },
+      (warning) => warnings.push(warning),
+    );
+
+    expect(warnings).toEqual([]);
+  });
+
+  it("warns when a surface is smaller than the print area plus bleed", () => {
+    const warnings: RenderDocumentWarning[] = [];
+    const surface: CreationFlowSurface = {
+      ...createSurface("surface-1", []),
+      width: 60,
+      height: 60,
+      printArea: {
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        bleed: 10,
+      },
+    };
+
+    runDocumentPreflight(
+      { document: createDocument([createPage("page-1", [surface])]) },
+      (warning) => warnings.push(warning),
+    );
+
+    expect(warnings).toMatchObject([{ code: "bleed_violation" }]);
   });
 });

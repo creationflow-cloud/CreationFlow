@@ -52,7 +52,9 @@ export interface RenderDocumentWarning {
     | "path_render_failed"
     | "pattern_resolver_missing"
     | "pattern_asset_not_found"
-    | "pattern_render_failed";
+    | "pattern_render_failed"
+    | "text_outside_safe_area"
+    | "bleed_violation";
   readonly elementId: ElementId;
   readonly assetId?: AssetId;
   readonly message: string;
@@ -1184,3 +1186,99 @@ export async function renderDocumentToPdf(
 
 export const DEFAULT_TARGET_DPI = 300;
 export const DEFAULT_MIN_ASSET_DPI = 150;
+
+export interface PreflightContext {
+  readonly document: CreationFlowDocument;
+  readonly options?: RenderDocumentToPdfOptions;
+}
+
+export function runDocumentPreflight(
+  context: PreflightContext,
+  emit: (warning: RenderDocumentWarning) => void,
+): void {
+  const options = context.options ?? {};
+  const minDpi = options.minAssetDpi ?? context.document.metadata.minAssetDpi ?? DEFAULT_MIN_ASSET_DPI;
+  const targetDpi = options.targetDpi ?? context.document.metadata.dpi ?? DEFAULT_TARGET_DPI;
+
+  for (const page of context.document.pages) {
+    const unit = page.unit;
+    for (const surface of page.surfaces ?? []) {
+      const surfaceBleed = toPdfUnits(surface.printArea?.bleed ?? 0, unit);
+      const safeArea = surface.printArea?.safeArea;
+      const positionedSurface = surface as CreationFlowSurface & {
+        readonly x?: number;
+        readonly y?: number;
+      };
+      const surfaceOffsetX = toPdfUnits(positionedSurface.x ?? 0, unit);
+      const surfaceOffsetY = toPdfUnits(positionedSurface.y ?? 0, unit);
+      const surfaceWidth = toPdfUnits(surface.width, unit);
+      const surfaceHeight = toPdfUnits(surface.height, unit);
+
+      if (surfaceBleed > 0 && safeArea) {
+        for (const element of surface.elements) {
+          if (element.type !== "text" || element.visible === false) {
+            continue;
+          }
+
+          const elX = surfaceOffsetX + toPdfUnits(element.x, unit);
+          const elY = surfaceOffsetY + toPdfUnits(element.y, unit);
+          const elW = Math.max(toPdfUnits(element.width, unit), 1);
+          const elH = Math.max(toPdfUnits(element.height, unit), 1);
+          const safeX = surfaceOffsetX + toPdfUnits(safeArea.x, unit);
+          const safeY = surfaceOffsetY + toPdfUnits(safeArea.y, unit);
+          const safeW = toPdfUnits(safeArea.width, unit);
+          const safeH = toPdfUnits(safeArea.height, unit);
+
+          const outsideSafeArea =
+            elX < safeX ||
+            elY < safeY ||
+            elX + elW > safeX + safeW ||
+            elY + elH > safeY + safeH;
+
+          if (outsideSafeArea) {
+            emit({
+              code: "text_outside_safe_area",
+              elementId: element.id,
+              message: `Text element "${element.name}" extends beyond the configured safe area.`,
+            });
+          }
+        }
+      }
+
+      if (surfaceBleed > 0) {
+        const printArea = surface.printArea;
+        if (printArea && (printArea.width ?? 0) > 0 && (printArea.height ?? 0) > 0) {
+          const expectedMinWidth = printArea.width + surfaceBleed * 2;
+          const expectedMinHeight = printArea.height + surfaceBleed * 2;
+          if (surfaceWidth + surfaceBleed * 2 < expectedMinWidth || surfaceHeight + surfaceBleed * 2 < expectedMinHeight) {
+            emit({
+              code: "bleed_violation",
+              elementId: surface.id as unknown as ElementId,
+              message: `Surface "${surface.name}" is smaller than the print area plus bleed margin.`,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  if (typeof minDpi === "number" && minDpi > 0) {
+    const minWidthInches = (1 / targetDpi) * 96;
+    for (const asset of context.document.assets) {
+      if (asset.type !== "image" || !asset.width || !asset.height) {
+        continue;
+      }
+
+      const maxRenderableWidthInches = 8;
+      const estimatedDpi = asset.width / maxRenderableWidthInches;
+      if (estimatedDpi < minDpi) {
+        emit({
+          code: "image_low_resolution",
+          elementId: asset.id as unknown as ElementId,
+          assetId: asset.id,
+          message: `Image asset "${asset.name}" may not meet the configured ${minDpi} DPI minimum.`,
+        });
+      }
+    }
+  }
+}

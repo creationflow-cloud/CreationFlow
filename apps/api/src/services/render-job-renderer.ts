@@ -1,4 +1,4 @@
-import { renderDocumentToPdf } from "@creationflow/pdf-engine";
+import { renderDocumentToPdf, runDocumentPreflight } from "@creationflow/pdf-engine";
 import type { RenderDocumentWarning } from "@creationflow/pdf-engine";
 import type { PrismaClient } from "@creationflow/database";
 import type { StorageProvider } from "@creationflow/storage";
@@ -121,6 +121,10 @@ export async function renderRenderJobToPdf(
     }
 
     const renderWarnings: RenderDocumentWarning[] = [];
+
+    runDocumentPreflight({ document: renderDocument }, (warning) => {
+      renderWarnings.push(warning);
+    });
     const debugSurfaces = process.env.CREATIONFLOW_PDF_DEBUG_SURFACES === "true";
     const pdf = await renderDocumentToPdf(renderDocument, {
       resolveAsset: async (assetId) => {
