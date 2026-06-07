@@ -30,18 +30,27 @@ services:
       retries: 5
 
   api:
-    image: node:22-alpine
+    build:
+      context: ../..
+      dockerfile: deploy/docker/api.Dockerfile
+    image: creationflow/api:latest
     container_name: creationflow-api
-    command:
-      [
-        "sh",
-        "-c",
-        'node -e "console.log(''CreationFlow API placeholder service'')" && tail -f /dev/null',
-      ]
+    restart: unless-stopped
     ports:
       - "${API_PORT:-3000}:3000"
     environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "3000"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-creationflow}:${POSTGRES_PASSWORD:-creationflow_dev_password}@postgres:5432/${POSTGRES_DB:-creationflow}
       REDIS_URL: redis://redis:6379
+      CREATIONFLOW_API_KEY: ${CREATIONFLOW_API_KEY:-}
+      CREATIONFLOW_API_WORKSPACES: ${CREATIONFLOW_API_WORKSPACES:-*}
+      CREATIONFLOW_AUTH_DISABLED: ${CREATIONFLOW_AUTH_DISABLED:-false}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-10485760}
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - creationflow-uploads:/data/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -49,59 +58,63 @@ services:
         condition: service_healthy
 
   editor:
-    image: node:22-alpine
+    build:
+      context: ../..
+      dockerfile: deploy/docker/editor.Dockerfile
+    image: creationflow/editor:latest
     container_name: creationflow-editor
-    command:
-      [
-        "sh",
-        "-c",
-        'node -e "console.log(''CreationFlow Editor placeholder service'')" && tail -f /dev/null',
-      ]
+    restart: unless-stopped
     ports:
       - "${EDITOR_PORT:-3001}:3001"
+    depends_on:
+      - api
 
   admin:
-    image: node:22-alpine
+    build:
+      context: ../..
+      dockerfile: deploy/docker/admin.Dockerfile
+    image: creationflow/admin:latest
     container_name: creationflow-admin
-    command:
-      [
-        "sh",
-        "-c",
-        'node -e "console.log(''CreationFlow Admin placeholder service'')" && tail -f /dev/null',
-      ]
+    restart: unless-stopped
     ports:
       - "${ADMIN_PORT:-3002}:3002"
+    depends_on:
+      - api
 
   renderer:
-    image: node:22-alpine
+    build:
+      context: ../..
+      dockerfile: deploy/docker/renderer.Dockerfile
+    image: creationflow/renderer:latest
     container_name: creationflow-renderer
-    command:
-      [
-        "sh",
-        "-c",
-        'node -e "console.log(''CreationFlow Renderer placeholder service'')" && tail -f /dev/null',
-      ]
+    restart: unless-stopped
     depends_on:
       redis:
         condition: service_healthy
 
   worker:
-    image: node:22-alpine
+    build:
+      context: ../..
+      dockerfile: deploy/docker/worker.Dockerfile
+    image: creationflow/worker:latest
     container_name: creationflow-worker
-    command:
-      [
-        "sh",
-        "-c",
-        'node -e "console.log(''CreationFlow Worker placeholder service'')" && tail -f /dev/null',
-      ]
+    restart: unless-stopped
     environment:
+      NODE_ENV: production
       API_URL: http://api:3000
       REDIS_URL: redis://redis:6379
+      CREATIONFLOW_API_KEY: ${CREATIONFLOW_API_KEY:-}
+      RENDER_JOB_MAX_ATTEMPTS: ${RENDER_JOB_MAX_ATTEMPTS:-3}
+      RENDER_JOB_BACKOFF_MS: ${RENDER_JOB_BACKOFF_MS:-1000}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      api:
+        condition: service_started
 
 volumes:
   creationflow-postgres-data:
+  creationflow-uploads:
