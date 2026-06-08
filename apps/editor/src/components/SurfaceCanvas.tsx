@@ -47,6 +47,10 @@ interface SurfaceCanvasProps {
   readonly onDragStart?: () => void;
   readonly previewScale?: number;
   readonly canvasSettings: CanvasSettings;
+  readonly inlineEditingElementId?: string | null;
+  readonly onStartInlineTextEdit?: (elementId: string) => void;
+  readonly onCommitInlineTextEdit?: (elementId: string, text: string) => void;
+  readonly onCancelInlineTextEdit?: (elementId: string) => void;
 }
 
 export function SurfaceCanvas({
@@ -59,6 +63,10 @@ export function SurfaceCanvas({
   onDragStart,
   previewScale = 1,
   canvasSettings,
+  inlineEditingElementId = null,
+  onStartInlineTextEdit,
+  onCommitInlineTextEdit,
+  onCancelInlineTextEdit,
 }: SurfaceCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
@@ -91,6 +99,7 @@ export function SurfaceCanvas({
   const handleElementMouseDown = useCallback(
     (elementId: string, e: React.MouseEvent) => {
       if (e.button !== 0) return;
+      if (inlineEditingElementId === elementId) return;
       e.preventDefault();
       e.stopPropagation();
 
@@ -546,6 +555,10 @@ export function SurfaceCanvas({
             surfaceHeight={surface.height}
             clipPathId={shouldClipPath ? clipPathId : null}
             previewScale={previewScale}
+            isInlineEditing={inlineEditingElementId === element.id}
+            onStartInlineTextEdit={onStartInlineTextEdit}
+            onCommitInlineTextEdit={onCommitInlineTextEdit}
+            onCancelInlineTextEdit={onCancelInlineTextEdit}
           />
         ))}
       </div>

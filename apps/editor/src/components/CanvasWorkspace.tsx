@@ -18,6 +18,10 @@ interface CanvasWorkspaceProps {
   readonly zoomPan: UseZoomPanResult;
   readonly onViewportSizeChange: (size: { width: number; height: number }) => void;
   readonly canvasSettings: CanvasSettings;
+  readonly inlineEditingElementId: string | null;
+  readonly onStartInlineTextEdit: (elementId: string) => void;
+  readonly onCommitInlineTextEdit: (elementId: string, text: string) => void;
+  readonly onCancelInlineTextEdit: (elementId: string) => void;
 }
 
 export function CanvasWorkspace({
@@ -31,6 +35,10 @@ export function CanvasWorkspace({
   zoomPan,
   onViewportSizeChange,
   canvasSettings,
+  inlineEditingElementId,
+  onStartInlineTextEdit,
+  onCommitInlineTextEdit,
+  onCancelInlineTextEdit,
 }: CanvasWorkspaceProps) {
   useEffect(() => {
     const el = zoomPan.containerRef.current;
@@ -96,6 +104,10 @@ export function CanvasWorkspace({
               onDragStart={onDragStart}
               previewScale={1}
               canvasSettings={canvasSettings}
+              inlineEditingElementId={inlineEditingElementId}
+              onStartInlineTextEdit={onStartInlineTextEdit}
+              onCommitInlineTextEdit={onCommitInlineTextEdit}
+              onCancelInlineTextEdit={onCancelInlineTextEdit}
             />
           </div>
         </div>

@@ -111,6 +111,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [showPatternGallery, setShowPatternGallery] = useState(false);
   const [canvasSettings, setCanvasSettings] = useState<CanvasSettings>(DEFAULT_CANVAS_SETTINGS);
+  const [inlineEditingElementId, setInlineEditingElementId] = useState<string | null>(null);
   const lastPreviewJobIdRef = useRef<string | null>(null);
   const lastPreviewConfigIdRef = useRef<string | null>(null);
 
@@ -364,6 +365,29 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     }
     const updatedDocument = updateElement(currentDocument, elementId as ElementId, patch);
     setCurrentDocument(updatedDocument);
+  }
+
+  function handleStartInlineTextEdit(elementId: string) {
+    setInlineEditingElementId(elementId);
+  }
+
+  function handleCommitInlineTextEdit(elementId: string, text: string) {
+    if (!currentDocument) {
+      setInlineEditingElementId(null);
+      return;
+    }
+    const element = findElementById(currentDocument, elementId);
+    if (element && element.type === "text") {
+      if (element.text !== text) {
+        commitHistory(currentDocument);
+        handleUpdateElementById(elementId, { text } as Partial<CreationFlowElement>);
+      }
+    }
+    setInlineEditingElementId(null);
+  }
+
+  function handleCancelInlineTextEdit(_elementId: string) {
+    setInlineEditingElementId(null);
   }
 
   function handleUpdateElements(patches: ReadonlyMap<string, Partial<CreationFlowElement>>) {
@@ -1039,6 +1063,10 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
           zoomPan={zoomPan}
           onViewportSizeChange={setViewportSize}
           canvasSettings={canvasSettings}
+          inlineEditingElementId={inlineEditingElementId}
+          onStartInlineTextEdit={handleStartInlineTextEdit}
+          onCommitInlineTextEdit={handleCommitInlineTextEdit}
+          onCancelInlineTextEdit={handleCancelInlineTextEdit}
         />
 
         <RightSidebar

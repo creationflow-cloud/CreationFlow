@@ -16,7 +16,7 @@ import {
 
 import { ImageElementView } from "./ImageElementView.js";
 import { ShapeElementView } from "./ShapeElementView.js";
-import { TextElementView } from "./TextElementView.js";
+import { TextElementView, InlineTextEditor } from "./TextElementView.js";
 import { PatternElementView } from "./PatternElementView.js";
 
 interface ElementViewProps {
@@ -28,6 +28,10 @@ interface ElementViewProps {
   readonly surfaceHeight: number;
   readonly clipPathId: string | null;
   readonly previewScale: number;
+  readonly isInlineEditing: boolean;
+  readonly onStartInlineTextEdit?: (elementId: string) => void;
+  readonly onCommitInlineTextEdit?: (elementId: string, text: string) => void;
+  readonly onCancelInlineTextEdit?: (elementId: string) => void;
 }
 
 export function ElementView({
@@ -39,6 +43,10 @@ export function ElementView({
   surfaceHeight,
   clipPathId,
   previewScale,
+  isInlineEditing,
+  onStartInlineTextEdit,
+  onCommitInlineTextEdit,
+  onCancelInlineTextEdit,
 }: ElementViewProps) {
   const rotation = element.rotation ?? 0;
   const opacity = element.visible ? element.opacity : 0.35;
@@ -82,14 +90,33 @@ export function ElementView({
   }
 
   if (element.type === "text") {
+    const textElement = element as CreationFlowTextElement;
+    if (isInlineEditing) {
+      return (
+        <div
+          style={baseStyle}
+          className="canvas-element-absolute canvas-element-inline-editing"
+        >
+          <InlineTextEditor
+            element={textElement}
+            onCommit={(text) => onCommitInlineTextEdit?.(element.id, text)}
+            onCancel={() => onCancelInlineTextEdit?.(element.id)}
+          />
+        </div>
+      );
+    }
     return (
       <div
         style={baseStyle}
         onClick={handleClick}
         onMouseDown={onMouseDown}
+        onDoubleClick={(event) => {
+          event.stopPropagation();
+          onStartInlineTextEdit?.(element.id);
+        }}
         className="canvas-element-absolute"
       >
-        <TextElementView element={element as CreationFlowTextElement} />
+        <TextElementView element={textElement} />
         {!element.visible && <span className="hidden-badge">hidden</span>}
       </div>
     );
