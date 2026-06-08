@@ -622,6 +622,11 @@ async function renderImageElement(
   maybeWarnAssetResolution(options, element.id, element.assetId, asset, width, height);
 
   try {
+    if (element.crop && isValidImageCrop(element.crop)) {
+      renderImageWithCrop(doc, image, asset, element.crop, x, y, width, height, element.fit);
+      return;
+    }
+
     if (element.fit === "contain") {
       doc.image(image, x, y, { fit: [width, height] });
       return;
@@ -640,6 +645,87 @@ async function renderImageElement(
       assetId: element.assetId,
       message: error instanceof Error ? error.message : "Image rendering failed.",
     });
+  }
+}
+
+export function isValidImageCrop(
+  crop: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
+): boolean {
+  if (!Number.isFinite(crop.x) || !Number.isFinite(crop.y)) return false;
+  if (!Number.isFinite(crop.width) || !Number.isFinite(crop.height)) return false;
+  if (crop.width <= 0 || crop.height <= 0) return false;
+  if (crop.x < 0 || crop.y < 0) return false;
+  if (crop.x + crop.width > 100.001 || crop.y + crop.height > 100.001) return false;
+  return true;
+}
+
+function renderImageWithCrop(
+  doc: PDFKit.PDFDocument,
+  image: Buffer,
+  asset: { readonly width?: number | null; readonly height?: number | null },
+  crop: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  fit: "contain" | "cover" | "fill",
+): void {
+  const imageWidth = asset.width ?? 0;
+  const imageHeight = asset.height ?? 0;
+  if (imageWidth <= 0 || imageHeight <= 0) {
+    doc.image(image, x, y, { width, height });
+    return;
+  }
+
+  const cropXPx = (crop.x / 100) * imageWidth;
+  const cropYPx = (crop.y / 100) * imageHeight;
+  const cropWidthPx = (crop.width / 100) * imageWidth;
+  const cropHeightPx = (crop.height / 100) * imageHeight;
+
+  if (cropWidthPx <= 0 || cropHeightPx <= 0) {
+    doc.image(image, x, y, { width, height });
+    return;
+  }
+
+  let drawWidth = width;
+  let drawHeight = height;
+  if (fit === "contain") {
+    const cropAspect = cropWidthPx / cropHeightPx;
+    const destAspect = width / height;
+    if (cropAspect > destAspect) {
+      drawWidth = width;
+      drawHeight = width / cropAspect;
+    } else {
+      drawHeight = height;
+      drawWidth = height * cropAspect;
+    }
+  } else if (fit === "fill") {
+    drawWidth = width;
+    drawHeight = height;
+  } else {
+    const scaleX = width / cropWidthPx;
+    const scaleY = height / cropHeightPx;
+    const scale = Math.max(scaleX, scaleY);
+    drawWidth = cropWidthPx * scale;
+    drawHeight = cropHeightPx * scale;
+  }
+
+  const offsetX = x + (width - drawWidth) / 2;
+  const offsetY = y + (height - drawHeight) / 2;
+
+  const scaleFactor = drawWidth / cropWidthPx;
+  const fullDrawWidth = imageWidth * scaleFactor;
+  const fullDrawHeight = imageHeight * scaleFactor;
+  const drawX = offsetX - cropXPx * scaleFactor;
+  const drawY = offsetY - cropYPx * scaleFactor;
+
+  doc.save();
+  try {
+    doc.rect(x, y, width, height);
+    doc.clip();
+    doc.image(image, drawX, drawY, { width: fullDrawWidth, height: fullDrawHeight });
+  } finally {
+    doc.restore();
   }
 }
 

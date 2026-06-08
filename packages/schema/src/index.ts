@@ -105,6 +105,14 @@ export interface CreationFlowImageElement extends CreationFlowElementBase {
   readonly type: "image";
   readonly assetId: AssetId;
   readonly fit: "contain" | "cover" | "fill";
+  readonly crop?: CreationFlowImageCrop;
+}
+
+export interface CreationFlowImageCrop {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
 }
 
 export interface CreationFlowShapeElement extends CreationFlowElementBase {

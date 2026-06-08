@@ -21,6 +21,7 @@ import {
   buildRuleEffectSummary,
   convertTopLeftToPdfY,
   DEFAULT_TARGET_DPI,
+  isValidImageCrop,
   parseColor,
   renderDocumentToPdf,
   runDocumentPreflight,
@@ -596,6 +597,50 @@ describe("renderDocumentToPdf", () => {
     );
 
     expect(warnings).toMatchObject([{ code: "unsupported_image_type", assetId: "asset-1" }]);
+  });
+
+  it("renders a cropped image with a clip path", async () => {
+    const image = createImageElement("image-1", "asset-1", "fill");
+    const cropped: CreationFlowElement = {
+      ...image,
+      crop: { x: 25, y: 25, width: 50, height: 50 },
+    } as CreationFlowElement;
+
+    const pdf = await renderDocumentToPdf(
+      createDocument([createPage("page-1", [createSurface("surface-1", [cropped])])]),
+      {
+        compress: false,
+        resolveAsset: async () => ({ data: TINY_PNG, mimeType: "image/png", width: 100, height: 100 }),
+      },
+    );
+
+    const streams = extractPdfStreams(pdf).join("\n");
+    expect(streams).toMatch(/10 20 30 40 re/);
+    expect(streams).toContain("W n");
+  });
+});
+
+describe("isValidImageCrop", () => {
+  it("accepts crops within the 0-100 percent range", () => {
+    expect(isValidImageCrop({ x: 0, y: 0, width: 50, height: 50 })).toBe(true);
+    expect(isValidImageCrop({ x: 25, y: 25, width: 75, height: 75 })).toBe(true);
+    expect(isValidImageCrop({ x: 50, y: 50, width: 50, height: 50 })).toBe(true);
+  });
+
+  it("rejects crops with negative offsets or zero-area", () => {
+    expect(isValidImageCrop({ x: -1, y: 0, width: 50, height: 50 })).toBe(false);
+    expect(isValidImageCrop({ x: 0, y: 0, width: 0, height: 50 })).toBe(false);
+    expect(isValidImageCrop({ x: 0, y: 0, width: 50, height: 0 })).toBe(false);
+  });
+
+  it("rejects crops that exceed the image bounds", () => {
+    expect(isValidImageCrop({ x: 80, y: 0, width: 50, height: 50 })).toBe(false);
+    expect(isValidImageCrop({ x: 0, y: 80, width: 50, height: 50 })).toBe(false);
+  });
+
+  it("rejects non-finite values", () => {
+    expect(isValidImageCrop({ x: Number.NaN, y: 0, width: 50, height: 50 })).toBe(false);
+    expect(isValidImageCrop({ x: 0, y: 0, width: Number.POSITIVE_INFINITY, height: 50 })).toBe(false);
   });
 });
 

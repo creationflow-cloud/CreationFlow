@@ -3,6 +3,7 @@ import { useState } from "react";
 import type {
   AssetId,
   CreationFlowElement,
+  CreationFlowImageCrop,
   CreationFlowPatternElement,
   CreationFlowTextAlign,
   CreationFlowTextElement,
@@ -356,6 +357,24 @@ function ImageElementProperties({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  const crop = element.crop ?? { x: 0, y: 0, width: 100, height: 100 };
+  const hasCrop = element.crop !== undefined;
+
+  function updateCrop(patch: Partial<CreationFlowImageCrop>) {
+    const next: CreationFlowImageCrop = { ...crop, ...patch };
+    onUpdate({ crop: next } as Partial<CreationFlowImageElement>);
+  }
+
+  function enableCrop() {
+    onUpdate({ crop: { x: 0, y: 0, width: 100, height: 100 } } as Partial<CreationFlowImageElement>);
+  }
+
+  function disableCrop() {
+    const { crop: _omit, ...rest } = element as CreationFlowImageElement & { crop?: CreationFlowImageCrop };
+    void _omit;
+    onUpdate({ ...rest, crop: undefined } as unknown as Partial<CreationFlowImageElement>);
+  }
+
   return (
     <>
       <TextInput
@@ -404,6 +423,57 @@ function ImageElementProperties({
       )}
       {uploading && <p className="upload-status">Uploading...</p>}
       {uploadError && <p className="upload-status upload-error">{uploadError}</p>}
+
+      <div className="image-crop-section">
+        <h3>Crop</h3>
+        {!hasCrop ? (
+          <button
+            type="button"
+            className="action-btn"
+            onClick={enableCrop}
+          >
+            Enable crop
+          </button>
+        ) : (
+          <>
+            <NumberInput
+              label="X (%)"
+              value={crop.x}
+              onChange={(x) => updateCrop({ x: clamp(x, 0, 100) })}
+              min={0}
+              max={100}
+            />
+            <NumberInput
+              label="Y (%)"
+              value={crop.y}
+              onChange={(y) => updateCrop({ y: clamp(y, 0, 100) })}
+              min={0}
+              max={100}
+            />
+            <NumberInput
+              label="Width (%)"
+              value={crop.width}
+              onChange={(width) => updateCrop({ width: clamp(width, 1, 100 - crop.x) })}
+              min={1}
+              max={100}
+            />
+            <NumberInput
+              label="Height (%)"
+              value={crop.height}
+              onChange={(height) => updateCrop({ height: clamp(height, 1, 100 - crop.y) })}
+              min={1}
+              max={100}
+            />
+            <button
+              type="button"
+              className="action-btn"
+              onClick={disableCrop}
+            >
+              Reset crop
+            </button>
+          </>
+        )}
+      </div>
     </>
   );
 }
