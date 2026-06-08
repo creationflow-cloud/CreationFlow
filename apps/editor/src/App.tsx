@@ -46,9 +46,11 @@ import {
   bringToFront,
   deleteElement,
   duplicateElement,
+  groupSelectedElements,
   moveElement,
   sendBackward,
   sendToBack,
+  ungroupGroupElement,
 } from "./helpers/element-actions.js";
 import { useKeyboardShortcuts } from "./helpers/use-keyboard-shortcuts.js";
 import { useZoomPan } from "./helpers/use-zoom-pan.js";
@@ -519,6 +521,39 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       doc = sendToBack(doc, id as ElementId, selection.selectedSurfaceId as SurfaceId);
     }
     setCurrentDocument(doc);
+  }
+
+  function handleGroupSelected() {
+    if (!currentDocument || !selection.selectedSurfaceId) return;
+    if (selection.selectedElementIds.length < 2) return;
+    commitHistory(currentDocument);
+    const result = groupSelectedElements(
+      currentDocument,
+      selection.selectedSurfaceId as SurfaceId,
+      selection.selectedElementIds,
+    );
+    if (!result) return;
+    setCurrentDocument(result.document);
+    setSelection({
+      ...selection,
+      selectedElementIds: [result.groupId],
+    });
+  }
+
+  function handleUngroupSelected() {
+    if (!currentDocument) return;
+    if (selection.selectedElementIds.length !== 1) return;
+    const groupId = selection.selectedElementIds[0];
+    const groupElement = findElementById(currentDocument, groupId);
+    if (!groupElement || groupElement.type !== "group") return;
+    commitHistory(currentDocument);
+    const result = ungroupGroupElement(currentDocument, groupId as ElementId);
+    if (!result) return;
+    setCurrentDocument(result.document);
+    setSelection({
+      ...selection,
+      selectedElementIds: result.elementIds.map((id) => id as unknown as string),
+    });
   }
 
   function handleMoveElement(dx: number, dy: number) {
@@ -1011,6 +1046,12 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     handleMoveSelectedElements(dx, dy);
   }
 
+  const canGroupSelected = selection.selectedElementIds.length >= 2;
+  const primarySelected = currentDocument && primarySelectedElementId
+    ? findElementById(currentDocument, primarySelectedElementId)
+    : undefined;
+  const canUngroupSelected = selection.selectedElementIds.length === 1 && primarySelected?.type === "group";
+
   useKeyboardShortcuts(selection, {
     onUndo: handleUndo,
     onRedo: handleRedo,
@@ -1020,6 +1061,8 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     onSelectAll: handleSelectAll,
     onClearSelection: () => setSelection((prev) => clearElementSelection(prev)),
     onNudgeSelection: handleNudge,
+    onGroup: handleGroupSelected,
+    onUngroup: handleUngroupSelected,
   });
 
   useEffect(() => {
@@ -1054,10 +1097,14 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
         renderError={renderError}
         pdfOutput={pdfOutput}
         blockingIssues={ruleEvaluation?.mandatoryViolations.length ?? 0}
+        canGroup={canGroupSelected}
+        canUngroup={canUngroupSelected}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onSave={handleSave}
         onRenderPdf={handleRenderPdf}
+        onGroup={handleGroupSelected}
+        onUngroup={handleUngroupSelected}
         onSignOut={onSignOut}
       />
 

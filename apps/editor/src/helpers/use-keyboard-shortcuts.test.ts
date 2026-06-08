@@ -79,4 +79,13 @@ describe("classifyShortcut", () => {
   it("handles uppercase letters in ctrl shortcuts", () => {
     expect(classifyShortcut({ key: "A", ctrlKey: true }, notInput, emptySelection).action).toBe("onSelectAll");
   });
+
+  it("triggers group on Ctrl+G and ungroup on Ctrl+Shift+G", () => {
+    const group = classifyShortcut({ key: "g", ctrlKey: true }, notInput, oneSelected);
+    expect(group.action).toBe("onGroup");
+    expect(group.consume).toBe(true);
+    const ungroup = classifyShortcut({ key: "g", ctrlKey: true, shiftKey: true }, notInput, oneSelected);
+    expect(ungroup.action).toBe("onUngroup");
+    expect(ungroup.consume).toBe(true);
+  });
 });

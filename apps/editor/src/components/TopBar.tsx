@@ -16,10 +16,14 @@ interface TopBarProps {
   readonly renderError: string | null;
   readonly pdfOutput: { downloadUrl: string; filename: string } | null;
   readonly blockingIssues: number;
+  readonly canGroup: boolean;
+  readonly canUngroup: boolean;
   readonly onUndo: () => void;
   readonly onRedo: () => void;
   readonly onSave: () => void;
   readonly onRenderPdf: () => void;
+  readonly onGroup: () => void;
+  readonly onUngroup: () => void;
   readonly onSignOut?: () => void;
 }
 
@@ -38,10 +42,14 @@ export function TopBar({
   renderError,
   pdfOutput,
   blockingIssues,
+  canGroup,
+  canUngroup,
   onUndo,
   onRedo,
   onSave,
   onRenderPdf,
+  onGroup,
+  onUngroup,
   onSignOut,
 }: TopBarProps) {
   const saveDisabled = !dirty || saving || blockingIssues > 0;
@@ -78,6 +86,24 @@ export function TopBar({
               title="Redo (Ctrl+Y)"
             >
               Redo
+            </button>
+            <button
+              type="button"
+              className="history-btn"
+              disabled={!canGroup}
+              onClick={onGroup}
+              title="Group selection (Ctrl+G)"
+            >
+              Group
+            </button>
+            <button
+              type="button"
+              className="history-btn"
+              disabled={!canUngroup}
+              onClick={onUngroup}
+              title="Ungroup (Ctrl+Shift+G)"
+            >
+              Ungroup
             </button>
             {blockingIssues > 0 && (
               <span className="dirty-indicator dirty" title={blockHint}>

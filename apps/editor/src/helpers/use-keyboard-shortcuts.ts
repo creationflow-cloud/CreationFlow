@@ -11,6 +11,8 @@ export interface KeyboardShortcutActions {
   readonly onSelectAll: () => void;
   readonly onClearSelection: () => void;
   readonly onNudgeSelection: (dx: number, dy: number) => void;
+  readonly onGroup?: () => void;
+  readonly onUngroup?: () => void;
 }
 
 export type ShortcutEventTarget = { readonly isInput: boolean };
@@ -56,6 +58,14 @@ export function classifyShortcut(
 
   if (mod && key === "d") {
     return { action: "onDuplicate", nudge: null, consume: true };
+  }
+
+  if (mod && key === "g" && !event.shiftKey) {
+    return { action: "onGroup", nudge: null, consume: true };
+  }
+
+  if (mod && key === "g" && event.shiftKey) {
+    return { action: "onUngroup", nudge: null, consume: true };
   }
 
   if (event.key === "Delete" || event.key === "Backspace") {

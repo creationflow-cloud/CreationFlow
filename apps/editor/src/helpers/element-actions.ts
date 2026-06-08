@@ -3,9 +3,11 @@ import {
   bringForward as coreBringForward,
   bringToFront as coreBringToFront,
   duplicateElementOnSurface,
+  groupElements as coreGroupElements,
   removeElement,
   sendBackward as coreSendBackward,
   sendToBack as coreSendToBack,
+  ungroupElement as coreUngroupElement,
   updateElement,
 } from "@creationflow/core";
 
@@ -69,4 +71,19 @@ export function moveElement(
     x: currentX + dx,
     y: currentY + dy,
   });
+}
+
+export function groupSelectedElements(
+  document: CreationFlowDocument,
+  surfaceId: SurfaceId,
+  elementIds: readonly string[],
+): { document: CreationFlowDocument; groupId: ElementId } | undefined {
+  return coreGroupElements(document, surfaceId, elementIds);
+}
+
+export function ungroupGroupElement(
+  document: CreationFlowDocument,
+  groupId: ElementId,
+): { document: CreationFlowDocument; elementIds: readonly ElementId[] } | undefined {
+  return coreUngroupElement(document, groupId);
 }
