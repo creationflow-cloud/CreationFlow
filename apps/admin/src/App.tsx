@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { listProducts, createProduct, type ProductDto } from "./api/products.js";
+import {
+  listProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  type ProductDto,
+} from "./api/products.js";
 import {
   listProductTemplates,
   createProductTemplate,
   getProductTemplate,
   updateProductTemplate,
+  deleteProductTemplate,
   type ProductTemplateDto,
 } from "./api/product-templates.js";
 import {
@@ -16,6 +23,8 @@ import { listWorkspaces, type WorkspaceDto } from "./api/workspaces.js";
 import { createDefaultDocument } from "./api/default-document.js";
 import { importSvgSurfaces, type SvgSurfaceImportResult } from "@creationflow/importers";
 import { RulesEditor } from "./RulesEditor.js";
+import { ProductEditDialog, ConfirmDialog } from "./components/AdminDialogs.js";
+import { ApiError } from "./api/client.js";
 
 const ACTIVE_WORKSPACE_KEY = "creationflow.admin.activeWorkspaceId";
 
@@ -180,6 +189,17 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   const [configTemplateId, setConfigTemplateId] = useState("");
   const [configProductId, setConfigProductId] = useState("");
 
+  const [editingProduct, setEditingProduct] = useState<ProductDto | null>(null);
+  const [productEditSaving, setProductEditSaving] = useState(false);
+  const [productEditError, setProductEditError] = useState<string | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<ProductDto | null>(null);
+  const [productDeleteBusy, setProductDeleteBusy] = useState(false);
+  const [productDeleteError, setProductDeleteError] = useState<string | null>(null);
+
+  const [deletingTemplate, setDeletingTemplate] = useState<ProductTemplateDto | null>(null);
+  const [templateDeleteBusy, setTemplateDeleteBusy] = useState(false);
+  const [templateDeleteError, setTemplateDeleteError] = useState<string | null>(null);
+
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [detailPages, setDetailPages] = useState<TemplateDetailPage[]>([]);
   const [detailDoc, setDetailDoc] = useState<Record<string, unknown>>({});
@@ -334,6 +354,65 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       setCreateError(err instanceof Error ? err.message : String(err));
     } finally {
       setCreatingConfig(false);
+    }
+  };
+
+  const handleSaveProductEdit = async (patch: {
+    name: string;
+    externalId: string | null;
+  }) => {
+    if (!editingProduct) return;
+    setProductEditSaving(true);
+    setProductEditError(null);
+    try {
+      await updateProduct(editingProduct.id, patch);
+      setEditingProduct(null);
+      await loadData();
+    } catch (err) {
+      setProductEditError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setProductEditSaving(false);
+    }
+  };
+
+  const handleConfirmDeleteProduct = async () => {
+    if (!deletingProduct) return;
+    setProductDeleteBusy(true);
+    setProductDeleteError(null);
+    try {
+      await deleteProduct(deletingProduct.id);
+      setDeletingProduct(null);
+      await loadData();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setProductDeleteError(err.message);
+      } else {
+        setProductDeleteError(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      setProductDeleteBusy(false);
+    }
+  };
+
+  const handleConfirmDeleteTemplate = async () => {
+    if (!deletingTemplate) return;
+    setTemplateDeleteBusy(true);
+    setTemplateDeleteError(null);
+    try {
+      await deleteProductTemplate(deletingTemplate.id);
+      setDeletingTemplate(null);
+      if (editingTemplateId === deletingTemplate.id) {
+        closeTemplateDetail();
+      }
+      await loadData();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setTemplateDeleteError(err.message);
+      } else {
+        setTemplateDeleteError(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      setTemplateDeleteBusy(false);
     }
   };
 
@@ -1005,7 +1084,9 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                     <tr>
                       <th>ID</th>
                       <th>Name</th>
+                      <th>External ID</th>
                       <th>Created</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1013,7 +1094,30 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                       <tr key={product.id}>
                         <td className="mono">{product.id}</td>
                         <td>{product.name}</td>
+                        <td className="mono">{product.externalId ?? "—"}</td>
                         <td>{formatDate(product.createdAt)}</td>
+                        <td className="actions-cell">
+                          <button
+                            type="button"
+                            className="edit-structure-btn"
+                            onClick={() => {
+                              setEditingProduct(product);
+                              setProductEditError(null);
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="delete-row-btn"
+                            onClick={() => {
+                              setDeletingProduct(product);
+                              setProductDeleteError(null);
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1021,6 +1125,38 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
               </div>
             )}
           </section>
+        )}
+
+        {editingProduct && (
+          <ProductEditDialog
+            product={editingProduct}
+            onSave={handleSaveProductEdit}
+            onCancel={() => {
+              setEditingProduct(null);
+              setProductEditError(null);
+            }}
+            saving={productEditSaving}
+            errorMessage={productEditError}
+          />
+        )}
+
+        {deletingProduct && (
+          <ConfirmDialog
+            title="Delete product"
+            message={
+              productDeleteError
+                ? productDeleteError
+                : `Delete product "${deletingProduct.name}"? This action cannot be undone.`
+            }
+            confirmLabel="Delete"
+            tone="danger"
+            busy={productDeleteBusy}
+            onConfirm={handleConfirmDeleteProduct}
+            onCancel={() => {
+              setDeletingProduct(null);
+              setProductDeleteError(null);
+            }}
+          />
         )}
 
         {!loading && !error && workspace && activePage === "templates" && (
@@ -1110,6 +1246,16 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                             onClick={() => openInEditor(template.id, "templateId")}
                           >
                             Open in editor
+                          </button>
+                          <button
+                            type="button"
+                            className="delete-row-btn"
+                            onClick={() => {
+                              setDeletingTemplate(template);
+                              setTemplateDeleteError(null);
+                            }}
+                          >
+                            Delete
                           </button>
                         </td>
                       </tr>
@@ -1250,6 +1396,25 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
               </div>
             )}
           </section>
+        )}
+
+        {deletingTemplate && (
+          <ConfirmDialog
+            title="Delete product template"
+            message={
+              templateDeleteError
+                ? templateDeleteError
+                : `Delete template "${deletingTemplate.id.slice(0, 12)}…"? This action cannot be undone.`
+            }
+            confirmLabel="Delete"
+            tone="danger"
+            busy={templateDeleteBusy}
+            onConfirm={handleConfirmDeleteTemplate}
+            onCancel={() => {
+              setDeletingTemplate(null);
+              setTemplateDeleteError(null);
+            }}
+          />
         )}
       </section>
     </main>

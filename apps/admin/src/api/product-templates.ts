@@ -1,4 +1,4 @@
-import { get, post, put } from "./client.js";
+import { del, get, post, put } from "./client.js";
 
 export interface ProductTemplateDto {
   readonly id: string;
@@ -50,4 +50,8 @@ export async function updateProductTemplate(
   input: { documentSchema: Record<string, unknown> },
 ): Promise<ProductTemplateDto> {
   return put<ProductTemplateDto>(`/product-templates/${id}`, input);
+}
+
+export async function deleteProductTemplate(id: string): Promise<void> {
+  await del<void>(`/product-templates/${id}`);
 }

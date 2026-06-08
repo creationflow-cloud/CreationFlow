@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 
 import {
   createProductTemplate,
+  deleteProductTemplate,
   getProductTemplateById,
   listProductTemplates,
   updateProductTemplate,
@@ -213,6 +214,56 @@ export async function registerProductTemplateRoutes(server: FastifyInstance): Pr
         return reply.code(500).send({
           status: "error",
           message: "Unable to update product template.",
+        });
+      }
+    },
+  );
+
+  server.delete<{ Params: ProductTemplateParams }>(
+    "/product-templates/:id",
+    {
+      schema: {
+        tags: ["ProductTemplates"],
+        summary: "Delete product template",
+        params: {
+          type: "object",
+          required: ["id"],
+          properties: {
+            id: { type: "string", minLength: 1 },
+          },
+        },
+        response: {
+          204: { type: "null" },
+          404: errorSchema,
+          409: errorSchema,
+          500: errorSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const removed = await deleteProductTemplate(server.db, request.params.id);
+
+        if (!removed) {
+          return reply.code(404).send({
+            status: "error",
+            message: "Product template not found.",
+          });
+        }
+
+        return reply.code(204).send();
+      } catch (error) {
+        if (error instanceof Error && /Cannot delete template/.test(error.message)) {
+          return reply.code(409).send({
+            status: "error",
+            message: error.message,
+          });
+        }
+        server.log.error(error);
+
+        return reply.code(500).send({
+          status: "error",
+          message: "Unable to delete product template.",
         });
       }
     },

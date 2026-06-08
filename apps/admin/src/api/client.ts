@@ -56,10 +56,37 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const response = await fetch(url, init);
 
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    const errorMessage = await extractErrorMessage(response);
+    throw new ApiError(response.status, errorMessage);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return (await response.json()) as T;
+}
+
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+async function extractErrorMessage(response: Response): Promise<string> {
+  try {
+    const data = (await response.json()) as { message?: string; status?: string } | null;
+    if (data && typeof data.message === "string" && data.message.length > 0) {
+      return data.message;
+    }
+  } catch {
+    // ignore non-JSON bodies
+  }
+  return `API request failed: ${response.status} ${response.statusText}`;
 }
 
 export function get<T>(path: string): Promise<T> {
@@ -72,6 +99,14 @@ export function post<T>(path: string, body: unknown): Promise<T> {
 
 export function put<T>(path: string, body: unknown): Promise<T> {
   return request<T>(path, { method: "PUT", body });
+}
+
+export function patch<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, { method: "PATCH", body });
+}
+
+export function del<T = void>(path: string): Promise<T> {
+  return request<T>(path, { method: "DELETE" });
 }
 
 export async function pingWithApiKey(apiKey: string): Promise<boolean> {

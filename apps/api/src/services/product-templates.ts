@@ -128,3 +128,23 @@ export async function updateProductTemplate(
 
   return toProductTemplateDto(updated);
 }
+
+export async function deleteProductTemplate(
+  db: PrismaClient,
+  id: string,
+): Promise<boolean> {
+  const configurations = await db.configuration.count({
+    where: { templateId: id },
+  });
+  if (configurations > 0) {
+    throw new Error(
+      `Cannot delete template: ${configurations} configuration(s) still reference this template.`,
+    );
+  }
+  const existing = await db.productTemplate.findUnique({ where: { id } });
+  if (!existing) {
+    return false;
+  }
+  await db.productTemplate.delete({ where: { id } });
+  return true;
+}
