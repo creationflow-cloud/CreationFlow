@@ -13,6 +13,7 @@ interface LeftSidebarProps {
   readonly onAddText: () => void;
   readonly onAddShape: () => void;
   readonly onAddImage: () => void;
+  readonly onAddVariable: () => void;
   readonly onAddPattern: () => void;
   readonly onDuplicateElement: (elementId: string) => void;
   readonly onDeleteElement: (elementId: string) => void;
@@ -31,6 +32,7 @@ export function LeftSidebar({
   onAddText,
   onAddShape,
   onAddImage,
+  onAddVariable,
   onAddPattern,
   onDuplicateElement,
   onDeleteElement,
@@ -87,6 +89,10 @@ export function LeftSidebar({
           <button className="tool-button" type="button" onClick={onAddImage}>
             <span className="tool-icon">🖼</span>
             <span className="tool-label">Add Image</span>
+          </button>
+          <button className="tool-button" type="button" onClick={onAddVariable}>
+            <span className="tool-icon">∑</span>
+            <span className="tool-label">Add Variable</span>
           </button>
           <button className="tool-button" type="button" onClick={onAddPattern}>
             <span className="tool-icon">▦</span>

@@ -11,6 +11,7 @@ import type {
   AddPatternElementInput,
   AddShapeElementInput,
   AddTextElementInput,
+  AddVariableElementInput,
 } from "@creationflow/core";
 import { evaluateRules } from "@creationflow/rules-engine";
 import type { RuleVariableValue } from "@creationflow/rules-engine";
@@ -22,6 +23,7 @@ import type {
   ElementId,
   PageId,
   SurfaceId,
+  VariableId,
 } from "@creationflow/schema";
 
 import { uploadAsset } from "./api/assets.js";
@@ -707,6 +709,59 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     });
   }
 
+  function handleAddVariableElement() {
+    if (!currentDocument) {
+      return;
+    }
+
+    const target = getTargetSurfaceForElementCreation();
+    if (!target.pageId || !target.surfaceId) {
+      return;
+    }
+
+    commitHistory(currentDocument);
+
+    const elementId = crypto.randomUUID() as ElementId;
+
+    const firstVariable = currentDocument.variables[0];
+    const variableId = (firstVariable?.id ?? crypto.randomUUID()) as VariableId;
+
+    const input: AddVariableElementInput = {
+      id: elementId,
+      type: "variable",
+      name: firstVariable?.name ? `Variable: ${firstVariable.name}` : "Variable",
+      x: 120,
+      y: 120,
+      width: 220,
+      height: 50,
+      rotation: 0,
+      opacity: 1,
+      visible: true,
+      locked: false,
+      zIndex: getNextZIndex(),
+      variableId,
+      fallback: firstVariable?.defaultValue !== undefined && firstVariable?.defaultValue !== null
+        ? String(firstVariable.defaultValue)
+        : "Placeholder",
+    };
+
+    const updatedDocument = addElement(
+      currentDocument,
+      {
+        pageId: target.pageId,
+        surfaceId: target.surfaceId,
+      },
+      input,
+    );
+
+    setCurrentDocument(updatedDocument);
+    setSelection({
+      selectedPageId: target.pageId,
+      selectedSurfaceId: target.surfaceId,
+      selectedElementIds: [elementId],
+    });
+  }
+
   function handleAddPatternElement(patternId: string) {
     if (!currentDocument) {
       return;
@@ -1025,73 +1080,73 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       )}
 
       {currentDocument && (
-        <RulesValidationPanel
-          document={currentDocument}
-          variables={editorVariables}
-        />
+        <section className="editor-workspace" aria-label="Editor workspace">
+          <LeftSidebar
+            document={currentDocument}
+            selection={selection}
+            onSelectionChange={setSelection}
+            onAddText={handleAddTextElement}
+            onAddShape={handleAddShapeElement}
+            onAddImage={handleAddImageElement}
+            onAddVariable={handleAddVariableElement}
+            onAddPattern={() => setShowPatternGallery(true)}
+            onDuplicateElement={handleDuplicateElement}
+            onDeleteElement={handleDeleteElement}
+            onBringForward={handleBringForward}
+            onSendBackward={handleSendBackward}
+            onBringToFront={handleBringToFront}
+            onSendToBack={handleSendToBack}
+            canvasSettings={canvasSettings}
+            onCanvasSettingsChange={setCanvasSettings}
+          />
+
+          <CanvasWorkspace
+            flowDocument={currentDocument}
+            surface={selectedSurface}
+            selectedElementIds={selection.selectedElementIds}
+            onSelectElement={handleSelectElement}
+            onSelectElementsInRect={handleSelectElementsInRect}
+            onClearElementSelection={handleClearElementSelection}
+            onUpdateElements={handleUpdateElements}
+            onDragStart={() => {
+              if (currentDocument) commitHistory(currentDocument);
+            }}
+            zoomPan={zoomPan}
+            onViewportSizeChange={setViewportSize}
+            canvasSettings={canvasSettings}
+            inlineEditingElementId={inlineEditingElementId}
+            onStartInlineTextEdit={handleStartInlineTextEdit}
+            onCommitInlineTextEdit={handleCommitInlineTextEdit}
+            onCancelInlineTextEdit={handleCancelInlineTextEdit}
+            variables={editorVariables}
+          />
+
+          <RightSidebar
+            selectedElement={selectedElement}
+            selectedElementCount={selection.selectedElementIds.length}
+            onUpdateElement={handleUpdateElement}
+            onUpdateElementsCommon={handleUpdateElement}
+            onDeleteElement={handleDeleteElement}
+            onDuplicateElement={handleDuplicateElement}
+            onBringForward={handleBringForward}
+            onSendBackward={handleSendBackward}
+            onBringToFront={handleBringToFront}
+            onSendToBack={handleSendToBack}
+            onMoveElement={handleMoveElement}
+            onMoveSelectedElements={handleMoveSelectedElements}
+            onUploadAsset={handleUploadAsset}
+            configuration={configuration}
+            template={template}
+            templateId={templateId}
+            loading={loading}
+            configurationCreating={configurationCreating}
+            error={error}
+            configurationError={configurationError}
+            currentDocument={currentDocument}
+            editorVariables={editorVariables}
+          />
+        </section>
       )}
-
-      <section className="editor-workspace" aria-label="Editor workspace">
-        <LeftSidebar
-          document={currentDocument}
-          selection={selection}
-          onSelectionChange={setSelection}
-          onAddText={handleAddTextElement}
-          onAddShape={handleAddShapeElement}
-          onAddImage={handleAddImageElement}
-          onAddPattern={() => setShowPatternGallery(true)}
-          onDuplicateElement={handleDuplicateElement}
-          onDeleteElement={handleDeleteElement}
-          onBringForward={handleBringForward}
-          onSendBackward={handleSendBackward}
-          onBringToFront={handleBringToFront}
-          onSendToBack={handleSendToBack}
-          canvasSettings={canvasSettings}
-          onCanvasSettingsChange={setCanvasSettings}
-        />
-
-        <CanvasWorkspace
-          surface={selectedSurface}
-          selectedElementIds={selection.selectedElementIds}
-          onSelectElement={handleSelectElement}
-          onSelectElementsInRect={handleSelectElementsInRect}
-          onClearElementSelection={handleClearElementSelection}
-          onUpdateElements={handleUpdateElements}
-          onDragStart={() => {
-            if (currentDocument) commitHistory(currentDocument);
-          }}
-          zoomPan={zoomPan}
-          onViewportSizeChange={setViewportSize}
-          canvasSettings={canvasSettings}
-          inlineEditingElementId={inlineEditingElementId}
-          onStartInlineTextEdit={handleStartInlineTextEdit}
-          onCommitInlineTextEdit={handleCommitInlineTextEdit}
-          onCancelInlineTextEdit={handleCancelInlineTextEdit}
-        />
-
-        <RightSidebar
-          selectedElement={selectedElement}
-          selectedElementCount={selection.selectedElementIds.length}
-          onUpdateElement={handleUpdateElement}
-          onUpdateElementsCommon={handleUpdateElement}
-          onDeleteElement={handleDeleteElement}
-          onDuplicateElement={handleDuplicateElement}
-          onBringForward={handleBringForward}
-          onSendBackward={handleSendBackward}
-          onBringToFront={handleBringToFront}
-          onSendToBack={handleSendToBack}
-          onMoveElement={handleMoveElement}
-          onMoveSelectedElements={handleMoveSelectedElements}
-          onUploadAsset={handleUploadAsset}
-          configuration={configuration}
-          template={template}
-          templateId={templateId}
-          loading={loading}
-          configurationCreating={configurationCreating}
-          error={error}
-          configurationError={configurationError}
-        />
-      </section>
 
       {showPatternGallery && selectedSurface && (
         <PatternGallery

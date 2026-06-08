@@ -1,4 +1,5 @@
-import type { CreationFlowElement } from "@creationflow/schema";
+import type { CreationFlowDocument, CreationFlowElement } from "@creationflow/schema";
+import type { RuleVariableValue } from "@creationflow/rules-engine";
 import { ElementProperties } from "./ElementProperties.js";
 import { DocumentInfo } from "./DocumentInfo.js";
 import type { ConfigurationDto } from "../api/configurations.js";
@@ -25,6 +26,8 @@ interface RightSidebarProps {
   readonly configurationCreating: boolean;
   readonly error: string | null;
   readonly configurationError: string | null;
+  readonly currentDocument: CreationFlowDocument | null;
+  readonly editorVariables: Readonly<Record<string, RuleVariableValue>>;
 }
 
 function MultiSelectionSummary({
@@ -160,6 +163,8 @@ export function RightSidebar({
   configurationCreating,
   error,
   configurationError,
+  currentDocument,
+  editorVariables,
 }: RightSidebarProps) {
   const isMulti = selectedElementCount > 1;
 
@@ -191,6 +196,8 @@ export function RightSidebar({
             onSendToBack={onSendToBack}
             onMove={onMoveElement}
             onUploadAsset={onUploadAsset}
+            document={currentDocument ?? undefined}
+            variables={editorVariables}
           />
         ) : (
           <div className="property-card empty-state-card">

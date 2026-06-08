@@ -7,12 +7,14 @@ import type {
   CreationFlowVariableElement,
 } from "@creationflow/schema";
 import { getElementZIndex } from "@creationflow/core";
+import type { RuleVariableValue } from "@creationflow/rules-engine";
 
 import {
   modifierFromEvent,
   NO_MODIFIER,
   type SelectionModifier,
 } from "../helpers/selection-helpers.js";
+import { resolveVariablePreview } from "../helpers/rule-variables.js";
 
 import { ImageElementView } from "./ImageElementView.js";
 import { ShapeElementView } from "./ShapeElementView.js";
@@ -32,6 +34,8 @@ interface ElementViewProps {
   readonly onStartInlineTextEdit?: (elementId: string) => void;
   readonly onCommitInlineTextEdit?: (elementId: string, text: string) => void;
   readonly onCancelInlineTextEdit?: (elementId: string) => void;
+  readonly document: import("@creationflow/schema").CreationFlowDocument;
+  readonly variables: Readonly<Record<string, RuleVariableValue>>;
 }
 
 export function ElementView({
@@ -47,6 +51,8 @@ export function ElementView({
   onStartInlineTextEdit,
   onCommitInlineTextEdit,
   onCancelInlineTextEdit,
+  document,
+  variables,
 }: ElementViewProps) {
   const rotation = element.rotation ?? 0;
   const opacity = element.visible ? element.opacity : 0.35;
@@ -165,15 +171,23 @@ export function ElementView({
   }
 
   if (element.type === "variable") {
+    const variableElement = element as CreationFlowVariableElement;
+    const preview = resolveVariablePreview({
+      document,
+      variableId: variableElement.variableId,
+      variables,
+      fallback: variableElement.fallback,
+    });
     return (
       <div
         style={baseStyle}
         onClick={handleClick}
         onMouseDown={onMouseDown}
-        className="canvas-element-absolute"
+        className="canvas-element-absolute canvas-element-variable"
+        title={preview.variable ? `Variable: ${preview.variable.name}` : "Variable element"}
       >
         <span className="variable-label">
-          Variable: {(element as CreationFlowVariableElement).variableId.slice(0, 8)}
+          {preview.display}
         </span>
         {!element.visible && <span className="hidden-badge">hidden</span>}
       </div>

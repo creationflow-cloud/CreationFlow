@@ -846,6 +846,15 @@ button {
   padding: var(--spacing-xs);
 }
 
+.canvas-element-variable {
+  background: rgba(36, 59, 104, 0.06);
+  border: 2px dashed var(--color-primary);
+}
+
+.canvas-element-variable:hover {
+  background: rgba(36, 59, 104, 0.1);
+}
+
 .text-element-view {
   overflow: hidden;
   white-space: nowrap;

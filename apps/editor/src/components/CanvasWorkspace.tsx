@@ -1,6 +1,11 @@
 import { useEffect, useRef } from "react";
 
-import type { CreationFlowSurface, CreationFlowElement } from "@creationflow/schema";
+import type {
+  CreationFlowDocument,
+  CreationFlowElement,
+  CreationFlowSurface,
+} from "@creationflow/schema";
+import type { RuleVariableValue } from "@creationflow/rules-engine";
 import type { SelectionModifier, SelectionRect } from "../helpers/selection-helpers.js";
 import { SurfaceCanvas } from "./SurfaceCanvas.js";
 import { ZoomControls } from "./ZoomControls.js";
@@ -8,6 +13,7 @@ import type { UseZoomPanResult, ViewState } from "../helpers/use-zoom-pan.js";
 import type { CanvasSettings } from "./CanvasSettingsPanel.js";
 
 interface CanvasWorkspaceProps {
+  readonly flowDocument: CreationFlowDocument;
   readonly surface: CreationFlowSurface | undefined;
   readonly selectedElementIds: readonly string[];
   readonly onSelectElement: (elementId: string, modifier: SelectionModifier) => void;
@@ -22,9 +28,11 @@ interface CanvasWorkspaceProps {
   readonly onStartInlineTextEdit: (elementId: string) => void;
   readonly onCommitInlineTextEdit: (elementId: string, text: string) => void;
   readonly onCancelInlineTextEdit: (elementId: string) => void;
+  readonly variables: Readonly<Record<string, RuleVariableValue>>;
 }
 
 export function CanvasWorkspace({
+  flowDocument,
   surface,
   selectedElementIds,
   onSelectElement,
@@ -39,6 +47,7 @@ export function CanvasWorkspace({
   onStartInlineTextEdit,
   onCommitInlineTextEdit,
   onCancelInlineTextEdit,
+  variables,
 }: CanvasWorkspaceProps) {
   useEffect(() => {
     const el = zoomPan.containerRef.current;
@@ -108,6 +117,8 @@ export function CanvasWorkspace({
               onStartInlineTextEdit={onStartInlineTextEdit}
               onCommitInlineTextEdit={onCommitInlineTextEdit}
               onCancelInlineTextEdit={onCancelInlineTextEdit}
+              flowDocument={flowDocument}
+              variables={variables}
             />
           </div>
         </div>

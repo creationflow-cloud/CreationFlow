@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import type {
   AssetId,
+  CreationFlowDocument,
   CreationFlowElement,
   CreationFlowImageCrop,
   CreationFlowPatternElement,
@@ -9,10 +10,14 @@ import type {
   CreationFlowTextElement,
   CreationFlowImageElement,
   CreationFlowShapeElement,
+  CreationFlowVariableElement,
+  VariableId,
 } from "@creationflow/schema";
+import type { RuleVariableValue } from "@creationflow/rules-engine";
 import { getElementZIndex } from "@creationflow/core";
 
 import { clamp } from "../helpers/element-properties.js";
+import { resolveVariablePreview } from "../helpers/rule-variables.js";
 
 interface ElementPropertiesProps {
   readonly element: CreationFlowElement;
@@ -25,6 +30,8 @@ interface ElementPropertiesProps {
   readonly onSendToBack: () => void;
   readonly onMove: (dx: number, dy: number) => void;
   readonly onUploadAsset?: (file: File) => Promise<string>;
+  readonly document?: CreationFlowDocument;
+  readonly variables?: Readonly<Record<string, RuleVariableValue>>;
 }
 
 function NumberInput({
@@ -161,6 +168,8 @@ export function ElementProperties({
   onSendToBack,
   onMove,
   onUploadAsset,
+  document,
+  variables,
 }: ElementPropertiesProps) {
   return (
     <div className="property-card">
@@ -248,6 +257,15 @@ export function ElementProperties({
       {element.type === "pattern" && (
         <PatternElementProperties
           element={element as CreationFlowPatternElement}
+          onUpdate={onUpdate}
+        />
+      )}
+
+      {element.type === "variable" && document && variables && (
+        <VariableElementProperties
+          element={element as CreationFlowVariableElement}
+          document={document}
+          variables={variables}
           onUpdate={onUpdate}
         />
       )}
@@ -596,6 +614,56 @@ function PatternElementProperties({
           onUpdate({ color: color || undefined } as Partial<CreationFlowPatternElement>)
         }
       />
+    </>
+  );
+}
+
+function VariableElementProperties({
+  element,
+  document,
+  variables,
+  onUpdate,
+}: {
+  element: CreationFlowVariableElement;
+  document: CreationFlowDocument;
+  variables: Readonly<Record<string, RuleVariableValue>>;
+  onUpdate: (patch: Partial<CreationFlowElement>) => void;
+}) {
+  const variableOptions = document.variables.map((variable) => ({
+    value: variable.id,
+    label: `${variable.name} (${variable.type})`,
+  }));
+  const currentVariableId = element.variableId;
+  const preview = resolveVariablePreview({
+    document,
+    variableId: currentVariableId,
+    variables,
+    fallback: element.fallback,
+  });
+
+  return (
+    <>
+      <SelectInput<string>
+        label="Variable"
+        value={currentVariableId}
+        options={variableOptions}
+        onChange={(value) =>
+          onUpdate({ variableId: value as VariableId } as Partial<CreationFlowVariableElement>)
+        }
+      />
+      <TextInput
+        label="Fallback"
+        value={element.fallback ?? ""}
+        onChange={(value) =>
+          onUpdate({
+            fallback: value || undefined,
+          } as Partial<CreationFlowVariableElement>)
+        }
+      />
+      <div className="info-row">
+        <span className="info-label">Preview</span>
+        <span className="info-value">{preview.display}</span>
+      </div>
     </>
   );
 }

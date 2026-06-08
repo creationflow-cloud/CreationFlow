@@ -51,6 +51,8 @@ interface SurfaceCanvasProps {
   readonly onStartInlineTextEdit?: (elementId: string) => void;
   readonly onCommitInlineTextEdit?: (elementId: string, text: string) => void;
   readonly onCancelInlineTextEdit?: (elementId: string) => void;
+  readonly flowDocument: import("@creationflow/schema").CreationFlowDocument;
+  readonly variables: Readonly<Record<string, import("@creationflow/rules-engine").RuleVariableValue>>;
 }
 
 export function SurfaceCanvas({
@@ -67,6 +69,8 @@ export function SurfaceCanvas({
   onStartInlineTextEdit,
   onCommitInlineTextEdit,
   onCancelInlineTextEdit,
+  flowDocument,
+  variables,
 }: SurfaceCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
@@ -559,6 +563,8 @@ export function SurfaceCanvas({
             onStartInlineTextEdit={onStartInlineTextEdit}
             onCommitInlineTextEdit={onCommitInlineTextEdit}
             onCancelInlineTextEdit={onCancelInlineTextEdit}
+            document={flowDocument}
+            variables={variables}
           />
         ))}
       </div>

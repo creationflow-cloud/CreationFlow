@@ -1,73 +1,136 @@
 import { describe, expect, it } from "vitest";
 
-import { collectEditorVariables } from "./rule-variables.js";
-import type {
-  CreationFlowDocument,
-  DocumentId,
-  VariableId,
-  WorkspaceId,
-} from "@creationflow/schema";
-
-const docId = (value: string) => value as unknown as DocumentId;
-const wsId = (value: string) => value as unknown as WorkspaceId;
-const varId = (value: string) => value as unknown as VariableId;
+import {
+  collectEditorVariables,
+  formatVariablePreviewValue,
+  resolveVariablePreview,
+} from "./rule-variables.js";
+import type { ConfigurationDto } from "../api/configurations.js";
+import type { CreationFlowDocument, VariableId } from "@creationflow/schema";
 
 function makeDocument(
-  variables: ReadonlyArray<{
-    readonly id: string;
-    readonly name: string;
-    readonly defaultValue?: string | number | boolean | null;
-  }>,
+  variables: { id: string; name: string; defaultValue?: string | null }[] = [],
 ): CreationFlowDocument {
   return {
-    id: docId("doc-1"),
-    version: "0",
+    id: "doc-1" as unknown as CreationFlowDocument["id"],
+    version: "0.0.0",
     metadata: {
-      workspaceId: wsId("ws-1"),
+      workspaceId: "ws-1" as unknown as CreationFlowDocument["metadata"]["workspaceId"],
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     },
     pages: [],
-    variables: variables.map((v) => ({
-      id: varId(v.id) as VariableId,
-      name: v.name,
+    variables: variables.map((variable) => ({
+      id: variable.id as unknown as VariableId,
+      name: variable.name,
       type: "text",
-      ...(v.defaultValue !== undefined ? { defaultValue: v.defaultValue } : {}),
+      defaultValue:
+        variable.defaultValue === undefined ? undefined : variable.defaultValue,
     })) as CreationFlowDocument["variables"],
     assets: [],
     rules: [],
-  };
+  } as unknown as CreationFlowDocument;
 }
 
 describe("collectEditorVariables", () => {
-  it("returns document default values when no configuration values are provided", () => {
-    const document = makeDocument([
-      { id: "v1", name: "color", defaultValue: "blue" },
-    ]);
-    const result = collectEditorVariables(document, null);
-    expect(result).toEqual({ color: "blue" });
+  it("returns an empty map for documents without variables or configuration", () => {
+    const document = makeDocument();
+    expect(collectEditorVariables(document, null)).toEqual({});
   });
 
-  it("lets configuration values override document defaults", () => {
+  it("applies document variable defaults when no configuration value exists", () => {
     const document = makeDocument([
-      { id: "v1", name: "color", defaultValue: "blue" },
+      { id: "var-name", name: "name", defaultValue: "Default" },
     ]);
-    const result = collectEditorVariables(document, {
-      id: "cfg-1",
-      workspaceId: "ws-1",
-      templateId: "tpl-1",
-      document: {},
-      status: "draft",
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-      variables: { color: "red" },
-    } as unknown as Parameters<typeof collectEditorVariables>[1]);
-    expect(result).toEqual({ color: "red" });
+    expect(collectEditorVariables(document, null)).toEqual({ name: "Default" });
+  });
+
+  it("coerces non-string configuration values to strings", () => {
+    const document = makeDocument();
+    const configuration = { variables: { count: 7, ready: true } } as unknown as ConfigurationDto;
+    expect(collectEditorVariables(document, configuration)).toEqual({
+      count: "7",
+      ready: "true",
+    });
+  });
+
+  it("prefers configuration values over document defaults", () => {
+    const document = makeDocument([
+      { id: "var-name", name: "name", defaultValue: "Default" },
+    ]);
+    const configuration = { variables: { name: "Override" } } as unknown as ConfigurationDto;
+    expect(collectEditorVariables(document, configuration)).toEqual({ name: "Override" });
   });
 
   it("skips variables without a default when no configuration value is present", () => {
     const document = makeDocument([{ id: "v1", name: "color" }]);
-    const result = collectEditorVariables(document, null);
-    expect(result).toEqual({});
+    expect(collectEditorVariables(document, null)).toEqual({});
+  });
+});
+
+describe("formatVariablePreviewValue", () => {
+  it("returns fallback when value is null or undefined", () => {
+    expect(formatVariablePreviewValue(null, "fallback")).toBe("fallback");
+    expect(formatVariablePreviewValue(undefined, "fallback")).toBe("fallback");
+  });
+
+  it("returns fallback when string is empty", () => {
+    expect(formatVariablePreviewValue("", "fallback")).toBe("fallback");
+  });
+
+  it("returns placeholder when no fallback is provided", () => {
+    expect(formatVariablePreviewValue(null)).toBe("—");
+  });
+
+  it("stringifies non-null values", () => {
+    expect(formatVariablePreviewValue("Hello")).toBe("Hello");
+    expect(formatVariablePreviewValue(42)).toBe("42");
+    expect(formatVariablePreviewValue(false)).toBe("false");
+  });
+});
+
+describe("resolveVariablePreview", () => {
+  it("returns the value bound to the variable name when defined", () => {
+    const document = makeDocument([{ id: "var-name", name: "name" }]);
+    const result = resolveVariablePreview({
+      document,
+      variableId: "var-name" as unknown as VariableId,
+      variables: { name: "Hello" },
+    });
+    expect(result.display).toBe("Hello");
+    expect(result.variable?.name).toBe("name");
+  });
+
+  it("falls back to the provided fallback when value is missing", () => {
+    const document = makeDocument([{ id: "var-name", name: "name" }]);
+    const result = resolveVariablePreview({
+      document,
+      variableId: "var-name" as unknown as VariableId,
+      variables: {},
+      fallback: "Default",
+    });
+    expect(result.display).toBe("Default");
+  });
+
+  it("returns the placeholder when the variable id is unknown", () => {
+    const document = makeDocument();
+    const result = resolveVariablePreview({
+      document,
+      variableId: "missing" as unknown as VariableId,
+      variables: {},
+      fallback: "Default",
+    });
+    expect(result.variable).toBeUndefined();
+    expect(result.display).toBe("Default");
+  });
+
+  it("uses em-dash placeholder when no fallback and no value is available", () => {
+    const document = makeDocument();
+    const result = resolveVariablePreview({
+      document,
+      variableId: "missing" as unknown as VariableId,
+      variables: {},
+    });
+    expect(result.display).toBe("—");
   });
 });
