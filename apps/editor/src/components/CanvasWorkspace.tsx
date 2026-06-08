@@ -5,6 +5,7 @@ import type { SelectionModifier, SelectionRect } from "../helpers/selection-help
 import { SurfaceCanvas } from "./SurfaceCanvas.js";
 import { ZoomControls } from "./ZoomControls.js";
 import type { UseZoomPanResult, ViewState } from "../helpers/use-zoom-pan.js";
+import type { CanvasSettings } from "./CanvasSettingsPanel.js";
 
 interface CanvasWorkspaceProps {
   readonly surface: CreationFlowSurface | undefined;
@@ -16,6 +17,7 @@ interface CanvasWorkspaceProps {
   readonly onDragStart: () => void;
   readonly zoomPan: UseZoomPanResult;
   readonly onViewportSizeChange: (size: { width: number; height: number }) => void;
+  readonly canvasSettings: CanvasSettings;
 }
 
 export function CanvasWorkspace({
@@ -28,6 +30,7 @@ export function CanvasWorkspace({
   onDragStart,
   zoomPan,
   onViewportSizeChange,
+  canvasSettings,
 }: CanvasWorkspaceProps) {
   useEffect(() => {
     const el = zoomPan.containerRef.current;
@@ -92,6 +95,7 @@ export function CanvasWorkspace({
               onUpdateElements={onUpdateElements}
               onDragStart={onDragStart}
               previewScale={1}
+              canvasSettings={canvasSettings}
             />
           </div>
         </div>

@@ -51,6 +51,8 @@ import {
 import { useKeyboardShortcuts } from "./helpers/use-keyboard-shortcuts.js";
 import { useZoomPan } from "./helpers/use-zoom-pan.js";
 import { PatternGallery } from "./components/PatternGallery.js";
+import { CanvasSettingsPanel, DEFAULT_CANVAS_SETTINGS } from "./components/CanvasSettingsPanel.js";
+import type { CanvasSettings } from "./components/CanvasSettingsPanel.js";
 import {
   clearElementSelection,
   getSelectionPrimaryElementId,
@@ -108,6 +110,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [showPatternGallery, setShowPatternGallery] = useState(false);
+  const [canvasSettings, setCanvasSettings] = useState<CanvasSettings>(DEFAULT_CANVAS_SETTINGS);
   const lastPreviewJobIdRef = useRef<string | null>(null);
   const lastPreviewConfigIdRef = useRef<string | null>(null);
 
@@ -1019,6 +1022,8 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
           onSendBackward={handleSendBackward}
           onBringToFront={handleBringToFront}
           onSendToBack={handleSendToBack}
+          canvasSettings={canvasSettings}
+          onCanvasSettingsChange={setCanvasSettings}
         />
 
         <CanvasWorkspace
@@ -1033,6 +1038,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
           }}
           zoomPan={zoomPan}
           onViewportSizeChange={setViewportSize}
+          canvasSettings={canvasSettings}
         />
 
         <RightSidebar

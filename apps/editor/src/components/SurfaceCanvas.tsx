@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, useId } from "react";
 import type { CreationFlowElement, CreationFlowSurface } from "@creationflow/schema";
 import { getElementZIndex } from "@creationflow/core";
 
+import type { CanvasSettings } from "./CanvasSettingsPanel.js";
 import {
   isElementSelected,
   makeSelectionRect,
@@ -11,6 +12,11 @@ import {
   type SelectionModifier,
   type SelectionRect,
 } from "../helpers/selection-helpers.js";
+import {
+  calculateSnapForMove,
+  type AlignmentGuide,
+  type AlignmentGuides,
+} from "../helpers/snap-helpers.js";
 
 import { ElementView } from "./ElementView.js";
 
@@ -40,6 +46,7 @@ interface SurfaceCanvasProps {
   readonly onUpdateElements: (patches: ReadonlyMap<string, Partial<CreationFlowElement>>) => void;
   readonly onDragStart?: () => void;
   readonly previewScale?: number;
+  readonly canvasSettings: CanvasSettings;
 }
 
 export function SurfaceCanvas({
@@ -51,10 +58,12 @@ export function SurfaceCanvas({
   onUpdateElements,
   onDragStart,
   previewScale = 1,
+  canvasSettings,
 }: SurfaceCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [rubberBand, setRubberBand] = useState<RubberBandState | null>(null);
+  const [snapGuides, setSnapGuides] = useState<AlignmentGuides | null>(null);
   const clipPathId = useId();
 
   const sortedElements = [...surface.elements].sort(
@@ -122,6 +131,7 @@ export function SurfaceCanvas({
         startSizes,
         mode: "move",
       });
+      setSnapGuides(null);
     },
     [surface.elements, getDocCoords, onDragStart, onSelectElement, selectedElementIds],
   );
@@ -152,6 +162,7 @@ export function SurfaceCanvas({
         startSizes,
         mode: "resize",
       });
+      setSnapGuides(null);
     },
     [surface.elements, getDocCoords, onDragStart],
   );
@@ -183,16 +194,74 @@ export function SurfaceCanvas({
         const dx = coords.x - dragState.startMouseX;
         const dy = coords.y - dragState.startMouseY;
         const patches = new Map<string, Partial<CreationFlowElement>>();
-        for (const [id, start] of dragState.startPositions.entries()) {
-          if (dragState.mode === "move") {
-            patches.set(id, { x: start.x + dx, y: start.y + dy });
-          } else if (id === dragState.elementId) {
-            const size = dragState.startSizes.get(id) ?? { width: 10, height: 10 };
-            patches.set(id, {
-              width: Math.max(size.width + dx, 10),
-              height: Math.max(size.height + dy, 10),
-            });
+
+        if (dragState.mode === "move") {
+          const primaryStart = dragState.startPositions.get(dragState.elementId);
+          const primarySize = dragState.startSizes.get(dragState.elementId) ?? { width: 10, height: 10 };
+
+          if (primaryStart) {
+            const proposedX = primaryStart.x + dx;
+            const proposedY = primaryStart.y + dy;
+            const primaryElement: CreationFlowElement = {
+              id: dragState.elementId as unknown as CreationFlowElement["id"],
+              type: "shape",
+              x: proposedX,
+              y: proposedY,
+              width: primarySize.width,
+              height: primarySize.height,
+              rotation: 0,
+              opacity: 1,
+              visible: true,
+              locked: false,
+              zIndex: 0,
+              shapeType: "rect",
+            } as CreationFlowElement;
+
+            const snapEnabled =
+              canvasSettings.snapToGrid || canvasSettings.showAlignmentGuides;
+
+            if (snapEnabled) {
+              const snap = calculateSnapForMove({
+                surface,
+                movingElement: primaryElement,
+                movingElementIds: Array.from(dragState.startPositions.keys()),
+                proposedX,
+                proposedY,
+                options: {
+                  threshold: canvasSettings.snapThreshold,
+                  snapToGrid: canvasSettings.snapToGrid,
+                  gridSize: canvasSettings.gridSize,
+                },
+              });
+              const adjustedDx = snap.x - primaryStart.x;
+              const adjustedDy = snap.y - primaryStart.y;
+              for (const [id, start] of dragState.startPositions.entries()) {
+                patches.set(id, { x: start.x + adjustedDx, y: start.y + adjustedDy });
+              }
+              setSnapGuides(
+                canvasSettings.showAlignmentGuides && (snap.guides.vertical.length > 0 || snap.guides.horizontal.length > 0)
+                  ? snap.guides
+                  : null,
+              );
+            } else {
+              for (const [id, start] of dragState.startPositions.entries()) {
+                patches.set(id, { x: start.x + dx, y: start.y + dy });
+              }
+              setSnapGuides(null);
+            }
+          } else {
+            for (const [id, start] of dragState.startPositions.entries()) {
+              patches.set(id, { x: start.x + dx, y: start.y + dy });
+            }
+            setSnapGuides(null);
           }
+        } else if (dragState.elementId) {
+          const size = dragState.startSizes.get(dragState.elementId) ?? { width: 10, height: 10 };
+          patches.set(dragState.elementId, {
+            width: Math.max(size.width + dx, 10),
+            height: Math.max(size.height + dy, 10),
+          });
+          setSnapGuides(null);
         }
         onUpdateElements(patches);
         return;
@@ -206,7 +275,7 @@ export function SurfaceCanvas({
         );
       }
     },
-    [dragState, rubberBand, getDocCoords, onUpdateElements],
+    [dragState, rubberBand, getDocCoords, onUpdateElements, surface, canvasSettings],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -228,6 +297,7 @@ export function SurfaceCanvas({
       setRubberBand(null);
     }
     setDragState(null);
+    setSnapGuides(null);
   }, [rubberBand, surface.elements, onSelectElementsInRect]);
 
   useEffect(() => {
@@ -411,6 +481,48 @@ export function SurfaceCanvas({
     );
   };
 
+  const renderSnapGuides = () => {
+    if (!snapGuides) return null;
+    return (
+      <div className="surface-snap-guides" aria-hidden="true">
+        {snapGuides.vertical.map((guide: AlignmentGuide, index) => (
+          <div
+            key={`v-${guide.targetElementId}-${index}`}
+            className="snap-guide snap-guide-vertical"
+            style={{
+              position: "absolute",
+              left: guide.position * previewScale,
+              top: 0,
+              bottom: 0,
+              width: "1px",
+              background: "#ff3b6b",
+              boxShadow: "0 0 0 0.5px rgba(255, 59, 107, 0.5)",
+              pointerEvents: "none",
+              zIndex: 9998,
+            }}
+          />
+        ))}
+        {snapGuides.horizontal.map((guide: AlignmentGuide, index) => (
+          <div
+            key={`h-${guide.targetElementId}-${index}`}
+            className="snap-guide snap-guide-horizontal"
+            style={{
+              position: "absolute",
+              top: guide.position * previewScale,
+              left: 0,
+              right: 0,
+              height: "1px",
+              background: "#ff3b6b",
+              boxShadow: "0 0 0 0.5px rgba(255, 59, 107, 0.5)",
+              pointerEvents: "none",
+              zIndex: 9998,
+            }}
+          />
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div
       ref={canvasRef}
@@ -450,6 +562,7 @@ export function SurfaceCanvas({
       )}
 
       {renderRubberBand()}
+      {renderSnapGuides()}
     </div>
   );
 }

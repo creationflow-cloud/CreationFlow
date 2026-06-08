@@ -1,6 +1,8 @@
 import type { CreationFlowDocument } from "@creationflow/schema";
 import { LayerList } from "./LayerList.js";
 import { PageSurfaceList } from "./PageSurfaceList.js";
+import { CanvasSettingsPanel } from "./CanvasSettingsPanel.js";
+import type { CanvasSettings } from "./CanvasSettingsPanel.js";
 import type { SelectionState } from "../helpers/selection-helpers.js";
 import { selectElement, selectSurface } from "../helpers/selection-helpers.js";
 
@@ -18,6 +20,8 @@ interface LeftSidebarProps {
   readonly onSendBackward: (elementId: string) => void;
   readonly onBringToFront: (elementId: string) => void;
   readonly onSendToBack: (elementId: string) => void;
+  readonly canvasSettings: CanvasSettings;
+  readonly onCanvasSettingsChange: (settings: CanvasSettings) => void;
 }
 
 export function LeftSidebar({
@@ -34,6 +38,8 @@ export function LeftSidebar({
   onSendBackward,
   onBringToFront,
   onSendToBack,
+  canvasSettings,
+  onCanvasSettingsChange,
 }: LeftSidebarProps) {
   const selectedSurface = document
     ? getSelectedSurface(document, selection.selectedSurfaceId)
@@ -119,6 +125,14 @@ export function LeftSidebar({
         ) : (
           <p className="layer-placeholder">Select a surface to see layers.</p>
         )}
+      </section>
+
+      <section className="sidebar-section">
+        <h2 className="sidebar-heading">Canvas Settings</h2>
+        <CanvasSettingsPanel
+          settings={canvasSettings}
+          onChange={onCanvasSettingsChange}
+        />
       </section>
     </aside>
   );
