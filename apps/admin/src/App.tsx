@@ -24,6 +24,7 @@ import { createDefaultDocument } from "./api/default-document.js";
 import { importSvgSurfaces, type SvgSurfaceImportResult } from "@creationflow/importers";
 import { RulesEditor } from "./RulesEditor.js";
 import { ProductEditDialog, ConfirmDialog } from "./components/AdminDialogs.js";
+import { ElementRow } from "./components/ElementRow.js";
 import { ApiError } from "./api/client.js";
 
 const ACTIVE_WORKSPACE_KEY = "creationflow.admin.activeWorkspaceId";
@@ -443,6 +444,45 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     setDetailPages((prev) => [...prev, buildDefaultPage()]);
   };
 
+  const handleDeletePage = (pageIndex: number) => {
+    const page = detailPages[pageIndex];
+    if (!page) return;
+    if (detailPages.length === 1) {
+      window.alert(
+        "Cannot delete the last page. Add another page first or edit this one instead.",
+      );
+      return;
+    }
+    const surfaceCount = page.surfaces.length;
+    const elementCount = page.surfaces.reduce(
+      (sum, surface) => sum + (surface.elements?.length ?? 0),
+      0,
+    );
+    const parts = [
+      `Delete page "${page.name}"?`,
+      "This action cannot be undone.",
+    ];
+    if (surfaceCount > 0) {
+      parts.push(
+        `\nThis will also delete ${surfaceCount} surface(s)` +
+          (elementCount > 0 ? ` and ${elementCount} element(s).` : "."),
+      );
+    }
+    const confirmed = window.confirm(parts.join(" "));
+    if (!confirmed) return;
+    setDetailPages((prev) => prev.filter((_, i) => i !== pageIndex));
+  };
+
+  const handleMovePage = (pageIndex: number, direction: "up" | "down") => {
+    setDetailPages((prev) => {
+      const next = [...prev];
+      const target = direction === "up" ? pageIndex - 1 : pageIndex + 1;
+      if (target < 0 || target >= next.length) return prev;
+      [next[pageIndex], next[target]] = [next[target], next[pageIndex]];
+      return next;
+    });
+  };
+
   const handleAddSurface = (pageIndex: number) => {
     setDetailPages((prev) =>
       prev.map((page, i) =>
@@ -473,6 +513,68 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
             }
           : page,
       ),
+    );
+  };
+
+  const handleMoveSurface = (
+    pageIndex: number,
+    surfaceIndex: number,
+    direction: "up" | "down",
+  ) => {
+    setDetailPages((prev) =>
+      prev.map((page, i) => {
+        if (i !== pageIndex) return page;
+        const target = direction === "up" ? surfaceIndex - 1 : surfaceIndex + 1;
+        if (target < 0 || target >= page.surfaces.length) return page;
+        const next = [...page.surfaces];
+        [next[surfaceIndex], next[target]] = [next[target], next[surfaceIndex]];
+        return { ...page, surfaces: next };
+      }),
+    );
+  };
+
+  const handleUpdateElement = (
+    pageIndex: number,
+    surfaceIndex: number,
+    elementIndex: number,
+    patch: { name?: string; x?: number; y?: number; width?: number; height?: number },
+  ) => {
+    setDetailPages((prev) =>
+      prev.map((page, pi) => {
+        if (pi !== pageIndex) return page;
+        return {
+          ...page,
+          surfaces: page.surfaces.map((surface, si) => {
+            if (si !== surfaceIndex) return surface;
+            const elements = (surface.elements ?? []) as Array<Record<string, unknown>>;
+            const nextElements = elements.map((element, ei) => {
+              if (ei !== elementIndex) return element;
+              return { ...element, ...patch };
+            });
+            return { ...surface, elements: nextElements };
+          }),
+        };
+      }),
+    );
+  };
+
+  const handleDeleteElement = (
+    pageIndex: number,
+    surfaceIndex: number,
+    elementIndex: number,
+  ) => {
+    setDetailPages((prev) =>
+      prev.map((page, pi) => {
+        if (pi !== pageIndex) return page;
+        return {
+          ...page,
+          surfaces: page.surfaces.map((surface, si) => {
+            if (si !== surfaceIndex) return surface;
+            const elements = (surface.elements ?? []) as Array<Record<string, unknown>>;
+            return { ...surface, elements: elements.filter((_, ei) => ei !== elementIndex) };
+          }),
+        };
+      }),
     );
   };
 
@@ -698,13 +800,43 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                       </label>
                       <span>{page.unit}</span>
                     </div>
-                    <button
-                      type="button"
-                      className="add-surface-btn"
-                      onClick={() => handleAddSurface(pageIndex)}
-                    >
-                      + Add Surface
-                    </button>
+                    <div className="page-card-actions">
+                      <button
+                        type="button"
+                        className="reorder-btn"
+                        onClick={() => handleMovePage(pageIndex, "up")}
+                        disabled={pageIndex === 0}
+                        title="Move page up"
+                        aria-label="Move page up"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className="reorder-btn"
+                        onClick={() => handleMovePage(pageIndex, "down")}
+                        disabled={pageIndex === detailPages.length - 1}
+                        title="Move page down"
+                        aria-label="Move page down"
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        className="add-surface-btn"
+                        onClick={() => handleAddSurface(pageIndex)}
+                      >
+                        + Add Surface
+                      </button>
+                      <button
+                        type="button"
+                        className="delete-page-btn"
+                        onClick={() => handleDeletePage(pageIndex)}
+                        title="Delete page"
+                      >
+                        Delete page
+                      </button>
+                    </div>
                   </div>
 
                   {page.surfaces.length === 0 && (
@@ -712,123 +844,182 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                   )}
 
                   <div className="surface-list">
-                    {page.surfaces.map((surface, surfaceIndex) => (
-                      <div key={surface.id} className="surface-row">
-                        <input
-                          className="surface-name-input"
-                          type="text"
-                          value={surface.name}
-                          onChange={(e) =>
-                            handleUpdateSurface(pageIndex, surfaceIndex, { name: e.target.value })
-                          }
-                          placeholder="Surface name"
-                        />
-                        <span className="surface-kind-badge">{surface.kind ?? "custom"}</span>
-                        <div className="surface-dims">
-                          <label>
-                            W
-                            <input
-                              className="dim-input"
-                              type="number"
-                              value={surface.width}
-                              onChange={(e) =>
-                                handleUpdateSurface(pageIndex, surfaceIndex, {
-                                  width: Number(e.target.value) || 0,
-                                })
-                              }
-                            />
-                          </label>
-                          <span>×</span>
-                          <label>
-                            H
-                            <input
-                              className="dim-input"
-                              type="number"
-                              value={surface.height}
-                              onChange={(e) =>
-                                handleUpdateSurface(pageIndex, surfaceIndex, {
-                                  height: Number(e.target.value) || 0,
-                                })
-                              }
-                            />
-                          </label>
-                          <span>{surface.unit}</span>
-                        </div>
-                        <select
-                          className="surface-shape-select"
-                          value={surface.shape ?? "rect"}
-                          onChange={(e) =>
-                            handleUpdateSurface(pageIndex, surfaceIndex, {
-                              shape: e.target.value as "rect" | "path",
-                            })
-                          }
-                        >
-                          <option value="rect">Rect</option>
-                          <option value="path">Path</option>
-                        </select>
-                        <select
-                          className="surface-role-select"
-                          value={surface.role ?? "default"}
-                          onChange={(e) =>
-                            handleUpdateSurface(pageIndex, surfaceIndex, {
-                              role: e.target.value as "default" | "colorRegion" | "designRegion" | "overlay",
-                            })
-                          }
-                        >
-                          <option value="default">Default</option>
-                          <option value="colorRegion">Color Region</option>
-                          <option value="designRegion">Design Region</option>
-                          <option value="overlay">Overlay</option>
-                        </select>
-                        {surface.shape === "path" && (
-                          <textarea
-                            className="surface-path-textarea"
-                            value={surface.pathData ?? ""}
-                            onChange={(e) =>
-                              handleUpdateSurface(pageIndex, surfaceIndex, {
-                                pathData: e.target.value,
-                              })
-                            }
-                            placeholder="SVG path data (e.g., M10,10 L50,10 L50,50 Z)"
-                            rows={2}
-                          />
-                        )}
-                        {(surface.role === "colorRegion" || surface.role === "overlay") && (
+                    {page.surfaces.map((surface, surfaceIndex) => {
+                      return (
+                        <div key={surface.id} className="surface-row">
+                          <div className="surface-reorder-buttons">
+                            <button
+                              type="button"
+                              className="reorder-btn"
+                              onClick={() => handleMoveSurface(pageIndex, surfaceIndex, "up")}
+                              disabled={surfaceIndex === 0}
+                              title="Move surface up"
+                              aria-label="Move surface up"
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              className="reorder-btn"
+                              onClick={() => handleMoveSurface(pageIndex, surfaceIndex, "down")}
+                              disabled={surfaceIndex === page.surfaces.length - 1}
+                              title="Move surface down"
+                              aria-label="Move surface down"
+                            >
+                              ↓
+                            </button>
+                          </div>
                           <input
-                            className="surface-fill-input"
+                            className="surface-name-input"
                             type="text"
-                            value={surface.fillColor ?? ""}
+                            value={surface.name}
+                            onChange={(e) =>
+                              handleUpdateSurface(pageIndex, surfaceIndex, { name: e.target.value })
+                            }
+                            placeholder="Surface name"
+                          />
+                          <span className="surface-kind-badge">{surface.kind ?? "custom"}</span>
+                          <div className="surface-dims">
+                            <label>
+                              W
+                              <input
+                                className="dim-input"
+                                type="number"
+                                value={surface.width}
+                                onChange={(e) =>
+                                  handleUpdateSurface(pageIndex, surfaceIndex, {
+                                    width: Number(e.target.value) || 0,
+                                  })
+                                }
+                              />
+                            </label>
+                            <span>×</span>
+                            <label>
+                              H
+                              <input
+                                className="dim-input"
+                                type="number"
+                                value={surface.height}
+                                onChange={(e) =>
+                                  handleUpdateSurface(pageIndex, surfaceIndex, {
+                                    height: Number(e.target.value) || 0,
+                                  })
+                                }
+                              />
+                            </label>
+                            <span>{surface.unit}</span>
+                          </div>
+                          <select
+                            className="surface-shape-select"
+                            value={surface.shape ?? "rect"}
                             onChange={(e) =>
                               handleUpdateSurface(pageIndex, surfaceIndex, {
-                                fillColor: e.target.value,
+                                shape: e.target.value as "rect" | "path",
                               })
                             }
-                            placeholder="Fill color (#RRGGBB)"
-                          />
-                        )}
-                        <label className="surface-clip-label">
-                          <input
-                            type="checkbox"
-                            checked={surface.clipContent ?? false}
+                          >
+                            <option value="rect">Rect</option>
+                            <option value="path">Path</option>
+                          </select>
+                          <select
+                            className="surface-role-select"
+                            value={surface.role ?? "default"}
                             onChange={(e) =>
                               handleUpdateSurface(pageIndex, surfaceIndex, {
-                                clipContent: e.target.checked,
+                                role: e.target.value as "default" | "colorRegion" | "designRegion" | "overlay",
                               })
                             }
-                          />
-                          Clip Content
-                        </label>
-                        <button
-                          type="button"
-                          className="delete-surface-btn"
-                          onClick={() => handleDeleteSurface(pageIndex, surfaceIndex)}
-                          title="Delete surface"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ))}
+                          >
+                            <option value="default">Default</option>
+                            <option value="colorRegion">Color Region</option>
+                            <option value="designRegion">Design Region</option>
+                            <option value="overlay">Overlay</option>
+                          </select>
+                          {surface.shape === "path" && (
+                            <textarea
+                              className="surface-path-textarea"
+                              value={surface.pathData ?? ""}
+                              onChange={(e) =>
+                                handleUpdateSurface(pageIndex, surfaceIndex, {
+                                  pathData: e.target.value,
+                                })
+                              }
+                              placeholder="SVG path data (e.g., M10,10 L50,10 L50,50 Z)"
+                              rows={2}
+                            />
+                          )}
+                          {(surface.role === "colorRegion" || surface.role === "overlay") && (
+                            <input
+                              className="surface-fill-input"
+                              type="text"
+                              value={surface.fillColor ?? ""}
+                              onChange={(e) =>
+                                handleUpdateSurface(pageIndex, surfaceIndex, {
+                                  fillColor: e.target.value,
+                                })
+                              }
+                              placeholder="Fill color (#RRGGBB)"
+                            />
+                          )}
+                          <label className="surface-clip-label">
+                            <input
+                              type="checkbox"
+                              checked={surface.clipContent ?? false}
+                              onChange={(e) =>
+                                handleUpdateSurface(pageIndex, surfaceIndex, {
+                                  clipContent: e.target.checked,
+                                })
+                              }
+                            />
+                            Clip Content
+                          </label>
+                          <button
+                            type="button"
+                            className="delete-surface-btn"
+                            onClick={() => handleDeleteSurface(pageIndex, surfaceIndex)}
+                            title="Delete surface"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
+                  {page.surfaces.some(
+                    (surface) => surface.elements && surface.elements.length > 0,
+                  ) && (
+                    <div className="page-elements-section">
+                      {page.surfaces.map((surface, surfaceIndex) =>
+                        surface.elements && surface.elements.length > 0 ? (
+                          <div key={`${surface.id}-elements`} className="surface-elements">
+                            <h4 className="surface-elements-title">
+                              {surface.name} elements
+                            </h4>
+                            <div className="element-list" role="list">
+                              {(surface.elements as Array<Record<string, unknown>>).map((element, elementIndex) => (
+                                <ElementRow
+                                  key={`${String(element.id ?? "")}-${elementIndex}`}
+                                  element={element}
+                                  elementIndex={elementIndex}
+                                  onUpdate={(patch) =>
+                                    handleUpdateElement(
+                                      pageIndex,
+                                      surfaceIndex,
+                                      elementIndex,
+                                      patch,
+                                    )
+                                  }
+                                  onDelete={() =>
+                                    handleDeleteElement(pageIndex, surfaceIndex, elementIndex)
+                                  }
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ) : null,
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
 
