@@ -1,0 +1,103 @@
+name: creationflow-proxy
+
+# Reverse proxy for the CreationFlow stack.
+#
+# This Traefik v2 deployment terminates TLS for the public-facing apps
+# (admin, editor, api) and forwards to the upstream containers. The
+# services themselves expose plain HTTP only and live on an internal
+# Docker network so we never publish them directly.
+#
+# Required environment variables (see .env.example):
+#   ACME_EMAIL        - email for Let's Encrypt
+#   DOMAIN            - the apex domain, e.g. creationflow.example.com
+#   API_HOST          - api.<DOMAIN>
+#   ADMIN_HOST        - admin.<DOMAIN>
+#   EDITOR_HOST       - editor.<DOMAIN>
+#
+# Usage:
+#   docker compose -f deploy/docker/docker-compose.yml \
+#                  -f deploy/docker/docker-compose.proxy.yml up -d
+
+services:
+  traefik:
+    image: traefik:v2.11
+    container_name: creationflow-traefik
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.web.http.redirections.entryPoint.to=websecure
+      - --entrypoints.web.http.redirections.entryPoint.scheme=https
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --accesslog
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - creationflow-traefik-letsencrypt:/letsencrypt
+    networks:
+      - creationflow
+      - creationflow-internal
+
+  api:
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.api.rule=Host(`${API_HOST}`)
+      - traefik.http.routers.api.entrypoints=websecure
+      - traefik.http.routers.api.tls.certresolver=letsencrypt
+      - traefik.http.routers.api.tls.minversion=VersionTLS12
+      - traefik.http.services.api.loadbalancer.server.port=3000
+      - traefik.http.middlewares.api-cors.headers.accessControlAllowOriginList=https://${ADMIN_HOST},https://${EDITOR_HOST}
+      - traefik.http.middlewares.api-cors.headers.accessControlAllowMethods=GET,POST,PUT,PATCH,DELETE,OPTIONS
+      - traefik.http.middlewares.api-cors.headers.accessControlAllowHeaders=Content-Type,X-API-Key,Authorization
+      - traefik.http.middlewares.api-cors.headers.accessControlMaxAge=600
+      - traefik.http.middlewares.api-ratelimit.ratelimit.average=200
+      - traefik.http.middlewares.api-ratelimit.ratelimit.burst=400
+      - traefik.http.routers.api.middlewares=api-cors,api-ratelimit
+    networks:
+      - creationflow-internal
+
+  admin:
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.admin.rule=Host(`${ADMIN_HOST}`)
+      - traefik.http.routers.admin.entrypoints=websecure
+      - traefik.http.routers.admin.tls.certresolver=letsencrypt
+      - traefik.http.services.admin.loadbalancer.server.port=3002
+      - traefik.http.middlewares.admin-headers.headers.stsSeconds=31536000
+      - traefik.http.middlewares.admin-headers.headers.stsIncludeSubdomains=true
+      - traefik.http.middlewares.admin-headers.headers.stsPreload=true
+      - traefik.http.middlewares.admin-headers.headers.contentSecurityPolicy=default-src 'self';script-src 'self';style-src 'self' 'unsafe-inline';img-src 'self' data:;connect-src 'self' https://${API_HOST}
+      - traefik.http.routers.admin.middlewares=admin-headers
+    networks:
+      - creationflow-internal
+
+  editor:
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.editor.rule=Host(`${EDITOR_HOST}`)
+      - traefik.http.routers.editor.entrypoints=websecure
+      - traefik.http.routers.editor.tls.certresolver=letsencrypt
+      - traefik.http.services.editor.loadbalancer.server.port=3001
+      - traefik.http.middlewares.editor-headers.headers.stsSeconds=31536000
+      - traefik.http.middlewares.editor-headers.headers.stsIncludeSubdomains=true
+      - traefik.http.middlewares.editor-headers.headers.frameDeny=true
+      - traefik.http.middlewares.editor-headers.headers.contentSecurityPolicy=default-src 'self';script-src 'self';style-src 'self' 'unsafe-inline';img-src 'self' data: blob:;connect-src 'self' https://${API_HOST} wss://${EDITOR_HOST}
+      - traefik.http.routers.editor.middlewares=editor-headers
+    networks:
+      - creationflow-internal
+
+networks:
+  creationflow:
+    external: true
+  creationflow-internal:
+    external: true
+
+volumes:
+  creationflow-traefik-letsencrypt:
+    external: true
