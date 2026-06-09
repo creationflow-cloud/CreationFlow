@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { cx } from "@creationflow/ui";
 import {
   listProducts,
   createProduct,
@@ -788,13 +789,13 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
           </header>
 
           {detailLoading && (
-            <section className="status-banner status-loading">
+            <section className={cx("status-banner", "status-loading")}>
               <p>Loading template structure...</p>
             </section>
           )}
 
           {detailError && (
-            <section className="status-banner status-error">
+            <section className={cx("status-banner", "status-error")} role="alert">
               <p>Error: {detailError}</p>
               <button
                 type="button"
