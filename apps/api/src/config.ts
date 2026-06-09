@@ -24,6 +24,8 @@ export interface ApiConfig {
   readonly allowedWorkspaces: ReadonlySet<string> | "all";
   readonly apiKeyRoles: readonly ApiKeyRoleEntry[];
   readonly defaultRole: ApiRole;
+  readonly logLevel: "fatal" | "error" | "warn" | "info" | "debug" | "trace" | "silent";
+  readonly nodeEnv: "development" | "production" | "test";
 }
 
 function readPackageVersion(): string {
@@ -35,6 +37,24 @@ function readPackageVersion(): string {
 
 export function getApiConfig(): ApiConfig {
   const apiKey = process.env.CREATIONFLOW_API_KEY?.trim();
+  const nodeEnvRaw = (process.env.NODE_ENV ?? "development").toLowerCase();
+  const nodeEnv: ApiConfig["nodeEnv"] =
+    nodeEnvRaw === "production" ? "production" : nodeEnvRaw === "test" ? "test" : "development";
+  const logLevelRaw = (process.env.LOG_LEVEL ?? "info").toLowerCase();
+  const allowedLevels: ApiConfig["logLevel"][] = [
+    "fatal",
+    "error",
+    "warn",
+    "info",
+    "debug",
+    "trace",
+    "silent",
+  ];
+  const logLevel: ApiConfig["logLevel"] = (
+    allowedLevels as readonly string[]
+  ).includes(logLevelRaw)
+    ? (logLevelRaw as ApiConfig["logLevel"])
+    : "info";
 
   return {
     host: process.env.HOST ?? "127.0.0.1",
@@ -48,5 +68,7 @@ export function getApiConfig(): ApiConfig {
     allowedWorkspaces: parseAllowedWorkspaces(process.env.CREATIONFLOW_API_WORKSPACES),
     apiKeyRoles: parseApiKeyRoles(process.env.CREATIONFLOW_API_KEYS),
     defaultRole: parseDefaultRole(process.env.CREATIONFLOW_API_DEFAULT_ROLE),
+    logLevel,
+    nodeEnv,
   };
 }

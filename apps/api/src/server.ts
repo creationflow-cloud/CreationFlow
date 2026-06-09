@@ -5,6 +5,7 @@ import multipart from "@fastify/multipart";
 import type { ApiConfig } from "./config.js";
 import { registerAuth, RoleError, WorkspaceScopeError } from "./plugins/auth.js";
 import { registerDatabase } from "./plugins/database.js";
+import { registerLogging } from "./plugins/logging.js";
 import { registerOpenApi } from "./plugins/openapi.js";
 import { registerStorage } from "./plugins/storage.js";
 import { registerRoutes } from "./routes/index.js";
@@ -19,12 +20,21 @@ export { RoleError };
 
 export async function createServer(config: ApiConfig) {
   const server = Fastify({
-    logger: true,
+    logger: {
+      level: config.logLevel,
+      transport:
+        config.nodeEnv === "production"
+          ? undefined
+          : {
+              target: "pino-pretty",
+              options: { colorize: true, translateTime: "HH:MM:ss.l", ignore: "pid,hostname" },
+            },
+    },
   });
 
   server.decorate("config", config);
 
-  server.setErrorHandler((error, _request, reply) => {
+  server.setErrorHandler((error, request, reply) => {
     if (error instanceof WorkspaceScopeError || error instanceof RoleError) {
       return reply.code(403).send({
         status: "error",
@@ -32,7 +42,10 @@ export async function createServer(config: ApiConfig) {
       });
     }
 
-    server.log.error(error);
+    server.log.error(
+      { requestId: request.requestId ?? "-", err: error },
+      "request error",
+    );
     if (!reply.sent) {
       return reply.code(500).send({
         status: "error",
@@ -60,6 +73,7 @@ export async function createServer(config: ApiConfig) {
     apiKeyRoles: config.apiKeyRoles,
     defaultRole: config.defaultRole,
   });
+  await registerLogging(server);
   await registerOpenApi(server, config);
   await registerDatabase(server, config);
   await registerStorage(server);

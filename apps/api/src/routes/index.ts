@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 
 import type { ApiConfig } from "../config.js";
+import { registerMetrics, metricsRoute } from "../plugins/metrics.js";
 import { registerAssetFileRoutes } from "./asset-file.js";
 import { registerAssetRoutes } from "./assets.js";
 import { registerConfigurationRoutes } from "./configurations.js";
@@ -18,6 +19,9 @@ export async function registerRoutes(server: FastifyInstance, config: ApiConfig)
   await registerHealthRoute(server);
   await registerHealthDbRoute(server);
   await registerVersionRoute(server, config.version);
+
+  await registerMetrics(server);
+  server.get("/metrics", metricsRoute);
 
   await server.register(async (protectedScope) => {
     protectedScope.addHook("preHandler", server.auth.requireAuth);
