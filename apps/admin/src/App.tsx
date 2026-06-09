@@ -25,7 +25,12 @@ import { importSvgSurfaces, type SvgSurfaceImportResult } from "@creationflow/im
 import { RulesEditor } from "./RulesEditor.js";
 import { ProductEditDialog, ConfirmDialog } from "./components/AdminDialogs.js";
 import { ElementRow } from "./components/ElementRow.js";
+import { TemplatePreview } from "./components/TemplatePreview.js";
 import { ApiError } from "./api/client.js";
+import {
+  formatApiErrorMessage,
+  validateDimensionInput,
+} from "./helpers/validation.js";
 
 const ACTIVE_WORKSPACE_KEY = "creationflow.admin.activeWorkspaceId";
 
@@ -201,6 +206,9 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   const [templateDeleteBusy, setTemplateDeleteBusy] = useState(false);
   const [templateDeleteError, setTemplateDeleteError] = useState<string | null>(null);
 
+  const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [detailPages, setDetailPages] = useState<TemplateDetailPage[]>([]);
   const [detailDoc, setDetailDoc] = useState<Record<string, unknown>>({});
@@ -300,13 +308,18 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     if (!workspace || !productName.trim()) return;
     setCreatingProduct(true);
     setCreateError(null);
+    setFormError(null);
     try {
       await createProduct({ workspaceId: workspace.id, name: productName.trim() });
       setProductName("");
       setShowCreateProduct(false);
       await loadData();
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : String(err));
+      if (err instanceof ApiError) {
+        setCreateError(formatApiErrorMessage(err.status, err.message));
+      } else {
+        setCreateError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
       setCreatingProduct(false);
     }
@@ -316,6 +329,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     if (!workspace) return;
     setCreatingTemplate(true);
     setCreateError(null);
+    setFormError(null);
     try {
       const doc = createDefaultDocument({ workspaceId: workspace.id });
       await createProductTemplate({
@@ -327,7 +341,11 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       setShowCreateTemplate(false);
       await loadData();
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : String(err));
+      if (err instanceof ApiError) {
+        setCreateError(formatApiErrorMessage(err.status, err.message));
+      } else {
+        setCreateError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
       setCreatingTemplate(false);
     }
@@ -339,6 +357,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     if (!tpl) return;
     setCreatingConfig(true);
     setCreateError(null);
+    setFormError(null);
     try {
       await createConfiguration({
         workspaceId: workspace.id,
@@ -352,7 +371,11 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       setShowCreateConfig(false);
       await loadData();
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : String(err));
+      if (err instanceof ApiError) {
+        setCreateError(formatApiErrorMessage(err.status, err.message));
+      } else {
+        setCreateError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
       setCreatingConfig(false);
     }
@@ -370,7 +393,11 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       setEditingProduct(null);
       await loadData();
     } catch (err) {
-      setProductEditError(err instanceof Error ? err.message : String(err));
+      if (err instanceof ApiError) {
+        setProductEditError(formatApiErrorMessage(err.status, err.message));
+      } else {
+        setProductEditError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
       setProductEditSaving(false);
     }
@@ -385,8 +412,8 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       setDeletingProduct(null);
       await loadData();
     } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        setProductDeleteError(err.message);
+      if (err instanceof ApiError) {
+        setProductDeleteError(formatApiErrorMessage(err.status, err.message));
       } else {
         setProductDeleteError(err instanceof Error ? err.message : String(err));
       }
@@ -407,8 +434,8 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       }
       await loadData();
     } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        setTemplateDeleteError(err.message);
+      if (err instanceof ApiError) {
+        setTemplateDeleteError(formatApiErrorMessage(err.status, err.message));
       } else {
         setTemplateDeleteError(err instanceof Error ? err.message : String(err));
       }
@@ -498,6 +525,29 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       prev.map((page, i) => (i === pageIndex ? { ...page, ...patch } : page)),
     );
   };
+
+  function getFieldError(field: string): string | undefined {
+    return fieldErrors[field];
+  }
+
+  function validateDimensionAndApply(
+    field: string,
+    label: string,
+    value: number,
+    apply: (next: number) => void,
+  ): void {
+    const result = validateDimensionInput(label, value, { min: 1 });
+    if (!result.valid) {
+      setFieldErrors((prev) => ({ ...prev, [field]: result.error ?? "Invalid." }));
+      return;
+    }
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+    apply(value);
+  }
 
   const handleUpdateSurface = (
     pageIndex: number,
@@ -619,10 +669,15 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       await updateProductTemplate(editingTemplateId, { documentSchema: newDoc });
       setDetailDoc(newDoc);
       setDetailSaveStatus("saved");
+      setFieldErrors({});
       await loadData();
       setTimeout(() => setDetailSaveStatus("idle"), 3000);
     } catch (err) {
-      setDetailError(err instanceof Error ? err.message : String(err));
+      if (err instanceof ApiError) {
+        setDetailError(formatApiErrorMessage(err.status, err.message));
+      } else {
+        setDetailError(err instanceof Error ? err.message : String(err));
+      }
       setDetailSaveStatus("error");
     } finally {
       setDetailSaving(false);
@@ -778,25 +833,47 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                       <label>
                         W
                         <input
-                          className="dim-input"
+                          className={`dim-input${getFieldError(`page-${pageIndex}-width`) ? " invalid" : ""}`}
                           type="number"
+                          min={1}
                           value={page.width}
                           onChange={(e) =>
-                            handleUpdatePage(pageIndex, { width: Number(e.target.value) || 0 })
+                            validateDimensionAndApply(
+                              `page-${pageIndex}-width`,
+                              "Page width",
+                              Number(e.target.value),
+                              (next) => handleUpdatePage(pageIndex, { width: next }),
+                            )
                           }
                         />
+                        {getFieldError(`page-${pageIndex}-width`) && (
+                          <span className="field-error">
+                            {getFieldError(`page-${pageIndex}-width`)}
+                          </span>
+                        )}
                       </label>
                       <span>×</span>
                       <label>
                         H
                         <input
-                          className="dim-input"
+                          className={`dim-input${getFieldError(`page-${pageIndex}-height`) ? " invalid" : ""}`}
                           type="number"
+                          min={1}
                           value={page.height}
                           onChange={(e) =>
-                            handleUpdatePage(pageIndex, { height: Number(e.target.value) || 0 })
+                            validateDimensionAndApply(
+                              `page-${pageIndex}-height`,
+                              "Page height",
+                              Number(e.target.value),
+                              (next) => handleUpdatePage(pageIndex, { height: next }),
+                            )
                           }
                         />
+                        {getFieldError(`page-${pageIndex}-height`) && (
+                          <span className="field-error">
+                            {getFieldError(`page-${pageIndex}-height`)}
+                          </span>
+                        )}
                       </label>
                       <span>{page.unit}</span>
                     </div>
@@ -883,13 +960,24 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                             <label>
                               W
                               <input
-                                className="dim-input"
+                                className={`dim-input${
+                                  getFieldError(`surface-${pageIndex}-${surfaceIndex}-width`)
+                                    ? " invalid"
+                                    : ""
+                                }`}
                                 type="number"
+                                min={1}
                                 value={surface.width}
                                 onChange={(e) =>
-                                  handleUpdateSurface(pageIndex, surfaceIndex, {
-                                    width: Number(e.target.value) || 0,
-                                  })
+                                  validateDimensionAndApply(
+                                    `surface-${pageIndex}-${surfaceIndex}-width`,
+                                    "Surface width",
+                                    Number(e.target.value),
+                                    (next) =>
+                                      handleUpdateSurface(pageIndex, surfaceIndex, {
+                                        width: next,
+                                      }),
+                                  )
                                 }
                               />
                             </label>
@@ -897,13 +985,24 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                             <label>
                               H
                               <input
-                                className="dim-input"
+                                className={`dim-input${
+                                  getFieldError(`surface-${pageIndex}-${surfaceIndex}-height`)
+                                    ? " invalid"
+                                    : ""
+                                }`}
                                 type="number"
+                                min={1}
                                 value={surface.height}
                                 onChange={(e) =>
-                                  handleUpdateSurface(pageIndex, surfaceIndex, {
-                                    height: Number(e.target.value) || 0,
-                                  })
+                                  validateDimensionAndApply(
+                                    `surface-${pageIndex}-${surfaceIndex}-height`,
+                                    "Surface height",
+                                    Number(e.target.value),
+                                    (next) =>
+                                      handleUpdateSurface(pageIndex, surfaceIndex, {
+                                        height: next,
+                                      }),
+                                  )
                                 }
                               />
                             </label>
@@ -1185,9 +1284,18 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
         )}
 
         {createError && (
-          <section className="status-banner status-error">
+          <section className="status-banner status-error" role="alert">
             <p>Create error: {createError}</p>
             <button type="button" className="retry-btn" onClick={() => setCreateError(null)}>
+              Dismiss
+            </button>
+          </section>
+        )}
+
+        {formError && (
+          <section className="status-banner status-error" role="alert">
+            <p>Form error: {formError}</p>
+            <button type="button" className="retry-btn" onClick={() => setFormError(null)}>
               Dismiss
             </button>
           </section>
@@ -1399,7 +1507,13 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
             )}
 
             {templates.length === 0 && !showCreateTemplate ? (
-              <p className="empty-state">No templates found. Create your first template above.</p>
+              <div className="empty-state-card">
+                <p className="empty-state">No templates found.</p>
+                <p className="empty-state-hint">
+                  Click <strong>New Template</strong> above to create your first template, or import an
+                  SVG after opening one.
+                </p>
+              </div>
             ) : (
               <div className="data-table">
                 <table>
@@ -1454,6 +1568,28 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                   </tbody>
                 </table>
               </div>
+            )}
+
+            {templates.length > 0 && !showCreateTemplate && (
+              <section className="template-preview-section" aria-label="Template previews">
+                <h3>Template previews</h3>
+                {templates.slice(0, 6).map((template) => (
+                  <details
+                    key={template.id}
+                    className="template-preview-details"
+                  >
+                    <summary>
+                      <span className="mono">{template.id.slice(0, 12)}</span>
+                      {template.productId ? (
+                        <span className="template-preview-summary-product mono">
+                          {template.productId}
+                        </span>
+                      ) : null}
+                    </summary>
+                    <TemplatePreview document={template.documentSchema as Record<string, unknown>} />
+                  </details>
+                ))}
+              </section>
             )}
           </section>
         )}
