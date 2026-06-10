@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { ProductDto } from "../api/products.js";
 
@@ -20,11 +20,6 @@ export function ProductEditDialog({
   const [name, setName] = useState(product.name);
   const [externalId, setExternalId] = useState(product.externalId ?? "");
   const [validationError, setValidationError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setName(product.name);
-    setExternalId(product.externalId ?? "");
-  }, [product.id, product.name, product.externalId]);
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();

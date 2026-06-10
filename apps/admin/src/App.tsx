@@ -250,17 +250,27 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   );
 
   useEffect(() => {
-    if (!activeWorkspaceId) {
+    if (activeWorkspaceId) {
+      return;
+    }
+    queueMicrotask(() => {
       setProducts([]);
       setTemplates([]);
       setConfigurations([]);
+    });
+  }, [activeWorkspaceId]);
+
+  useEffect(() => {
+    if (!activeWorkspaceId) {
       return;
     }
     if (typeof window !== "undefined") {
       window.localStorage.setItem(ACTIVE_WORKSPACE_KEY, activeWorkspaceId);
     }
     let cancelled = false;
-    setLoading(true);
+    queueMicrotask(() => {
+      if (!cancelled) setLoading(true);
+    });
     Promise.all([
       listProducts(activeWorkspaceId),
       listProductTemplates(activeWorkspaceId),
@@ -1423,6 +1433,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
 
         {editingProduct && (
           <ProductEditDialog
+            key={editingProduct.id}
             product={editingProduct}
             onSave={handleSaveProductEdit}
             onCancel={() => {

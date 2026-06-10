@@ -4,13 +4,20 @@ import { App } from "./App";
 import { LoginPage } from "./LoginPage";
 import { clearStoredApiKey, getStoredApiKey, pingWithApiKey } from "./api/client.js";
 
+type AuthState = "loading" | "unauthenticated" | "authenticated";
+
 export function AuthGate() {
-  const [hasKey, setHasKey] = useState<boolean | null>(null);
+  const [authState, setAuthState] = useState<AuthState>(() =>
+    getStoredApiKey() ? "loading" : "unauthenticated",
+  );
 
   useEffect(() => {
+    if (authState !== "loading") {
+      return;
+    }
     const key = getStoredApiKey();
     if (!key) {
-      setHasKey(false);
+      queueMicrotask(() => setAuthState("unauthenticated"));
       return;
     }
     let cancelled = false;
@@ -20,22 +27,22 @@ export function AuthGate() {
       }
       if (!ok) {
         clearStoredApiKey();
-        setHasKey(false);
+        setAuthState("unauthenticated");
       } else {
-        setHasKey(true);
+        setAuthState("authenticated");
       }
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authState]);
 
   const handleSignOut = () => {
     clearStoredApiKey();
-    setHasKey(false);
+    setAuthState("unauthenticated");
   };
 
-  if (hasKey === null) {
+  if (authState === "loading") {
     return (
       <main className="login-shell">
         <p className="login-subtitle">Checking credentials…</p>
@@ -43,7 +50,7 @@ export function AuthGate() {
     );
   }
 
-  if (!hasKey) {
+  if (authState === "unauthenticated") {
     return <LoginPage />;
   }
 
