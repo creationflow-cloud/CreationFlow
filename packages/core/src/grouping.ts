@@ -115,11 +115,15 @@ export function groupElements(
   for (const member of members) {
     next = removeElement(next, member.id as ElementId);
   }
-  next = addElement(next, { pageId, surfaceId }, {
-    ...group,
-    rotation: group.rotation ?? 0,
-    opacity: group.opacity ?? 1,
-  });
+  next = addElement(
+    next,
+    { pageId, surfaceId },
+    {
+      ...group,
+      rotation: group.rotation ?? 0,
+      opacity: group.opacity ?? 1,
+    },
+  );
   return { document: next, groupId };
 }
 

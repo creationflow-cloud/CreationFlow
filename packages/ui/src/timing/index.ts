@@ -4,9 +4,7 @@ export interface DebounceOptions {
   readonly trailing?: boolean;
 }
 
-export type CreateDebouncedFn<TArgs extends readonly unknown[]> = ((
-  ...args: TArgs
-) => void) & {
+export type CreateDebouncedFn<TArgs extends readonly unknown[]> = ((...args: TArgs) => void) & {
   cancel: () => void;
   flush: () => void;
 };
@@ -24,8 +22,7 @@ export function debounce<TArgs extends readonly unknown[]>(
   const debounced = (...args: TArgs) => {
     const now = Date.now();
     lastArgs = args;
-    const inActiveWindow =
-      windowStartedAt !== null && now - windowStartedAt < wait;
+    const inActiveWindow = windowStartedAt !== null && now - windowStartedAt < wait;
     if (inActiveWindow) {
       if (timer !== null) clearTimeout(timer);
       timer = setTimeout(() => {

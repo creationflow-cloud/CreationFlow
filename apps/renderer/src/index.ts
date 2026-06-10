@@ -1,9 +1,5 @@
 import { renderDocument } from "./render-plan.js";
-import {
-  buildRenderPlan,
-  type RenderPlan,
-  type RenderPlanOptions,
-} from "./render-plan-builder.js";
+import { buildRenderPlan, type RenderPlan, type RenderPlanOptions } from "./render-plan-builder.js";
 import { buildRenderJobStatus, type RenderJobStatus } from "./render-job-status.js";
 
 export { renderDocument };

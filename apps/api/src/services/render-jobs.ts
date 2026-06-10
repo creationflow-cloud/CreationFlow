@@ -74,8 +74,10 @@ function toRenderJobDto(job: {
   readonly updatedAt: Date;
 }): RenderJobDto {
   const output = toOutputValue(job.output);
-  const errorCode = typeof output?.errorCode === "string" ? (output.errorCode as string) : undefined;
-  const transient = typeof output?.transient === "boolean" ? (output.transient as boolean) : undefined;
+  const errorCode =
+    typeof output?.errorCode === "string" ? (output.errorCode as string) : undefined;
+  const transient =
+    typeof output?.transient === "boolean" ? (output.transient as boolean) : undefined;
   const attempts = typeof output?.attempts === "number" ? (output.attempts as number) : 0;
 
   return {
@@ -188,7 +190,11 @@ export async function updateRenderJob(
 export async function recordRenderJobAttempt(
   db: PrismaClient,
   id: string,
-  patch: { readonly errorCode?: string; readonly transient?: boolean; readonly errorMessage?: string },
+  patch: {
+    readonly errorCode?: string;
+    readonly transient?: boolean;
+    readonly errorMessage?: string;
+  },
 ): Promise<RenderJobDto | null> {
   const existing = await db.renderJob.findUnique({ where: { id } });
   if (!existing) {
@@ -196,7 +202,8 @@ export async function recordRenderJobAttempt(
   }
 
   const previousOutput = toOutputValue(existing.output) ?? {};
-  const attempts = typeof previousOutput.attempts === "number" ? (previousOutput.attempts as number) : 0;
+  const attempts =
+    typeof previousOutput.attempts === "number" ? (previousOutput.attempts as number) : 0;
 
   return updateRenderJob(db, id, {
     errorMessage: patch.errorMessage ?? null,

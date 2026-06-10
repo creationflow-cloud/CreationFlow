@@ -1,9 +1,5 @@
 import type { ConfigurationDto } from "../api/configurations.js";
-import type {
-  CreationFlowDocument,
-  CreationFlowVariable,
-  VariableId,
-} from "@creationflow/schema";
+import type { CreationFlowDocument, CreationFlowVariable, VariableId } from "@creationflow/schema";
 import type { RuleVariableValue } from "@creationflow/rules-engine";
 
 function readStringVariables(values: unknown): Record<string, string> {

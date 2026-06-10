@@ -12,10 +12,7 @@ export {
   sendBackward,
   sendToBack,
 } from "./layers.js";
-export {
-  groupElements,
-  ungroupElement,
-} from "./grouping.js";
+export { groupElements, ungroupElement } from "./grouping.js";
 export type { GroupElementsResult, UngroupElementResult } from "./grouping.js";
 export type {
   AddElementInput,

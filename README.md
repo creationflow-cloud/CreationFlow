@@ -34,6 +34,7 @@ pnpm dev:all
 ```
 
 Access the apps:
+
 - **API**: http://localhost:3000
 - **API Docs (Swagger)**: http://localhost:3000/docs
 - **Admin UI**: http://localhost:5174
@@ -68,19 +69,19 @@ deploy/
 
 ## What Is Implemented
 
-| Area | Status |
-|------|--------|
-| **API** | Implemented — workspaces, products, templates, configurations, render jobs, assets (with file upload/download), OpenAPI/Swagger |
-| **Admin UI** | Implemented — load data, create products/templates/configurations, edit template pages/surfaces, SVG import, delete surfaces |
-| **Editor UI** | Implemented — add text/shape/image elements, move/scale, delete/duplicate, layer ordering, undo/redo, save |
-| **Database** | Implemented — Prisma schema with Workspace, Product, ProductTemplate, Configuration, RenderJob, Asset |
-| **Document Model** | Implemented — typed pages, surfaces, elements (text/image/shape/group/variable), assets, variables, rules |
-| **PDF Engine** | In progress — render plan + pdfkit-based PDF generation exists |
-| **SVG Importer** | Implemented — parse SVG to surfaces with roles/shapes |
-| **Storage** | Implemented — file system and memory storage providers |
-| **Rules Engine** | Placeholder — basic evaluateRules function |
-| **Renderer** | Placeholder |
-| **Worker** | Placeholder |
+| Area               | Status                                                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| **API**            | Implemented — workspaces, products, templates, configurations, render jobs, assets (with file upload/download), OpenAPI/Swagger |
+| **Admin UI**       | Implemented — load data, create products/templates/configurations, edit template pages/surfaces, SVG import, delete surfaces    |
+| **Editor UI**      | Implemented — add text/shape/image elements, move/scale, delete/duplicate, layer ordering, undo/redo, save                      |
+| **Database**       | Implemented — Prisma schema with Workspace, Product, ProductTemplate, Configuration, RenderJob, Asset                           |
+| **Document Model** | Implemented — typed pages, surfaces, elements (text/image/shape/group/variable), assets, variables, rules                       |
+| **PDF Engine**     | In progress — render plan + pdfkit-based PDF generation exists                                                                  |
+| **SVG Importer**   | Implemented — parse SVG to surfaces with roles/shapes                                                                           |
+| **Storage**        | Implemented — file system and memory storage providers                                                                          |
+| **Rules Engine**   | Placeholder — basic evaluateRules function                                                                                      |
+| **Renderer**       | Placeholder                                                                                                                     |
+| **Worker**         | Placeholder                                                                                                                     |
 
 ## Documentation
 

@@ -5,22 +5,26 @@
   var i18n = mappingConfig.i18n || {};
 
   function escapeHtml(value) {
-    return $("<div>").text(value == null ? "" : value).html();
+    return $("<div>")
+      .text(value == null ? "" : value)
+      .html();
   }
 
   function renderResults($container, templates) {
     $container.empty();
     if (!templates || templates.length === 0) {
-      $container.append('<p class="description">' + escapeHtml(i18n.noResults || "No templates found.") + "</p>");
+      $container.append(
+        '<p class="description">' + escapeHtml(i18n.noResults || "No templates found.") + "</p>",
+      );
       return;
     }
 
-    var $list = $("<ul class=\"creationflow-template-results\"></ul>");
+    var $list = $('<ul class="creationflow-template-results"></ul>');
     templates.forEach(function (template) {
       var id = template.id || "";
       var name = template.name || id;
       var $item = $("<li></li>");
-      var $button = $("<button type=\"button\" class=\"button button-secondary\"></button>")
+      var $button = $('<button type="button" class="button button-secondary"></button>')
         .text(name)
         .attr("data-template-id", id)
         .attr("data-template-name", name);
@@ -49,14 +53,14 @@
           renderResults($results, response.data.templates || []);
         } else {
           $results.html(
-            "<p class=\"creationflow-error\">" +
+            '<p class="creationflow-error">' +
               escapeHtml((response && response.data && response.data.message) || i18n.error) +
-              "</p>"
+              "</p>",
           );
         }
       })
       .fail(function () {
-        $results.html("<p class=\"creationflow-error\">" + escapeHtml(i18n.error) + "</p>");
+        $results.html('<p class="creationflow-error">' + escapeHtml(i18n.error) + "</p>");
       });
   }
 
@@ -64,17 +68,27 @@
     var $modal = $("#creationflow-template-modal");
     if ($modal.length === 0) {
       $modal = $(
-        "<div id=\"creationflow-template-modal\" class=\"creationflow-modal\" style=\"display:none;\">" +
-          "<div class=\"creationflow-modal__backdrop\"></div>" +
-          "<div class=\"creationflow-modal__content\">" +
-          "<h2>" + escapeHtml(i18n.title || "Pick a template") + "</h2>" +
-          "<p><label>" + escapeHtml(i18n.workspaceLabel || "Workspace") + " <input type=\"text\" name=\"workspace_id\" /></label></p>" +
-          "<p><label>" + escapeHtml(i18n.searchLabel || "Search") + " <input type=\"text\" name=\"search\" /></label> " +
-          "<button type=\"button\" class=\"button creationflow-search-button\">" + escapeHtml(i18n.search || "Search") + "</button></p>" +
-          "<div class=\"creationflow-template-results-container\"></div>" +
-          "<p><button type=\"button\" class=\"button creationflow-modal-close\">" + escapeHtml(i18n.close || "Close") + "</button></p>" +
+        '<div id="creationflow-template-modal" class="creationflow-modal" style="display:none;">' +
+          '<div class="creationflow-modal__backdrop"></div>' +
+          '<div class="creationflow-modal__content">' +
+          "<h2>" +
+          escapeHtml(i18n.title || "Pick a template") +
+          "</h2>" +
+          "<p><label>" +
+          escapeHtml(i18n.workspaceLabel || "Workspace") +
+          ' <input type="text" name="workspace_id" /></label></p>' +
+          "<p><label>" +
+          escapeHtml(i18n.searchLabel || "Search") +
+          ' <input type="text" name="search" /></label> ' +
+          '<button type="button" class="button creationflow-search-button">' +
+          escapeHtml(i18n.search || "Search") +
+          "</button></p>" +
+          '<div class="creationflow-template-results-container"></div>' +
+          '<p><button type="button" class="button creationflow-modal-close">' +
+          escapeHtml(i18n.close || "Close") +
+          "</button></p>" +
           "</div>" +
-          "</div>"
+          "</div>",
       );
       $("body").append($modal);
       $modal.on("click", ".creationflow-modal-close, .creationflow-modal__backdrop", function () {

@@ -31,11 +31,7 @@ import type { ConfigurationDto } from "./api/configurations.js";
 import { getConfiguration, updateConfiguration } from "./api/configurations.js";
 import { createConfigurationFromTemplate, getProductTemplate } from "./api/product-templates.js";
 import type { ProductTemplateDto } from "./api/product-templates.js";
-import {
-  createRenderJob,
-  getRenderJobPdfOutput,
-  renderRenderJob,
-} from "./api/render-jobs.js";
+import { createRenderJob, getRenderJobPdfOutput, renderRenderJob } from "./api/render-jobs.js";
 import type { RenderJobDto } from "./api/render-jobs.js";
 import { findElementById, findSurfaceById } from "./helpers/document-helpers.js";
 import { canRedo, canUndo, pushHistory, redo, undo } from "./helpers/document-history.js";
@@ -289,7 +285,10 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       ? findSurfaceById(currentDocument, selection.selectedSurfaceId)
       : undefined;
 
-  function getTargetSurfaceForElementCreation(): { surfaceId: SurfaceId | null; pageId: PageId | null } {
+  function getTargetSurfaceForElementCreation(): {
+    surfaceId: SurfaceId | null;
+    pageId: PageId | null;
+  } {
     if (!currentDocument || !selection.selectedPageId || !selection.selectedSurfaceId) {
       return { surfaceId: null, pageId: null };
     }
@@ -339,7 +338,10 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     setSelection((prev) => selectElement(elementId, prev, modifier));
   }
 
-  function handleSelectElementsInRect(rect: SelectionRect, modifier: SelectionModifier = NO_MODIFIER) {
+  function handleSelectElementsInRect(
+    rect: SelectionRect,
+    modifier: SelectionModifier = NO_MODIFIER,
+  ) {
     if (!currentDocument || !selection.selectedSurfaceId) return;
     const surface = findSurfaceById(currentDocument, selection.selectedSurfaceId);
     if (!surface) return;
@@ -430,11 +432,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   }
 
   function handleDuplicateElement(elementId?: string) {
-    if (
-      !currentDocument ||
-      !selection.selectedSurfaceId ||
-      !selection.selectedPageId
-    ) {
+    if (!currentDocument || !selection.selectedSurfaceId || !selection.selectedPageId) {
       return;
     }
 
@@ -775,9 +773,10 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       locked: false,
       zIndex: getNextZIndex(),
       variableId,
-      fallback: firstVariable?.defaultValue !== undefined && firstVariable?.defaultValue !== null
-        ? String(firstVariable.defaultValue)
-        : "Placeholder",
+      fallback:
+        firstVariable?.defaultValue !== undefined && firstVariable?.defaultValue !== null
+          ? String(firstVariable.defaultValue)
+          : "Placeholder",
     };
 
     const updatedDocument = addElement(
@@ -944,7 +943,14 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
 
     void refreshPdfPreview();
     lastPreviewConfigIdRef.current = configuration.id;
-  }, [configuration, currentDocument, configurationLoading, loading, previewLoading, refreshPdfPreview]);
+  }, [
+    configuration,
+    currentDocument,
+    configurationLoading,
+    loading,
+    previewLoading,
+    refreshPdfPreview,
+  ]);
 
   const handleSave = useCallback(async () => {
     if (!configuration || !currentDocument) {
@@ -1027,7 +1033,9 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   const [viewportSize, setViewportSize] = useState<{ width: number; height: number } | null>(null);
 
   const zoomPan = useZoomPan({
-    surface: selectedSurface ? { width: selectedSurface.width, height: selectedSurface.height } : undefined,
+    surface: selectedSurface
+      ? { width: selectedSurface.width, height: selectedSurface.height }
+      : undefined,
     viewport: viewportSize,
   });
 
@@ -1047,10 +1055,12 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   }
 
   const canGroupSelected = selection.selectedElementIds.length >= 2;
-  const primarySelected = currentDocument && primarySelectedElementId
-    ? findElementById(currentDocument, primarySelectedElementId)
-    : undefined;
-  const canUngroupSelected = selection.selectedElementIds.length === 1 && primarySelected?.type === "group";
+  const primarySelected =
+    currentDocument && primarySelectedElementId
+      ? findElementById(currentDocument, primarySelectedElementId)
+      : undefined;
+  const canUngroupSelected =
+    selection.selectedElementIds.length === 1 && primarySelected?.type === "group";
 
   useKeyboardShortcuts(selection, {
     onUndo: handleUndo,

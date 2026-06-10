@@ -187,7 +187,7 @@ function createFakeDb(document: Record<string, unknown>) {
       findUnique: async ({ where }: { where: { id: string } }) =>
         where.id === state.inputAsset.id
           ? state.inputAsset
-          : state.assets.find((asset) => asset.id === where.id) ?? null,
+          : (state.assets.find((asset) => asset.id === where.id) ?? null),
       create: async ({ data }: { data: Record<string, unknown> }) => {
         const asset = {
           id: "asset-1",

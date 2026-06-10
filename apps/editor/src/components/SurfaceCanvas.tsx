@@ -52,7 +52,9 @@ interface SurfaceCanvasProps {
   readonly onCommitInlineTextEdit?: (elementId: string, text: string) => void;
   readonly onCancelInlineTextEdit?: (elementId: string) => void;
   readonly flowDocument: import("@creationflow/schema").CreationFlowDocument;
-  readonly variables: Readonly<Record<string, import("@creationflow/rules-engine").RuleVariableValue>>;
+  readonly variables: Readonly<
+    Record<string, import("@creationflow/rules-engine").RuleVariableValue>
+  >;
 }
 
 export function SurfaceCanvas({
@@ -165,7 +167,10 @@ export function SurfaceCanvas({
       const startPositions = new Map<string, { x: number; y: number }>();
       const startSizes = new Map<string, { width: number; height: number }>();
       startPositions.set(elementId, { x: element.x, y: element.y });
-      startSizes.set(elementId, { width: Math.max(element.width, 10), height: Math.max(element.height, 10) });
+      startSizes.set(elementId, {
+        width: Math.max(element.width, 10),
+        height: Math.max(element.height, 10),
+      });
 
       setDragState({
         elementId,
@@ -210,7 +215,10 @@ export function SurfaceCanvas({
 
         if (dragState.mode === "move") {
           const primaryStart = dragState.startPositions.get(dragState.elementId);
-          const primarySize = dragState.startSizes.get(dragState.elementId) ?? { width: 10, height: 10 };
+          const primarySize = dragState.startSizes.get(dragState.elementId) ?? {
+            width: 10,
+            height: 10,
+          };
 
           if (primaryStart) {
             const proposedX = primaryStart.x + dx;
@@ -230,8 +238,7 @@ export function SurfaceCanvas({
               shapeType: "rect",
             } as CreationFlowElement;
 
-            const snapEnabled =
-              canvasSettings.snapToGrid || canvasSettings.showAlignmentGuides;
+            const snapEnabled = canvasSettings.snapToGrid || canvasSettings.showAlignmentGuides;
 
             if (snapEnabled) {
               const snap = calculateSnapForMove({
@@ -252,7 +259,8 @@ export function SurfaceCanvas({
                 patches.set(id, { x: start.x + adjustedDx, y: start.y + adjustedDy });
               }
               setSnapGuides(
-                canvasSettings.showAlignmentGuides && (snap.guides.vertical.length > 0 || snap.guides.horizontal.length > 0)
+                canvasSettings.showAlignmentGuides &&
+                  (snap.guides.vertical.length > 0 || snap.guides.horizontal.length > 0)
                   ? snap.guides
                   : null,
               );
@@ -282,9 +290,7 @@ export function SurfaceCanvas({
       if (rubberBand) {
         const coords = getDocCoords(e.clientX, e.clientY);
         setRubberBand((prev) =>
-          prev
-            ? { ...prev, currentDocX: coords.x, currentDocY: coords.y }
-            : prev,
+          prev ? { ...prev, currentDocX: coords.x, currentDocY: coords.y } : prev,
         );
       }
     },
@@ -327,9 +333,10 @@ export function SurfaceCanvas({
     }
   }, [dragState, rubberBand, handleMouseMove, handleMouseUp]);
 
-  const singleSelected = selectedElementIds.length === 1
-    ? surface.elements.find((el) => el.id === selectedElementIds[0])
-    : undefined;
+  const singleSelected =
+    selectedElementIds.length === 1
+      ? surface.elements.find((el) => el.id === selectedElementIds[0])
+      : undefined;
   const primarySelectedId = selectedElementIds[0] ?? null;
 
   const surfaceRole = surface.role ?? "default";
@@ -372,8 +379,8 @@ export function SurfaceCanvas({
       return null;
     }
 
-    const shouldRenderFill = surface.fillColor &&
-      (surface.role === "colorRegion" || surface.role === "overlay");
+    const shouldRenderFill =
+      surface.fillColor && (surface.role === "colorRegion" || surface.role === "overlay");
 
     const shouldRenderPathFill = surface.role === "designRegion";
 
@@ -398,11 +405,7 @@ export function SurfaceCanvas({
           ...(shouldClipPath ? { clipPath: `url(#${clipPathId})` } : {}),
         }}
       >
-        <path
-          d={surface.pathData}
-          fill={fill}
-          fillOpacity={opacity}
-        />
+        <path d={surface.pathData} fill={fill} fillOpacity={opacity} />
       </svg>
     );
   };
@@ -433,12 +436,7 @@ export function SurfaceCanvas({
           zIndex: 0,
         }}
       >
-        <path
-          d={surface.pathData}
-          fill="none"
-          stroke={strokeColor}
-          strokeWidth={strokeWidth}
-        />
+        <path d={surface.pathData} fill="none" stroke={strokeColor} strokeWidth={strokeWidth} />
       </svg>
     );
   };
@@ -459,10 +457,7 @@ export function SurfaceCanvas({
         aria-hidden="true"
       >
         <defs>
-          <clipPath
-            id={clipPathId}
-            clipPathUnits="userSpaceOnUse"
-          >
+          <clipPath id={clipPathId} clipPathUnits="userSpaceOnUse">
             <path d={surface.pathData!} />
           </clipPath>
         </defs>
@@ -552,7 +547,11 @@ export function SurfaceCanvas({
           <ElementView
             key={element.id}
             element={element}
-            isSelected={isElementSelected(element.id, { selectedPageId: null, selectedSurfaceId: null, selectedElementIds })}
+            isSelected={isElementSelected(element.id, {
+              selectedPageId: null,
+              selectedSurfaceId: null,
+              selectedElementIds,
+            })}
             onSelect={(modifier) => onSelectElement(element.id, modifier)}
             onMouseDown={(e) => handleElementMouseDown(element.id, e)}
             surfaceWidth={surface.width}

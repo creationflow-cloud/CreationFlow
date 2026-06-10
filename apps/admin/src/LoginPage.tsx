@@ -40,8 +40,8 @@ export function LoginPage() {
         <div className="brand-mark">CF</div>
         <h1>CreationFlow Admin</h1>
         <p className="login-subtitle">
-          Provide your API key to access the admin workspace. The key is stored locally in your browser
-          and never sent anywhere except the CreationFlow API.
+          Provide your API key to access the admin workspace. The key is stored locally in your
+          browser and never sent anywhere except the CreationFlow API.
         </p>
 
         <label className="form-label" htmlFor="api-key">
@@ -69,8 +69,8 @@ export function LoginPage() {
         </button>
 
         <p className="login-hint">
-          Need an API key? Set <code>CREATIONFLOW_API_KEY</code> on the API server and share the same
-          value here.
+          Need an API key? Set <code>CREATIONFLOW_API_KEY</code> on the API server and share the
+          same value here.
         </p>
       </form>
     </main>

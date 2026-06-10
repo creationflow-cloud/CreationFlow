@@ -95,7 +95,7 @@
         body ? body.scrollHeight : 0,
         html ? html.scrollHeight : 0,
         body ? body.offsetHeight : 0,
-        html ? html.offsetHeight : 0
+        html ? html.offsetHeight : 0,
       );
       if (height > 0) {
         frame.style.height = height + "px";

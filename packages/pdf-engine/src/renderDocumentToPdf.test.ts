@@ -146,10 +146,7 @@ function createGroupElement(
   } as unknown as CreationFlowElement;
 }
 
-function createPage(
-  id: string,
-  surfaces?: readonly CreationFlowSurface[],
-): CreationFlowPage {
+function createPage(id: string, surfaces?: readonly CreationFlowSurface[]): CreationFlowPage {
   return {
     id: id as PageId,
     name: id,
@@ -182,7 +179,9 @@ async function getPageCount(buffer: Buffer): Promise<number> {
   return document.getPageCount();
 }
 
-async function getFirstPageSize(buffer: Buffer): Promise<{ readonly width: number; readonly height: number }> {
+async function getFirstPageSize(
+  buffer: Buffer,
+): Promise<{ readonly width: number; readonly height: number }> {
   const document = await PdfLibDocument.load(buffer);
   const page = document.getPage(0);
   const size = page.getSize();
@@ -231,9 +230,13 @@ describe("renderDocumentToPdf", () => {
   it("preserves an empty middle page", async () => {
     const pdf = await renderDocumentToPdf(
       createDocument([
-        createPage("page-1", [createSurface("surface-1", [createShapeElement("shape-1", 10, 10, 20, 20)])]),
+        createPage("page-1", [
+          createSurface("surface-1", [createShapeElement("shape-1", 10, 10, 20, 20)]),
+        ]),
         createPage("page-2", []),
-        createPage("page-3", [createSurface("surface-3", [createShapeElement("shape-3", 30, 30, 20, 20)])]),
+        createPage("page-3", [
+          createSurface("surface-3", [createShapeElement("shape-3", 30, 30, 20, 20)]),
+        ]),
       ]),
     );
 
@@ -242,7 +245,9 @@ describe("renderDocumentToPdf", () => {
 
   it("renders a simple text element without crashing", async () => {
     const pdf = await renderDocumentToPdf(
-      createDocument([createPage("page-1", [createSurface("surface-1", [createTextElement("text-1", 20, 30)])])]),
+      createDocument([
+        createPage("page-1", [createSurface("surface-1", [createTextElement("text-1", 20, 30)])]),
+      ]),
     );
 
     expect(pdf.length).toBeGreaterThan(0);
@@ -318,7 +323,11 @@ describe("renderDocumentToPdf", () => {
 
   it("renders a rectangle shape element without crashing", async () => {
     const pdf = await renderDocumentToPdf(
-      createDocument([createPage("page-1", [createSurface("surface-1", [createShapeElement("shape-1", 40, 50, 100, 60)])])]),
+      createDocument([
+        createPage("page-1", [
+          createSurface("surface-1", [createShapeElement("shape-1", 40, 50, 100, 60)]),
+        ]),
+      ]),
     );
 
     expect(pdf.length).toBeGreaterThan(0);
@@ -361,7 +370,11 @@ describe("renderDocumentToPdf", () => {
 
   it("renders x=0 y=0 at the PDFKit top-left coordinate origin", async () => {
     const pdf = await renderDocumentToPdf(
-      createDocument([createPage("page-1", [createSurface("surface-1", [createShapeElement("shape-1", 0, 0, 10, 20)])])]),
+      createDocument([
+        createPage("page-1", [
+          createSurface("surface-1", [createShapeElement("shape-1", 0, 0, 10, 20)]),
+        ]),
+      ]),
       { compress: false },
     );
 
@@ -371,9 +384,13 @@ describe("renderDocumentToPdf", () => {
   it("renders an element on page 3 only once", async () => {
     const pdf = await renderDocumentToPdf(
       createDocument([
-        createPage("page-1", [createSurface("surface-1", [createShapeElement("shape-1", 1, 2, 3, 4)])]),
+        createPage("page-1", [
+          createSurface("surface-1", [createShapeElement("shape-1", 1, 2, 3, 4)]),
+        ]),
         createPage("page-2", []),
-        createPage("page-3", [createSurface("surface-3", [createShapeElement("shape-3", 33, 44, 55, 66)])]),
+        createPage("page-3", [
+          createSurface("surface-3", [createShapeElement("shape-3", 33, 44, 55, 66)]),
+        ]),
       ]),
       { compress: false },
     );
@@ -414,9 +431,7 @@ describe("renderDocumentToPdf", () => {
   });
 
   it("renders nested groups by applying each group's offset", async () => {
-    const inner = createGroupElement("inner", 5, 6, [
-      createShapeElement("shape-1", 0, 0, 10, 20),
-    ]);
+    const inner = createGroupElement("inner", 5, 6, [createShapeElement("shape-1", 0, 0, 10, 20)]);
     const outer = createGroupElement("outer", 20, 30, [inner]);
 
     const pdf = await renderDocumentToPdf(
@@ -442,7 +457,9 @@ describe("renderDocumentToPdf", () => {
   });
 
   it("expands page size and offsets content for surface bleed", async () => {
-    const surface = createSurface("surface-1", [createShapeElement("shape-1", 0, 0, 10, 20)]) as CreationFlowSurface;
+    const surface = createSurface("surface-1", [
+      createShapeElement("shape-1", 0, 0, 10, 20),
+    ]) as CreationFlowSurface;
     const bleedSurface: CreationFlowSurface = {
       ...surface,
       printArea: {
@@ -454,10 +471,9 @@ describe("renderDocumentToPdf", () => {
       },
     };
 
-    const pdf = await renderDocumentToPdf(
-      createDocument([createPage("page-1", [bleedSurface])]),
-      { compress: false },
-    );
+    const pdf = await renderDocumentToPdf(createDocument([createPage("page-1", [bleedSurface])]), {
+      compress: false,
+    });
 
     await expect(getFirstPageSize(pdf)).resolves.toEqual({ width: 320, height: 220 });
     expect(extractPdfStreams(pdf).join("\n")).toContain("10 10 10 20 re");
@@ -507,10 +523,10 @@ describe("renderDocumentToPdf", () => {
       },
     } as CreationFlowSurface;
 
-    const pdf = await renderDocumentToPdf(
-      createDocument([createPage("page-1", [surface])]),
-      { compress: false, debugSurfaces: true },
-    );
+    const pdf = await renderDocumentToPdf(createDocument([createPage("page-1", [surface])]), {
+      compress: false,
+      debugSurfaces: true,
+    });
     const streams = extractPdfStreams(pdf).join("\n");
 
     expect(streams).toContain("20 30 100 80 re");
@@ -520,7 +536,9 @@ describe("renderDocumentToPdf", () => {
   it("renders a PNG image element without crashing", async () => {
     const pdf = await renderDocumentToPdf(
       createDocument([
-        createPage("page-1", [createSurface("surface-1", [createImageElement("image-1", "asset-1")])]),
+        createPage("page-1", [
+          createSurface("surface-1", [createImageElement("image-1", "asset-1")]),
+        ]),
       ]),
       {
         resolveAsset: async () => ({ data: TINY_PNG, mimeType: "image/png" }),
@@ -535,26 +553,33 @@ describe("renderDocumentToPdf", () => {
     ["fill", "30 0 0 -40 10 60 cm"],
     ["contain", "30 0 0 -30 10 50 cm"],
     ["cover", "40 0 0 -40 10 60 cm"],
-  ] as const)("renders image fit mode %s with the expected placement", async (fit, expectedMatrix) => {
-    const pdf = await renderDocumentToPdf(
-      createDocument([
-        createPage("page-1", [createSurface("surface-1", [createImageElement("image-1", "asset-1", fit)])]),
-      ]),
-      {
-        compress: false,
-        resolveAsset: async () => ({ data: TINY_PNG, mimeType: "image/png" }),
-      },
-    );
+  ] as const)(
+    "renders image fit mode %s with the expected placement",
+    async (fit, expectedMatrix) => {
+      const pdf = await renderDocumentToPdf(
+        createDocument([
+          createPage("page-1", [
+            createSurface("surface-1", [createImageElement("image-1", "asset-1", fit)]),
+          ]),
+        ]),
+        {
+          compress: false,
+          resolveAsset: async () => ({ data: TINY_PNG, mimeType: "image/png" }),
+        },
+      );
 
-    expect(extractPdfStreams(pdf).join("\n")).toContain(expectedMatrix);
-  });
+      expect(extractPdfStreams(pdf).join("\n")).toContain(expectedMatrix);
+    },
+  );
 
   it("calls the image resolver with the image assetId", async () => {
     const resolvedAssetIds: string[] = [];
 
     await renderDocumentToPdf(
       createDocument([
-        createPage("page-1", [createSurface("surface-1", [createImageElement("image-1", "asset-1", "contain")])]),
+        createPage("page-1", [
+          createSurface("surface-1", [createImageElement("image-1", "asset-1", "contain")]),
+        ]),
       ]),
       {
         resolveAsset: async (assetId) => {
@@ -571,7 +596,9 @@ describe("renderDocumentToPdf", () => {
     const warnings: RenderDocumentWarning[] = [];
     const pdf = await renderDocumentToPdf(
       createDocument([
-        createPage("page-1", [createSurface("surface-1", [createImageElement("image-1", "missing-asset")])]),
+        createPage("page-1", [
+          createSurface("surface-1", [createImageElement("image-1", "missing-asset")]),
+        ]),
       ]),
       {
         resolveAsset: async () => null,
@@ -588,7 +615,9 @@ describe("renderDocumentToPdf", () => {
 
     await renderDocumentToPdf(
       createDocument([
-        createPage("page-1", [createSurface("surface-1", [createImageElement("image-1", "asset-1")])]),
+        createPage("page-1", [
+          createSurface("surface-1", [createImageElement("image-1", "asset-1")]),
+        ]),
       ]),
       {
         resolveAsset: async () => ({ data: TINY_PNG, mimeType: "image/gif" }),
@@ -610,7 +639,12 @@ describe("renderDocumentToPdf", () => {
       createDocument([createPage("page-1", [createSurface("surface-1", [cropped])])]),
       {
         compress: false,
-        resolveAsset: async () => ({ data: TINY_PNG, mimeType: "image/png", width: 100, height: 100 }),
+        resolveAsset: async () => ({
+          data: TINY_PNG,
+          mimeType: "image/png",
+          width: 100,
+          height: 100,
+        }),
       },
     );
 
@@ -640,7 +674,9 @@ describe("isValidImageCrop", () => {
 
   it("rejects non-finite values", () => {
     expect(isValidImageCrop({ x: Number.NaN, y: 0, width: 50, height: 50 })).toBe(false);
-    expect(isValidImageCrop({ x: 0, y: 0, width: Number.POSITIVE_INFINITY, height: 50 })).toBe(false);
+    expect(isValidImageCrop({ x: 0, y: 0, width: Number.POSITIVE_INFINITY, height: 50 })).toBe(
+      false,
+    );
   });
 });
 
@@ -764,12 +800,9 @@ describe("path-based surfaces", () => {
     const pdf = await renderDocumentToPdf(
       createDocument([
         createPage("page-1", [
-          createDesignRegionSurface(
-            "surface-1",
-            "M50,50 L250,50 L250,150 L50,150 Z",
-            false,
-            [createTextElement("text-1", 60, 60)],
-          ),
+          createDesignRegionSurface("surface-1", "M50,50 L250,50 L250,150 L50,150 Z", false, [
+            createTextElement("text-1", 60, 60),
+          ]),
         ]),
       ]),
     );
@@ -782,12 +815,9 @@ describe("path-based surfaces", () => {
     const pdf = await renderDocumentToPdf(
       createDocument([
         createPage("page-1", [
-          createDesignRegionSurface(
-            "surface-1",
-            "M50,50 L250,50 L250,150 L50,150 Z",
-            true,
-            [createTextElement("text-1", 60, 60)],
-          ),
+          createDesignRegionSurface("surface-1", "M50,50 L250,50 L250,150 L50,150 Z", true, [
+            createTextElement("text-1", 60, 60),
+          ]),
         ]),
       ]),
     );
@@ -802,12 +832,7 @@ describe("path-based surfaces", () => {
         createPage("page-1", [
           createColorRegionSurface("surface-1", "M10,10 L100,10 L100,100 L10,100 Z", "#ff0000"),
           createColorRegionSurface("surface-2", "M150,10 L240,10 L240,100 L150,100 Z", "#00ff00"),
-          createDesignRegionSurface(
-            "surface-3",
-            "M50,50 L200,50 L200,150 L50,150 Z",
-            false,
-            [],
-          ),
+          createDesignRegionSurface("surface-3", "M50,50 L200,50 L200,150 L50,150 Z", false, []),
         ]),
       ]),
     );
@@ -820,12 +845,10 @@ describe("path-based surfaces", () => {
     const pdf = await renderDocumentToPdf(
       createDocument([
         createPage("page-1", [
-          createColorRegionSurface(
-            "surface-1",
-            "M0,0 L50,0 L50,50 L0,50 Z",
-            "#0000ff",
-            { x: 100, y: 50 },
-          ),
+          createColorRegionSurface("surface-1", "M0,0 L50,0 L50,50 L0,50 Z", "#0000ff", {
+            x: 100,
+            y: 50,
+          }),
         ]),
       ]),
       { compress: false },
@@ -833,7 +856,6 @@ describe("path-based surfaces", () => {
 
     expect(pdf.length).toBeGreaterThan(0);
   });
-
 
   it("handles path surfaces gracefully without crashing", async () => {
     const warnings: RenderDocumentWarning[] = [];
@@ -907,7 +929,11 @@ describe("path-based surfaces", () => {
       createDocument([
         createPage("page-1", [
           createSurface("rect-surface", [createShapeElement("shape-1", 10, 10, 50, 50)]),
-          createColorRegionSurface("path-surface", "M100,10 L200,10 L200,100 L100,100 Z", "#00ff00"),
+          createColorRegionSurface(
+            "path-surface",
+            "M100,10 L200,10 L200,100 L100,100 Z",
+            "#00ff00",
+          ),
         ]),
       ]),
     );
@@ -922,15 +948,10 @@ describe("path-based surfaces", () => {
     const pdf = await renderDocumentToPdf(
       createDocument([
         createPage("page-1", [
-          createDesignRegionSurface(
-            "surface-1",
-            "M50,50 L250,50 L250,150 L50,150 Z",
-            true,
-            [
-              createTextElement("text-1", 60, 60),
-              createShapeElement("shape-1", 100, 100, 50, 50),
-            ],
-          ),
+          createDesignRegionSurface("surface-1", "M50,50 L250,50 L250,150 L50,150 Z", true, [
+            createTextElement("text-1", 60, 60),
+            createShapeElement("shape-1", 100, 100, 50, 50),
+          ]),
         ]),
       ]),
       {
@@ -1098,12 +1119,10 @@ describe("path-based surfaces", () => {
     const pdf = await renderDocumentToPdf(
       createDocument([
         createPage("page-1", [
-          createColorRegionSurface(
-            "surface-1",
-            "M0,0 L50,0 L50,50 L0,50 Z",
-            "#0000ff",
-            { x: 100, y: 50 },
-          ),
+          createColorRegionSurface("surface-1", "M0,0 L50,0 L50,50 L0,50 Z", "#0000ff", {
+            x: 100,
+            y: 50,
+          }),
         ]),
       ]),
       { compress: false },
@@ -1218,12 +1237,7 @@ describe("path-based surfaces", () => {
     const pdf = await renderDocumentToPdf(
       createDocument([
         createPage("page-1", [
-          createDesignRegionSurface(
-            "surface-1",
-            "M50,50 L250,50 L250,150 L50,150 Z",
-            false,
-            [],
-          ),
+          createDesignRegionSurface("surface-1", "M50,50 L250,50 L250,150 L50,150 Z", false, []),
         ]),
       ]),
       { compress: false },
@@ -1248,10 +1262,7 @@ describe("path-based surfaces", () => {
             "M50,50 L250,50 L250,150 L50,150 Z",
             "#ffff00",
             true,
-            [
-              createTextElement("text-1", 60, 60),
-              createShapeElement("shape-1", 100, 100, 50, 50),
-            ],
+            [createTextElement("text-1", 60, 60), createShapeElement("shape-1", 100, 100, 50, 50)],
           ),
         ]),
       ]),
@@ -1269,7 +1280,9 @@ describe("path-based surfaces", () => {
 
 describe("surface role handling", () => {
   it("renders an overlay surface after the default content", async () => {
-    const defaultSurface = createSurface("default-1", [createShapeElement("shape-default", 10, 10, 20, 20)]);
+    const defaultSurface = createSurface("default-1", [
+      createShapeElement("shape-default", 10, 10, 20, 20),
+    ]);
     const overlaySurface: CreationFlowSurface = {
       ...createSurface("overlay-1", [createShapeElement("shape-overlay", 30, 30, 20, 20)]),
       role: "overlay" as const,
@@ -1296,10 +1309,9 @@ describe("surface role handling", () => {
       pathData: "M0 0 L100 0 L100 100 L0 100 Z",
     };
 
-    const pdf = await renderDocumentToPdf(
-      createDocument([createPage("page-1", [colorRegion])]),
-      { compress: false },
-    );
+    const pdf = await renderDocumentToPdf(createDocument([createPage("page-1", [colorRegion])]), {
+      compress: false,
+    });
 
     const streams = extractPdfStreams(pdf).join("\n");
     expect(streams).toContain("0.8666666666666667 0.9333333333333333 1 scn");
@@ -1313,10 +1325,9 @@ describe("surface role handling", () => {
       clipContent: true,
     };
 
-    const pdf = await renderDocumentToPdf(
-      createDocument([createPage("page-1", [designRegion])]),
-      { compress: false },
-    );
+    const pdf = await renderDocumentToPdf(createDocument([createPage("page-1", [designRegion])]), {
+      compress: false,
+    });
 
     const streams = extractPdfStreams(pdf).join("\n");
     expect(streams).toContain("W");
@@ -1504,10 +1515,10 @@ describe("debugSurfaces", () => {
       clipContent: false,
     } as CreationFlowSurface;
 
-    const pdf = await renderDocumentToPdf(
-      createDocument([createPage("page-1", [designRegion])]),
-      { compress: false, debugSurfaces: true },
-    );
+    const pdf = await renderDocumentToPdf(createDocument([createPage("page-1", [designRegion])]), {
+      compress: false,
+      debugSurfaces: true,
+    });
 
     const streams = extractPdfStreams(pdf);
     const content = streams.join("\n");
@@ -1533,10 +1544,10 @@ describe("debugSurfaces", () => {
       clipContent: false,
     } as CreationFlowSurface;
 
-    const pdf = await renderDocumentToPdf(
-      createDocument([createPage("page-1", [colorRegion])]),
-      { compress: false, debugSurfaces: true },
-    );
+    const pdf = await renderDocumentToPdf(createDocument([createPage("page-1", [colorRegion])]), {
+      compress: false,
+      debugSurfaces: true,
+    });
 
     const streams = extractPdfStreams(pdf);
     const content = streams.join("\n");
@@ -1559,10 +1570,10 @@ describe("debugSurfaces", () => {
       clipContent: false,
     } as CreationFlowSurface;
 
-    const pdf = await renderDocumentToPdf(
-      createDocument([createPage("page-1", [overlay])]),
-      { compress: false, debugSurfaces: true },
-    );
+    const pdf = await renderDocumentToPdf(createDocument([createPage("page-1", [overlay])]), {
+      compress: false,
+      debugSurfaces: true,
+    });
 
     const streams = extractPdfStreams(pdf);
     const content = streams.join("\n");
@@ -1611,10 +1622,10 @@ describe("debugSurfaces", () => {
       clipContent: false,
     } as CreationFlowSurface;
 
-    const pdf = await renderDocumentToPdf(
-      createDocument([createPage("page-1", [designRegion])]),
-      { compress: false, debugSurfaces: true },
-    );
+    const pdf = await renderDocumentToPdf(createDocument([createPage("page-1", [designRegion])]), {
+      compress: false,
+      debugSurfaces: true,
+    });
 
     const streams = extractPdfStreams(pdf);
     const content = streams.join("\n");
@@ -1641,10 +1652,10 @@ describe("debugSurfaces", () => {
       clipContent: false,
     } as CreationFlowSurface;
 
-    const pdf = await renderDocumentToPdf(
-      createDocument([createPage("page-1", [designRegion])]),
-      { compress: false, debugSurfaces: false },
-    );
+    const pdf = await renderDocumentToPdf(createDocument([createPage("page-1", [designRegion])]), {
+      compress: false,
+      debugSurfaces: false,
+    });
 
     const streams = extractPdfStreams(pdf);
     const content = streams.join("\n");
@@ -1694,10 +1705,10 @@ describe("debugSurfaces", () => {
       },
     ] as CreationFlowSurface[];
 
-    const pdf = await renderDocumentToPdf(
-      createDocument([createPage("page-1", surfaces)]),
-      { compress: false, debugSurfaces: true },
-    );
+    const pdf = await renderDocumentToPdf(createDocument([createPage("page-1", surfaces)]), {
+      compress: false,
+      debugSurfaces: true,
+    });
 
     const streams = extractPdfStreams(pdf);
     const content = streams.join("\n");
@@ -1771,10 +1782,10 @@ describe("debugSurfaces", () => {
       },
     ] as CreationFlowSurface[];
 
-    const pdf = await renderDocumentToPdf(
-      createDocument([createPage("page-1", surfaces)]),
-      { compress: false, debugSurfaces: true },
-    );
+    const pdf = await renderDocumentToPdf(createDocument([createPage("page-1", surfaces)]), {
+      compress: false,
+      debugSurfaces: true,
+    });
 
     const streams = extractPdfStreams(pdf);
     const content = streams.join("\n");
@@ -1861,7 +1872,12 @@ describe("DPI configuration", () => {
         compress: false,
         minAssetDpi: 72,
         onWarning: (warning) => warnings.push(warning),
-        resolveAsset: async () => ({ data: TINY_PNG, mimeType: "image/png", width: 100, height: 100 }),
+        resolveAsset: async () => ({
+          data: TINY_PNG,
+          mimeType: "image/png",
+          width: 100,
+          height: 100,
+        }),
       },
     );
 
@@ -1871,9 +1887,7 @@ describe("DPI configuration", () => {
   it("warns using the document's minAssetDpi when no render option overrides it", async () => {
     const warnings: RenderDocumentWarning[] = [];
     const image = createImageElement("img-1", "asset-1");
-    const document = createDocument([
-      createPage("page-1", [createSurface("surface-1", [image])]),
-    ]);
+    const document = createDocument([createPage("page-1", [createSurface("surface-1", [image])])]);
     document.metadata = { ...document.metadata, minAssetDpi: 300 };
 
     await renderDocumentToPdf(document, {
@@ -1902,7 +1916,9 @@ describe("renderDocumentToPdf coordinate system", () => {
 
   it("scales mm-based page units to points for rect rendering", async () => {
     const mmPage: CreationFlowPage = {
-      ...createPage("page-1", [createSurface("surface-1", [createShapeElement("shape-1", 25.4, 12.7, 12.7, 25.4)])]),
+      ...createPage("page-1", [
+        createSurface("surface-1", [createShapeElement("shape-1", 25.4, 12.7, 12.7, 25.4)]),
+      ]),
       unit: "mm",
     };
 
@@ -1913,7 +1929,9 @@ describe("renderDocumentToPdf coordinate system", () => {
 
   it("scales px-based page units to points for rect rendering", async () => {
     const pxPage: CreationFlowPage = {
-      ...createPage("page-1", [createSurface("surface-1", [createShapeElement("shape-1", 96, 48, 96, 96)])]),
+      ...createPage("page-1", [
+        createSurface("surface-1", [createShapeElement("shape-1", 96, 48, 96, 96)]),
+      ]),
       unit: "px",
     };
 
@@ -1988,7 +2006,11 @@ describe("CMYK color support", () => {
 
   it("keeps DeviceRGB for hex-based fills", async () => {
     const pdf = await renderDocumentToPdf(
-      createDocument([createPage("page-1", [createSurface("surface-1", [createShapeElement("shape-1", 0, 0, 10, 20)])])]),
+      createDocument([
+        createPage("page-1", [
+          createSurface("surface-1", [createShapeElement("shape-1", 0, 0, 10, 20)]),
+        ]),
+      ]),
       { compress: false },
     );
 
@@ -2018,9 +2040,7 @@ describe("runDocumentPreflight", () => {
       (warning) => warnings.push(warning),
     );
 
-    expect(warnings).toMatchObject([
-      { code: "text_outside_safe_area", elementId: "text-1" },
-    ]);
+    expect(warnings).toMatchObject([{ code: "text_outside_safe_area", elementId: "text-1" }]);
   });
 
   it("does not warn when a text element stays inside the safe area", () => {
@@ -2117,12 +2137,8 @@ describe("renderDocumentToPdf with rules", () => {
     const document = createRuleDocument();
     const summary = buildRuleEffectSummary(document, { product: "tshirt" });
     expect(summary.hiddenSurfaceKeys.size).toBe(1);
-    expect(
-      Array.from(summary.hiddenSurfaceKeys)[0]?.includes("back"),
-    ).toBe(true);
-    expect(summary.appliedRuleNames).toContain(
-      "Hide back when product is tshirt",
-    );
+    expect(Array.from(summary.hiddenSurfaceKeys)[0]?.includes("back")).toBe(true);
+    expect(summary.appliedRuleNames).toContain("Hide back when product is tshirt");
   });
 
   it("renders a single-page PDF when no variables are provided", async () => {
@@ -2140,8 +2156,7 @@ describe("renderDocumentToPdf with rules", () => {
     });
     expect(
       warnings.some(
-        (w) =>
-          w.message.includes("rule_mandatory_violation") && w.message.includes("email"),
+        (w) => w.message.includes("rule_mandatory_violation") && w.message.includes("email"),
       ),
     ).toBe(true);
   });
@@ -2153,8 +2168,6 @@ describe("renderDocumentToPdf with rules", () => {
       variables: { product: "tshirt" },
       onWarning: (warning) => warnings.push(warning),
     });
-    expect(
-      warnings.some((w) => w.message.includes("rule_mandatory_violation")),
-    ).toBe(false);
+    expect(warnings.some((w) => w.message.includes("rule_mandatory_violation"))).toBe(false);
   });
 });

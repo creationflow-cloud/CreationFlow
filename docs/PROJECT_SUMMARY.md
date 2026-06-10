@@ -108,32 +108,32 @@ Datenbank: PostgreSQL mit Prisma
 - Fastify API
 - Prisma/PostgreSQL-Anbindung
 - Datenmodell für:
-    - Workspace
-    - Product
-    - Template
-    - Configuration
-    - RenderJob
-    - Asset
+  - Workspace
+  - Product
+  - Template
+  - Configuration
+  - RenderJob
+  - Asset
 - OpenAPI/Swagger unter:
-    - `/docs`
-    - `/openapi.json`
+  - `/docs`
+  - `/openapi.json`
 - Admin UI kann Daten laden
 - Admin UI kann Produkte, Templates und Konfigurationen anlegen
 - Admin UI kann Template-Seiten und Surfaces bearbeiten
 - Editor kann Templates/Konfigurationen öffnen
 - Editor kann Elemente hinzufügen:
-    - Text
-    - Shape
-    - Image
+  - Text
+  - Shape
+  - Image
 - Editor unterstützt:
-    - Verschieben
-    - Skalieren
-    - Löschen
-    - Duplizieren
-    - Layer-Reihenfolge
-    - Z-Index
-    - Undo/Redo
-    - Speichern
+  - Verschieben
+  - Skalieren
+  - Löschen
+  - Duplizieren
+  - Layer-Reihenfolge
+  - Z-Index
+  - Undo/Redo
+  - Speichern
 - Asset Upload für Bilder ist vorhanden
 - hochgeladene Assets können wieder ausgeliefert werden
 - zentrales JSON-Dokumentmodell ist typisiert

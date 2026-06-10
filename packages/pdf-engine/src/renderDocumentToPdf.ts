@@ -76,7 +76,10 @@ export interface RenderDocumentToPdfOptions {
   readonly targetDpi?: number;
   readonly minAssetDpi?: number;
   readonly resolveAsset?: (assetId: AssetId) => Promise<ResolvedPdfAsset | null | undefined>;
-  readonly resolveFont?: (fontFamily: string, fontWeight?: string) => Promise<ResolvedPdfFont | null | undefined>;
+  readonly resolveFont?: (
+    fontFamily: string,
+    fontWeight?: string,
+  ) => Promise<ResolvedPdfFont | null | undefined>;
   readonly onWarning?: (warning: RenderDocumentWarning) => void;
   readonly debugSurfaces?: boolean;
   readonly variables?: Readonly<Record<string, RuleVariableValue>>;
@@ -134,9 +137,7 @@ export function buildRuleEffectSummary(
   return collectHiddenSurfaces(document, variables);
 }
 
-function toRuleWarnings(
-  evaluation: RuleEvaluationResult,
-): readonly RuleEffectWarning[] {
+function toRuleWarnings(evaluation: RuleEvaluationResult): readonly RuleEffectWarning[] {
   const warnings: RuleEffectWarning[] = [];
   for (const error of evaluation.errors) {
     warnings.push({
@@ -201,11 +202,19 @@ export function toPdfUnits(value: number, unit: CreationFlowUnit | undefined): n
   }
 }
 
-export function convertTopLeftToPdfY(_pageHeight: number, y: number, _elementHeight: number): number {
+export function convertTopLeftToPdfY(
+  _pageHeight: number,
+  y: number,
+  _elementHeight: number,
+): number {
   return y;
 }
 
-function toPositivePageSize(value: number | undefined, fallback: number, unit?: CreationFlowUnit): number {
+function toPositivePageSize(
+  value: number | undefined,
+  fallback: number,
+  unit?: CreationFlowUnit,
+): number {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
     return fallback;
   }
@@ -353,7 +362,9 @@ function maybeWarnAssetResolution(
 }
 
 function isSupportedImageMimeType(mimeType: string | undefined): boolean {
-  return !mimeType || mimeType === "image/png" || mimeType === "image/jpeg" || mimeType === "image/jpg";
+  return (
+    !mimeType || mimeType === "image/png" || mimeType === "image/jpeg" || mimeType === "image/jpg"
+  );
 }
 
 function setFillColor(doc: PDFKit.PDFDocument, color: string | undefined): boolean {
@@ -376,7 +387,10 @@ function setStrokeColor(doc: PDFKit.PDFDocument, color: string | undefined): boo
   return true;
 }
 
-function getPdfTextFontName(fontFamily: string | undefined, fontWeight: string | undefined): string {
+function getPdfTextFontName(
+  fontFamily: string | undefined,
+  fontWeight: string | undefined,
+): string {
   const requestedFamily = (fontFamily ?? "Helvetica").trim();
   const family = STANDARD_FONT_FAMILIES.has(requestedFamily) ? requestedFamily : "Helvetica";
   const normalizedWeight = (fontWeight ?? "").toLowerCase();
@@ -436,7 +450,10 @@ async function setTextFont(
     warn(options, {
       code: "font_resolve_failed",
       elementId: element.id,
-      message: error instanceof Error ? error.message : `Font family "${requestedFamily}" could not be resolved.`,
+      message:
+        error instanceof Error
+          ? error.message
+          : `Font family "${requestedFamily}" could not be resolved.`,
     });
     doc.font(getPdfTextFontName("Helvetica", element.fontWeight));
     return;
@@ -462,7 +479,10 @@ async function setTextFont(
     warn(options, {
       code: "font_load_failed",
       elementId: element.id,
-      message: error instanceof Error ? error.message : `Font family "${requestedFamily}" could not be loaded.`,
+      message:
+        error instanceof Error
+          ? error.message
+          : `Font family "${requestedFamily}" could not be loaded.`,
     });
     doc.font(getPdfTextFontName("Helvetica", element.fontWeight));
   }
@@ -648,9 +668,12 @@ async function renderImageElement(
   }
 }
 
-export function isValidImageCrop(
-  crop: { readonly x: number; readonly y: number; readonly width: number; readonly height: number },
-): boolean {
+export function isValidImageCrop(crop: {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}): boolean {
   if (!Number.isFinite(crop.x) || !Number.isFinite(crop.y)) return false;
   if (!Number.isFinite(crop.width) || !Number.isFinite(crop.height)) return false;
   if (crop.width <= 0 || crop.height <= 0) return false;
@@ -731,12 +754,12 @@ function renderImageWithCrop(
 
 function applyFillColor(doc: PDFKit.PDFDocument, color: ParsedColor): void {
   if (color.kind === "cmyk") {
-    doc.fillColor([
-      color.value.c,
-      color.value.m,
-      color.value.y,
-      color.value.k,
-    ] as unknown as [number, number, number, number]);
+    doc.fillColor([color.value.c, color.value.m, color.value.y, color.value.k] as unknown as [
+      number,
+      number,
+      number,
+      number,
+    ]);
     return;
   }
   doc.fillColor([color.value.r, color.value.g, color.value.b]);
@@ -744,12 +767,12 @@ function applyFillColor(doc: PDFKit.PDFDocument, color: ParsedColor): void {
 
 function applyStrokeColor(doc: PDFKit.PDFDocument, color: ParsedColor): void {
   if (color.kind === "cmyk") {
-    doc.strokeColor([
-      color.value.c,
-      color.value.m,
-      color.value.y,
-      color.value.k,
-    ] as unknown as [number, number, number, number]);
+    doc.strokeColor([color.value.c, color.value.m, color.value.y, color.value.k] as unknown as [
+      number,
+      number,
+      number,
+      number,
+    ]);
     return;
   }
   doc.strokeColor([color.value.r, color.value.g, color.value.b]);
@@ -779,14 +802,18 @@ function renderBuiltinPdfPatternShape(
       doc.fill();
       break;
     case "diamonds":
-      doc.path(`M${x + halfW} ${y} L${x + tileW} ${y + halfH} L${x + halfW} ${y + tileH} L${x} ${y + halfH} Z`);
+      doc.path(
+        `M${x + halfW} ${y} L${x + tileW} ${y + halfH} L${x + halfW} ${y + tileH} L${x} ${y + halfH} Z`,
+      );
       doc.fill();
       break;
     case "waves": {
       const sw = Math.max(1, tileW * 0.1);
       applyStrokeColor(doc, color);
       doc.lineWidth(sw);
-      doc.path(`M${x} ${y + halfH} C${x + tileW * 0.25} ${y} ${x + tileW * 0.75} ${y} ${x + halfW} ${y + halfH} C${x + tileW * 0.75} ${y + tileH} ${x + tileW * 0.25} ${y + tileH} ${x + tileW} ${y + halfH}`);
+      doc.path(
+        `M${x} ${y + halfH} C${x + tileW * 0.25} ${y} ${x + tileW * 0.75} ${y} ${x + halfW} ${y + halfH} C${x + tileW * 0.75} ${y + tileH} ${x + tileW * 0.25} ${y + tileH} ${x + tileW} ${y + halfH}`,
+      );
       doc.stroke();
       break;
     }
@@ -794,7 +821,9 @@ function renderBuiltinPdfPatternShape(
       const sw = Math.max(1, tileW * 0.1);
       applyStrokeColor(doc, color);
       doc.lineWidth(sw);
-      doc.path(`M${x} ${y + halfH} L${x + tileW * 0.25} ${y + halfH * 0.2} L${x + halfW} ${y + halfH} L${x + tileW * 0.75} ${y + halfH * 0.2} L${x + tileW} ${y + halfH}`);
+      doc.path(
+        `M${x} ${y + halfH} L${x + tileW * 0.25} ${y + halfH * 0.2} L${x + halfW} ${y + halfH} L${x + tileW * 0.75} ${y + halfH * 0.2} L${x + tileW} ${y + halfH}`,
+      );
       doc.stroke();
       break;
     }
@@ -830,10 +859,20 @@ function renderBuiltinPdfPatternShape(
   }
 }
 
-function quarterW(w: number): number { return w / 4; }
-function quarterH(h: number): number { return h / 4; }
+function quarterW(w: number): number {
+  return w / 4;
+}
+function quarterH(h: number): number {
+  return h / 4;
+}
 
-function buildStarPath(cx: number, cy: number, outerR: number, innerR: number, points: number): string {
+function buildStarPath(
+  cx: number,
+  cy: number,
+  outerR: number,
+  innerR: number,
+  points: number,
+): string {
   const segments = points * 2;
   const angleStep = Math.PI / points;
   let path = "";
@@ -847,7 +886,16 @@ function buildStarPath(cx: number, cy: number, outerR: number, innerR: number, p
   return path + "Z";
 }
 
-const BUILTIN_PATTERN_IDS = new Set(["dots", "stripes", "crosses", "diamonds", "waves", "zigzag", "stars", "circles"]);
+const BUILTIN_PATTERN_IDS = new Set([
+  "dots",
+  "stripes",
+  "crosses",
+  "diamonds",
+  "waves",
+  "zigzag",
+  "stars",
+  "circles",
+]);
 
 async function renderPatternElement(
   doc: PDFKit.PDFDocument,
@@ -873,7 +921,10 @@ async function renderPatternElement(
   const stepX = element.repeatMode === "vertical" ? surfaceW : tileW + gapX;
   const stepY = element.repeatMode === "horizontal" ? surfaceH : tileH + gapY;
 
-  const patternColor = parseColor(element.color) ?? { kind: "rgb", value: { r: 36, g: 59, b: 104 } };
+  const patternColor = parseColor(element.color) ?? {
+    kind: "rgb",
+    value: { r: 36, g: 59, b: 104 },
+  };
 
   doc.save();
   doc.translate(offset.x, offset.y);
@@ -1030,9 +1081,7 @@ async function renderGroupElement(
     }
   }
 
-  const renderOffset = hasTransform
-    ? { x: 0, y: 0 }
-    : childOffset;
+  const renderOffset = hasTransform ? { x: 0, y: 0 } : childOffset;
 
   const sortedChildren = [...group.children].sort(
     (a, b) => getElementZIndex(a) - getElementZIndex(b),
@@ -1051,7 +1100,10 @@ function getSurfaceOffset(
   surface: CreationFlowSurface,
   unit: CreationFlowUnit | undefined,
 ): { readonly x: number; readonly y: number } {
-  const positionedSurface = surface as CreationFlowSurface & { readonly x?: number; readonly y?: number };
+  const positionedSurface = surface as CreationFlowSurface & {
+    readonly x?: number;
+    readonly y?: number;
+  };
 
   return {
     x: toPdfUnits(positionedSurface.x ?? 0, unit),
@@ -1059,7 +1111,10 @@ function getSurfaceOffset(
   };
 }
 
-function getPageBleed(surfaces: readonly CreationFlowSurface[], unit: CreationFlowUnit | undefined): number {
+function getPageBleed(
+  surfaces: readonly CreationFlowSurface[],
+  unit: CreationFlowUnit | undefined,
+): number {
   return surfaces.reduce((maxBleed, surface) => {
     const bleed = toPdfUnits(surface.printArea?.bleed ?? 0, unit);
 
@@ -1130,10 +1185,10 @@ function clipToPath(
   try {
     doc.save();
     doc.translate(surfaceOffsetX, surfaceOffsetY);
-    
+
     const path = doc.path(surface.pathData);
     path.clip();
-    
+
     return true;
   } catch (error) {
     warn(options, {
@@ -1162,7 +1217,7 @@ function clipToRect(
   doc.translate(offset.x, offset.y);
   doc.rect(0, 0, width, height);
   doc.clip();
-  
+
   return true;
 }
 
@@ -1271,8 +1326,7 @@ export async function renderDocumentToPdf(
     const state: RenderDocumentState = {
       fontCache: new Map(),
       targetDpi: options.targetDpi ?? document.metadata.dpi ?? DEFAULT_TARGET_DPI,
-      minAssetDpi:
-        options.minAssetDpi ?? document.metadata.minAssetDpi ?? DEFAULT_MIN_ASSET_DPI,
+      minAssetDpi: options.minAssetDpi ?? document.metadata.minAssetDpi ?? DEFAULT_MIN_ASSET_DPI,
     };
     const effectSummary = options.variables
       ? collectHiddenSurfaces(document, options.variables)
@@ -1348,12 +1402,18 @@ export async function renderDocumentToPdf(
             clipped = clipToRect(doc, surface, unit, offset);
           }
 
-          const elementOffset = clipped
-            ? { x: 0, y: 0 }
-            : offset;
+          const elementOffset = clipped ? { x: 0, y: 0 } : offset;
 
           for (const element of elements) {
-            await renderElement(doc, element, surface, unit, elementOffset, effectiveOptions, state);
+            await renderElement(
+              doc,
+              element,
+              surface,
+              unit,
+              elementOffset,
+              effectiveOptions,
+              state,
+            );
           }
 
           if (clipped) {
@@ -1412,7 +1472,8 @@ export function runDocumentPreflight(
   emit: (warning: RenderDocumentWarning) => void,
 ): void {
   const options = context.options ?? {};
-  const minDpi = options.minAssetDpi ?? context.document.metadata.minAssetDpi ?? DEFAULT_MIN_ASSET_DPI;
+  const minDpi =
+    options.minAssetDpi ?? context.document.metadata.minAssetDpi ?? DEFAULT_MIN_ASSET_DPI;
   const targetDpi = options.targetDpi ?? context.document.metadata.dpi ?? DEFAULT_TARGET_DPI;
 
   for (const page of context.document.pages) {
@@ -1445,10 +1506,7 @@ export function runDocumentPreflight(
           const safeH = toPdfUnits(safeArea.height, unit);
 
           const outsideSafeArea =
-            elX < safeX ||
-            elY < safeY ||
-            elX + elW > safeX + safeW ||
-            elY + elH > safeY + safeH;
+            elX < safeX || elY < safeY || elX + elW > safeX + safeW || elY + elH > safeY + safeH;
 
           if (outsideSafeArea) {
             emit({
@@ -1465,7 +1523,10 @@ export function runDocumentPreflight(
         if (printArea && (printArea.width ?? 0) > 0 && (printArea.height ?? 0) > 0) {
           const expectedMinWidth = printArea.width + surfaceBleed * 2;
           const expectedMinHeight = printArea.height + surfaceBleed * 2;
-          if (surfaceWidth + surfaceBleed * 2 < expectedMinWidth || surfaceHeight + surfaceBleed * 2 < expectedMinHeight) {
+          if (
+            surfaceWidth + surfaceBleed * 2 < expectedMinWidth ||
+            surfaceHeight + surfaceBleed * 2 < expectedMinHeight
+          ) {
             emit({
               code: "bleed_violation",
               elementId: surface.id as unknown as ElementId,

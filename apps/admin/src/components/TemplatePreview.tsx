@@ -37,9 +37,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function buildPages(
-  document: CreationFlowDocument | Record<string, unknown>,
-): PreviewPage[] {
+function buildPages(document: CreationFlowDocument | Record<string, unknown>): PreviewPage[] {
   const pages = (document as { pages?: unknown }).pages;
   if (!Array.isArray(pages)) {
     return [];
@@ -119,12 +117,14 @@ export function TemplatePreview({ document, maxWidth = 480 }: TemplatePreviewPro
               style={{ width: `${previewWidth}px`, height: `${previewHeight}px` }}
             >
               {page.surfaces.map((surface) => {
-                const left = page.width === 0 ? 0 : (surface.width === 0 ? 0 : 0);
+                const left = page.width === 0 ? 0 : surface.width === 0 ? 0 : 0;
                 const top = left;
                 const surfaceWidthPct = page.width === 0 ? 0 : (surface.width / page.width) * 100;
-                const surfaceHeightPct = page.height === 0 ? 0 : (surface.height / page.height) * 100;
+                const surfaceHeightPct =
+                  page.height === 0 ? 0 : (surface.height / page.height) * 100;
                 const background =
-                  surface.fillColor ?? (surface.role ? ROLE_COLORS[surface.role] : ROLE_COLORS.default);
+                  surface.fillColor ??
+                  (surface.role ? ROLE_COLORS[surface.role] : ROLE_COLORS.default);
                 return (
                   <div
                     key={surface.id}

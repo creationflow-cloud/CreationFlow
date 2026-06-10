@@ -6,7 +6,11 @@ interface PageSurfaceListProps {
   readonly onSelectSurface: (surfaceId: string) => void;
 }
 
-export function PageSurfaceList({ page, selectedSurfaceId, onSelectSurface }: PageSurfaceListProps) {
+export function PageSurfaceList({
+  page,
+  selectedSurfaceId,
+  onSelectSurface,
+}: PageSurfaceListProps) {
   const surfaces = page.surfaces ?? [];
 
   if (surfaces.length === 0) {
@@ -23,10 +27,7 @@ export function PageSurfaceList({ page, selectedSurfaceId, onSelectSurface }: Pa
           onClick={() => onSelectSurface(surface.id)}
           title={surface.name}
         >
-          <span
-            className="surface-role-indicator"
-            data-role={surface.role ?? "default"}
-          />
+          <span className="surface-role-indicator" data-role={surface.role ?? "default"} />
           <span className="surface-name-label">{surface.name}</span>
           <span className="surface-dimensions-mini">
             {surface.width}×{surface.height}

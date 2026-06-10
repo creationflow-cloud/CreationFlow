@@ -27,10 +27,7 @@ export async function registerLogging(server: FastifyInstance) {
     const status = reply.statusCode;
     const ms = reply.elapsedTime?.toFixed(1) ?? "?";
     const rid = request.requestId ?? "-";
-    server.log.info(
-      { requestId: rid, method, url, status, ms: Number(ms) },
-      "request completed",
-    );
+    server.log.info({ requestId: rid, method, url, status, ms: Number(ms) }, "request completed");
     done();
   });
 

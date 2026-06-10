@@ -50,9 +50,7 @@ export function getApiConfig(): ApiConfig {
     "trace",
     "silent",
   ];
-  const logLevel: ApiConfig["logLevel"] = (
-    allowedLevels as readonly string[]
-  ).includes(logLevelRaw)
+  const logLevel: ApiConfig["logLevel"] = (allowedLevels as readonly string[]).includes(logLevelRaw)
     ? (logLevelRaw as ApiConfig["logLevel"])
     : "info";
 

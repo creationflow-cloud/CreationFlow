@@ -99,10 +99,7 @@ export function ElementView({
     const textElement = element as CreationFlowTextElement;
     if (isInlineEditing) {
       return (
-        <div
-          style={baseStyle}
-          className="canvas-element-absolute canvas-element-inline-editing"
-        >
+        <div style={baseStyle} className="canvas-element-absolute canvas-element-inline-editing">
           <InlineTextEditor
             element={textElement}
             onCommit={(text) => onCommitInlineTextEdit?.(element.id, text)}
@@ -186,9 +183,7 @@ export function ElementView({
         className="canvas-element-absolute canvas-element-variable"
         title={preview.variable ? `Variable: ${preview.variable.name}` : "Variable element"}
       >
-        <span className="variable-label">
-          {preview.display}
-        </span>
+        <span className="variable-label">{preview.display}</span>
         {!element.visible && <span className="hidden-badge">hidden</span>}
       </div>
     );

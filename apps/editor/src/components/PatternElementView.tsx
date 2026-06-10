@@ -37,7 +37,12 @@ function renderBuiltinPattern(
         />
       );
     case "diamonds":
-      return <path d={`M${halfW} 0 l${halfW} ${halfH} l${-halfW} ${halfH} l${-halfW} ${-halfH} z`} fill={fill} />;
+      return (
+        <path
+          d={`M${halfW} 0 l${halfW} ${halfH} l${-halfW} ${halfH} l${-halfW} ${-halfH} z`}
+          fill={fill}
+        />
+      );
     case "waves":
       return (
         <path
@@ -101,14 +106,8 @@ export function PatternElementView({
   const offsetX = element.offsetX * previewScale;
   const offsetY = element.offsetY * previewScale;
 
-  const patternW =
-    element.repeatMode === "vertical"
-      ? scaledWidth
-      : tileW + gapX;
-  const patternH =
-    element.repeatMode === "horizontal"
-      ? scaledHeight
-      : tileH + gapY;
+  const patternW = element.repeatMode === "vertical" ? scaledWidth : tileW + gapX;
+  const patternH = element.repeatMode === "horizontal" ? scaledHeight : tileH + gapY;
 
   const svgStyle: React.CSSProperties = {
     position: "absolute",
@@ -126,11 +125,7 @@ export function PatternElementView({
   };
 
   return (
-    <svg
-      className="pattern-element"
-      style={svgStyle}
-      onClick={onSelect}
-    >
+    <svg className="pattern-element" style={svgStyle} onClick={onSelect}>
       <defs>
         <pattern
           id={`pattern-${element.id}`}

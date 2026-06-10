@@ -142,7 +142,12 @@ interface PanOverlayProps {
 }
 
 function PanOverlay({ view, setView, isSpacePressed, children }: PanOverlayProps) {
-  const dragState = useRef<{ startX: number; startY: number; originPanX: number; originPanY: number } | null>(null);
+  const dragState = useRef<{
+    startX: number;
+    startY: number;
+    originPanX: number;
+    originPanY: number;
+  } | null>(null);
 
   useEffect(() => {
     function handleMove(e: MouseEvent) {

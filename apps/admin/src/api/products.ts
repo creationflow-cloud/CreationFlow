@@ -30,10 +30,7 @@ export async function createProduct(input: CreateProductInput): Promise<ProductD
   return post<ProductDto>("/products", input);
 }
 
-export async function updateProduct(
-  id: string,
-  input: UpdateProductInput,
-): Promise<ProductDto> {
+export async function updateProduct(id: string, input: UpdateProductInput): Promise<ProductDto> {
   return patch<ProductDto>(`/products/${id}`, input);
 }
 

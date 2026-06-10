@@ -68,20 +68,12 @@ function calculateSurfacePositions(
 }
 
 export function PageThumbnail({ page, isSelected, onSelect }: PageThumbnailProps) {
-  const scale = Math.min(
-    MAX_THUMBNAIL_WIDTH / page.width,
-    MAX_THUMBNAIL_HEIGHT / page.height,
-    1,
-  );
+  const scale = Math.min(MAX_THUMBNAIL_WIDTH / page.width, MAX_THUMBNAIL_HEIGHT / page.height, 1);
 
   const thumbWidth = page.width * scale;
   const thumbHeight = page.height * scale;
 
-  const scaledSurfaces = calculateSurfacePositions(
-    page.surfaces ?? [],
-    thumbWidth,
-    thumbHeight,
-  );
+  const scaledSurfaces = calculateSurfacePositions(page.surfaces ?? [], thumbWidth, thumbHeight);
 
   return (
     <div

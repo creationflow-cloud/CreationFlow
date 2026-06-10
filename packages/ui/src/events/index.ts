@@ -7,14 +7,8 @@ export type AppEvent = {
 export type EventListener<TArgs extends readonly unknown[]> = (...args: TArgs) => void;
 
 export interface Emitter<TEventMap extends Record<string, readonly unknown[]>> {
-  on<K extends keyof TEventMap>(
-    event: K,
-    listener: EventListener<TEventMap[K]>,
-  ): () => void;
-  off<K extends keyof TEventMap>(
-    event: K,
-    listener: EventListener<TEventMap[K]>,
-  ): void;
+  on<K extends keyof TEventMap>(event: K, listener: EventListener<TEventMap[K]>): () => void;
+  off<K extends keyof TEventMap>(event: K, listener: EventListener<TEventMap[K]>): void;
   emit<K extends keyof TEventMap>(event: K, ...args: TEventMap[K]): void;
   clear(): void;
   listenerCount<K extends keyof TEventMap>(event: K): number;
@@ -38,10 +32,7 @@ export function createEmitter<
     return () => off(event, listener);
   }
 
-  function off<K extends keyof TEventMap>(
-    event: K,
-    listener: EventListener<TEventMap[K]>,
-  ): void {
+  function off<K extends keyof TEventMap>(event: K, listener: EventListener<TEventMap[K]>): void {
     const set = listeners.get(event);
     if (!set) return;
     set.delete(listener as AnyListener);

@@ -124,10 +124,7 @@ describe("selectFirstSurface", () => {
 
   it("falls back to first surface for legacy templates without roles", () => {
     const doc = createDocument([
-      createPage("page-1", [
-        createSurface("front"),
-        createSurface("back"),
-      ]),
+      createPage("page-1", [createSurface("front"), createSurface("back")]),
     ]);
 
     const result = selectFirstSurface(doc);
@@ -146,9 +143,7 @@ describe("selectFirstSurface", () => {
   });
 
   it("returns page id but null surface for page without surfaces", () => {
-    const doc = createDocument([
-      createPage("page-1", []),
-    ]);
+    const doc = createDocument([createPage("page-1", [])]);
 
     const result = selectFirstSurface(doc);
 
@@ -187,9 +182,7 @@ describe("findFirstDesignRegionSurface", () => {
 
   it("returns undefined for non-existent page", () => {
     const doc = createDocument([
-      createPage("page-1", [
-        createSurface("design-surface", "designRegion"),
-      ]),
+      createPage("page-1", [createSurface("design-surface", "designRegion")]),
     ]);
 
     const result = findFirstDesignRegionSurface(doc, "non-existent-page");
@@ -227,11 +220,7 @@ describe("findFirstNonOverlaySurface", () => {
   });
 
   it("returns undefined for non-existent page", () => {
-    const doc = createDocument([
-      createPage("page-1", [
-        createSurface("default-surface"),
-      ]),
-    ]);
+    const doc = createDocument([createPage("page-1", [createSurface("default-surface")])]);
 
     const result = findFirstNonOverlaySurface(doc, "non-existent-page");
     expect(result).toBeUndefined();
@@ -278,25 +267,41 @@ function createSurfaceWithElements(
 
 describe("selectElement with modifier", () => {
   it("replaces selection when no modifier is pressed", () => {
-    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["a"] as readonly string[] };
+    const start = {
+      selectedPageId: "p",
+      selectedSurfaceId: "s",
+      selectedElementIds: ["a"] as readonly string[],
+    };
     const next = selectElement("b", start);
     expect(next.selectedElementIds).toEqual(["b"]);
   });
 
   it("adds to selection when shift is pressed", () => {
-    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["a"] as readonly string[] };
+    const start = {
+      selectedPageId: "p",
+      selectedSurfaceId: "s",
+      selectedElementIds: ["a"] as readonly string[],
+    };
     const next = selectElement("b", start, { additive: true, toggle: true, range: true });
     expect(next.selectedElementIds).toEqual(["a", "b"]);
   });
 
   it("toggles selection when shift is pressed twice", () => {
-    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["a", "b"] as readonly string[] };
+    const start = {
+      selectedPageId: "p",
+      selectedSurfaceId: "s",
+      selectedElementIds: ["a", "b"] as readonly string[],
+    };
     const next = selectElement("a", start, { additive: true, toggle: true, range: true });
     expect(next.selectedElementIds).toEqual(["b"]);
   });
 
   it("keeps selection when selecting already selected element without modifier", () => {
-    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["a"] as readonly string[] };
+    const start = {
+      selectedPageId: "p",
+      selectedSurfaceId: "s",
+      selectedElementIds: ["a"] as readonly string[],
+    };
     const next = selectElement("a", start);
     expect(next).toBe(start);
   });
@@ -304,17 +309,29 @@ describe("selectElement with modifier", () => {
 
 describe("clearElementSelection and isElementSelected", () => {
   it("clears selection and returns same state when already empty", () => {
-    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: [] as readonly string[] };
+    const start = {
+      selectedPageId: "p",
+      selectedSurfaceId: "s",
+      selectedElementIds: [] as readonly string[],
+    };
     expect(clearElementSelection(start)).toBe(start);
 
-    const filled = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["a"] as readonly string[] };
+    const filled = {
+      selectedPageId: "p",
+      selectedSurfaceId: "s",
+      selectedElementIds: ["a"] as readonly string[],
+    };
     const cleared = clearElementSelection(filled);
     expect(cleared.selectedElementIds).toEqual([]);
     expect(isElementSelected("a", cleared)).toBe(false);
   });
 
   it("isElementSelected returns true for members and false otherwise", () => {
-    const state = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["a", "b"] as readonly string[] };
+    const state = {
+      selectedPageId: "p",
+      selectedSurfaceId: "s",
+      selectedElementIds: ["a", "b"] as readonly string[],
+    };
     expect(isElementSelected("a", state)).toBe(true);
     expect(isElementSelected("c", state)).toBe(false);
   });
@@ -351,41 +368,73 @@ describe("selectElementsInRect", () => {
 
   it("replaces selection with all matching elements", () => {
     const rect = makeSelectionRect(-10, -10, 100, 100);
-    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["c"] as readonly string[] };
+    const start = {
+      selectedPageId: "p",
+      selectedSurfaceId: "s",
+      selectedElementIds: ["c"] as readonly string[],
+    };
     const next = selectElementsInRect(surface, rect, start, NO_MODIFIER);
     expect([...next.selectedElementIds].sort()).toEqual(["a", "b"]);
   });
 
   it("supports fully-contained mode to exclude partially overlapping", () => {
     const rect = makeSelectionRect(0, 0, 60, 60);
-    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: [] as readonly string[] };
+    const start = {
+      selectedPageId: "p",
+      selectedSurfaceId: "s",
+      selectedElementIds: [] as readonly string[],
+    };
     const next = selectElementsInRect(surface, rect, start, NO_MODIFIER, { fullyContained: true });
     expect(next.selectedElementIds).toEqual(["a"]);
   });
 
   it("appends to selection with shift modifier", () => {
     const rect = makeSelectionRect(-10, -10, 100, 100);
-    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["c"] as readonly string[] };
-    const next = selectElementsInRect(surface, rect, start, { additive: true, toggle: true, range: false });
+    const start = {
+      selectedPageId: "p",
+      selectedSurfaceId: "s",
+      selectedElementIds: ["c"] as readonly string[],
+    };
+    const next = selectElementsInRect(surface, rect, start, {
+      additive: true,
+      toggle: true,
+      range: false,
+    });
     expect([...next.selectedElementIds].sort()).toEqual(["a", "b", "c"]);
   });
 
   it("toggles off elements when shift modifier is active", () => {
     const rect = makeSelectionRect(-10, -10, 100, 100);
-    const start = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["a", "b", "c"] as readonly string[] };
-    const next = selectElementsInRect(surface, rect, start, { additive: true, toggle: true, range: false });
+    const start = {
+      selectedPageId: "p",
+      selectedSurfaceId: "s",
+      selectedElementIds: ["a", "b", "c"] as readonly string[],
+    };
+    const next = selectElementsInRect(surface, rect, start, {
+      additive: true,
+      toggle: true,
+      range: false,
+    });
     expect(next.selectedElementIds).toEqual(["c"]);
   });
 });
 
 describe("getSelectionPrimaryElementId", () => {
   it("returns null for empty selection", () => {
-    const state = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: [] as readonly string[] };
+    const state = {
+      selectedPageId: "p",
+      selectedSurfaceId: "s",
+      selectedElementIds: [] as readonly string[],
+    };
     expect(getSelectionPrimaryElementId(state)).toBeNull();
   });
 
   it("returns the first element id for multi-selection", () => {
-    const state = { selectedPageId: "p", selectedSurfaceId: "s", selectedElementIds: ["a", "b"] as readonly string[] };
+    const state = {
+      selectedPageId: "p",
+      selectedSurfaceId: "s",
+      selectedElementIds: ["a", "b"] as readonly string[],
+    };
     expect(getSelectionPrimaryElementId(state)).toBe("a");
   });
 });

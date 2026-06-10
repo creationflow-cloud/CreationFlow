@@ -28,10 +28,7 @@ import { ProductEditDialog, ConfirmDialog } from "./components/AdminDialogs.js";
 import { ElementRow } from "./components/ElementRow.js";
 import { TemplatePreview } from "./components/TemplatePreview.js";
 import { ApiError } from "./api/client.js";
-import {
-  formatApiErrorMessage,
-  validateDimensionInput,
-} from "./helpers/validation.js";
+import { formatApiErrorMessage, validateDimensionInput } from "./helpers/validation.js";
 
 const ACTIVE_WORKSPACE_KEY = "creationflow.admin.activeWorkspaceId";
 
@@ -382,10 +379,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     }
   };
 
-  const handleSaveProductEdit = async (patch: {
-    name: string;
-    externalId: string | null;
-  }) => {
+  const handleSaveProductEdit = async (patch: { name: string; externalId: string | null }) => {
     if (!editingProduct) return;
     setProductEditSaving(true);
     setProductEditError(null);
@@ -476,9 +470,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     const page = detailPages[pageIndex];
     if (!page) return;
     if (detailPages.length === 1) {
-      window.alert(
-        "Cannot delete the last page. Add another page first or edit this one instead.",
-      );
+      window.alert("Cannot delete the last page. Add another page first or edit this one instead.");
       return;
     }
     const surfaceCount = page.surfaces.length;
@@ -486,10 +478,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       (sum, surface) => sum + (surface.elements?.length ?? 0),
       0,
     );
-    const parts = [
-      `Delete page "${page.name}"?`,
-      "This action cannot be undone.",
-    ];
+    const parts = [`Delete page "${page.name}"?`, "This action cannot be undone."];
     if (surfaceCount > 0) {
       parts.push(
         `\nThis will also delete ${surfaceCount} surface(s)` +
@@ -567,11 +556,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     );
   };
 
-  const handleMoveSurface = (
-    pageIndex: number,
-    surfaceIndex: number,
-    direction: "up" | "down",
-  ) => {
+  const handleMoveSurface = (pageIndex: number, surfaceIndex: number, direction: "up" | "down") => {
     setDetailPages((prev) =>
       prev.map((page, i) => {
         if (i !== pageIndex) return page;
@@ -609,11 +594,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     );
   };
 
-  const handleDeleteElement = (
-    pageIndex: number,
-    surfaceIndex: number,
-    elementIndex: number,
-  ) => {
+  const handleDeleteElement = (pageIndex: number, surfaceIndex: number, elementIndex: number) => {
     setDetailPages((prev) =>
       prev.map((page, pi) => {
         if (pi !== pageIndex) return page;
@@ -654,9 +635,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
 
     setDetailPages((prev) =>
       prev.map((p, i) =>
-        i === pageIndex
-          ? { ...p, surfaces: p.surfaces.filter((_, j) => j !== surfaceIndex) }
-          : p,
+        i === pageIndex ? { ...p, surfaces: p.surfaces.filter((_, j) => j !== surfaceIndex) } : p,
       ),
     );
   };
@@ -699,10 +678,12 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
         width: 0,
         height: 0,
         surfaces: [],
-        warnings: [{
-          code: "unsupported_element",
-          message: `SVG import failed: ${err instanceof Error ? err.message : "Unknown error"}`,
-        }],
+        warnings: [
+          {
+            code: "unsupported_element",
+            message: `SVG import failed: ${err instanceof Error ? err.message : "Unknown error"}`,
+          },
+        ],
       });
     }
   };
@@ -726,9 +707,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
 
     setDetailPages((prev) =>
       prev.map((page, i) =>
-        i === pageIndex
-          ? { ...page, surfaces: [...page.surfaces, ...importedSurfaces] }
-          : page,
+        i === pageIndex ? { ...page, surfaces: [...page.surfaces, ...importedSurfaces] } : page,
       ),
     );
 
@@ -1026,7 +1005,11 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                             value={surface.role ?? "default"}
                             onChange={(e) =>
                               handleUpdateSurface(pageIndex, surfaceIndex, {
-                                role: e.target.value as "default" | "colorRegion" | "designRegion" | "overlay",
+                                role: e.target.value as
+                                  | "default"
+                                  | "colorRegion"
+                                  | "designRegion"
+                                  | "overlay",
                               })
                             }
                           >
@@ -1092,28 +1075,28 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                       {page.surfaces.map((surface, surfaceIndex) =>
                         surface.elements && surface.elements.length > 0 ? (
                           <div key={`${surface.id}-elements`} className="surface-elements">
-                            <h4 className="surface-elements-title">
-                              {surface.name} elements
-                            </h4>
+                            <h4 className="surface-elements-title">{surface.name} elements</h4>
                             <div className="element-list" role="list">
-                              {(surface.elements as Array<Record<string, unknown>>).map((element, elementIndex) => (
-                                <ElementRow
-                                  key={`${String(element.id ?? "")}-${elementIndex}`}
-                                  element={element}
-                                  elementIndex={elementIndex}
-                                  onUpdate={(patch) =>
-                                    handleUpdateElement(
-                                      pageIndex,
-                                      surfaceIndex,
-                                      elementIndex,
-                                      patch,
-                                    )
-                                  }
-                                  onDelete={() =>
-                                    handleDeleteElement(pageIndex, surfaceIndex, elementIndex)
-                                  }
-                                />
-                              ))}
+                              {(surface.elements as Array<Record<string, unknown>>).map(
+                                (element, elementIndex) => (
+                                  <ElementRow
+                                    key={`${String(element.id ?? "")}-${elementIndex}`}
+                                    element={element}
+                                    elementIndex={elementIndex}
+                                    onUpdate={(patch) =>
+                                      handleUpdateElement(
+                                        pageIndex,
+                                        surfaceIndex,
+                                        elementIndex,
+                                        patch,
+                                      )
+                                    }
+                                    onDelete={() =>
+                                      handleDeleteElement(pageIndex, surfaceIndex, elementIndex)
+                                    }
+                                  />
+                                ),
+                              )}
                             </div>
                           </div>
                         ) : null,
@@ -1125,7 +1108,9 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
 
               <section className="svg-import-panel">
                 <h3>SVG Import</h3>
-                <p className="import-hint">Paste an SVG with named paths to create surfaces automatically.</p>
+                <p className="import-hint">
+                  Paste an SVG with named paths to create surfaces automatically.
+                </p>
                 <textarea
                   className="svg-import-textarea"
                   placeholder={`<svg viewBox="0 0 500 600">\n  <path id="design-area" d="M100 100 L400 100 L400 500 L100 500 Z"/>\n</svg>`}
@@ -1137,15 +1122,19 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                   <button type="button" className="analyze-btn" onClick={handleAnalyzeSvg}>
                     Analyze SVG
                   </button>
-                  {svgImportTargetPage !== null && svgImportPreview && svgImportPreview.surfaces.length > 0 && (
-                    <button
-                      type="button"
-                      className="apply-btn"
-                      onClick={() => handleApplyImportedSurfaces(svgImportTargetPage)}
-                    >
-                      Apply {svgImportPreview.surfaces.length} Surface{svgImportPreview.surfaces.length !== 1 ? "s" : ""} to Page {svgImportTargetPage + 1}
-                    </button>
-                  )}
+                  {svgImportTargetPage !== null &&
+                    svgImportPreview &&
+                    svgImportPreview.surfaces.length > 0 && (
+                      <button
+                        type="button"
+                        className="apply-btn"
+                        onClick={() => handleApplyImportedSurfaces(svgImportTargetPage)}
+                      >
+                        Apply {svgImportPreview.surfaces.length} Surface
+                        {svgImportPreview.surfaces.length !== 1 ? "s" : ""} to Page{" "}
+                        {svgImportTargetPage + 1}
+                      </button>
+                    )}
                 </div>
 
                 {svgImportPreview && (
@@ -1155,7 +1144,9 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                       <select
                         className="import-target-select"
                         value={svgImportTargetPage ?? ""}
-                        onChange={(e) => setSvgImportTargetPage(e.target.value ? Number(e.target.value) : null)}
+                        onChange={(e) =>
+                          setSvgImportTargetPage(e.target.value ? Number(e.target.value) : null)
+                        }
                       >
                         <option value="">Select target page...</option>
                         {detailPages.map((page, i) => (
@@ -1189,7 +1180,8 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                     )}
                     {svgImportPreview.viewBox && (
                       <p className="viewbox-info">
-                        ViewBox: {svgImportPreview.viewBox.x} {svgImportPreview.viewBox.y} {svgImportPreview.viewBox.width}×{svgImportPreview.viewBox.height}
+                        ViewBox: {svgImportPreview.viewBox.x} {svgImportPreview.viewBox.y}{" "}
+                        {svgImportPreview.viewBox.width}×{svgImportPreview.viewBox.height}
                       </p>
                     )}
                   </div>
@@ -1253,7 +1245,9 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                 </select>
               </label>
             ) : (
-              <span className="environment-pill">{loading ? "Loading..." : `${workspaceLabel}`}</span>
+              <span className="environment-pill">
+                {loading ? "Loading..." : `${workspaceLabel}`}
+              </span>
             )}
             {onSignOut && (
               <button type="button" className="signout-btn" onClick={onSignOut}>
@@ -1511,8 +1505,8 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
               <div className="empty-state-card">
                 <p className="empty-state">No templates found.</p>
                 <p className="empty-state-hint">
-                  Click <strong>New Template</strong> above to create your first template, or import an
-                  SVG after opening one.
+                  Click <strong>New Template</strong> above to create your first template, or import
+                  an SVG after opening one.
                 </p>
               </div>
             ) : (
@@ -1575,10 +1569,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
               <section className="template-preview-section" aria-label="Template previews">
                 <h3>Template previews</h3>
                 {templates.slice(0, 6).map((template) => (
-                  <details
-                    key={template.id}
-                    className="template-preview-details"
-                  >
+                  <details key={template.id} className="template-preview-details">
                     <summary>
                       <span className="mono">{template.id.slice(0, 12)}</span>
                       {template.productId ? (
@@ -1587,7 +1578,9 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
                         </span>
                       ) : null}
                     </summary>
-                    <TemplatePreview document={template.documentSchema as Record<string, unknown>} />
+                    <TemplatePreview
+                      document={template.documentSchema as Record<string, unknown>}
+                    />
                   </details>
                 ))}
               </section>

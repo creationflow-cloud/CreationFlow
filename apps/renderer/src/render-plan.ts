@@ -1,7 +1,5 @@
 import { renderDocumentToPdf, runDocumentPreflight } from "@creationflow/pdf-engine";
-import type {
-  CreationFlowDocument,
-} from "@creationflow/schema";
+import type { CreationFlowDocument } from "@creationflow/schema";
 import type { RenderDocumentToPdfOptions, RenderDocumentWarning } from "@creationflow/pdf-engine";
 
 export interface RenderDocumentResult {

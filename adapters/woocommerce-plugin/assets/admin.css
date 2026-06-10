@@ -120,7 +120,15 @@
   color: #fff;
 }
 
-.creationflow-render-jobs-status-pending { background: #dba617; }
-.creationflow-render-jobs-status-processing { background: #2271b1; }
-.creationflow-render-jobs-status-done { background: #00a32a; }
-.creationflow-render-jobs-status-failed { background: #d63638; }
+.creationflow-render-jobs-status-pending {
+  background: #dba617;
+}
+.creationflow-render-jobs-status-processing {
+  background: #2271b1;
+}
+.creationflow-render-jobs-status-done {
+  background: #00a32a;
+}
+.creationflow-render-jobs-status-failed {
+  background: #d63638;
+}

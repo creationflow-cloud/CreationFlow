@@ -3,7 +3,12 @@ import type { CreationFlowSurface, CreationFlowSurfaceRole } from "@creationflow
 export interface SvgSurfaceImportResult {
   readonly width: number;
   readonly height: number;
-  readonly viewBox?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+  readonly viewBox?: {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+  };
   readonly surfaces: CreationFlowSurface[];
   readonly warnings: SvgSurfaceImportWarning[];
 }

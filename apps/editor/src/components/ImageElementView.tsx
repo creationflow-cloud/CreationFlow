@@ -62,12 +62,15 @@ export function ImageElementView({ element }: ImageElementViewProps) {
           </span>
         )}
         <div className="image-crop-overlay" aria-hidden="true">
-          <div className="image-crop-frame" style={{
-            left: `${crop.x}%`,
-            top: `${crop.y}%`,
-            width: `${crop.width}%`,
-            height: `${crop.height}%`,
-          }} />
+          <div
+            className="image-crop-frame"
+            style={{
+              left: `${crop.x}%`,
+              top: `${crop.y}%`,
+              width: `${crop.width}%`,
+              height: `${crop.height}%`,
+            }}
+          />
         </div>
       </div>
     );

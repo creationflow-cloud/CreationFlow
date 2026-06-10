@@ -24,8 +24,7 @@ function makeDocument(
       id: variable.id as unknown as VariableId,
       name: variable.name,
       type: "text",
-      defaultValue:
-        variable.defaultValue === undefined ? undefined : variable.defaultValue,
+      defaultValue: variable.defaultValue === undefined ? undefined : variable.defaultValue,
     })) as CreationFlowDocument["variables"],
     assets: [],
     rules: [],
@@ -39,9 +38,7 @@ describe("collectEditorVariables", () => {
   });
 
   it("applies document variable defaults when no configuration value exists", () => {
-    const document = makeDocument([
-      { id: "var-name", name: "name", defaultValue: "Default" },
-    ]);
+    const document = makeDocument([{ id: "var-name", name: "name", defaultValue: "Default" }]);
     expect(collectEditorVariables(document, null)).toEqual({ name: "Default" });
   });
 
@@ -55,9 +52,7 @@ describe("collectEditorVariables", () => {
   });
 
   it("prefers configuration values over document defaults", () => {
-    const document = makeDocument([
-      { id: "var-name", name: "name", defaultValue: "Default" },
-    ]);
+    const document = makeDocument([{ id: "var-name", name: "name", defaultValue: "Default" }]);
     const configuration = { variables: { name: "Override" } } as unknown as ConfigurationDto;
     expect(collectEditorVariables(document, configuration)).toEqual({ name: "Override" });
   });

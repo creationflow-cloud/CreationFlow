@@ -123,8 +123,10 @@ export interface CreationFlowShapeElement extends CreationFlowElementBase {
   readonly strokeWidth?: number;
 }
 
-export interface CreationFlowGroupElement
-  extends Omit<CreationFlowElementBase, "rotation" | "opacity"> {
+export interface CreationFlowGroupElement extends Omit<
+  CreationFlowElementBase,
+  "rotation" | "opacity"
+> {
   readonly type: "group";
   readonly children: readonly CreationFlowElement[];
   readonly rotation?: number;
@@ -179,19 +181,33 @@ export interface CreationFlowVariable {
 }
 
 export type CreationFlowRuleCondition =
-  | { readonly kind: "equals"; readonly variable: string; readonly value: CreationFlowVariableValue }
-  | { readonly kind: "notEquals"; readonly variable: string; readonly value: CreationFlowVariableValue }
+  | {
+      readonly kind: "equals";
+      readonly variable: string;
+      readonly value: CreationFlowVariableValue;
+    }
+  | {
+      readonly kind: "notEquals";
+      readonly variable: string;
+      readonly value: CreationFlowVariableValue;
+    }
   | { readonly kind: "present"; readonly variable: string };
 
-export type CreationFlowRuleConditionGroup = {
-  readonly all?: readonly CreationFlowRuleCondition[];
-  readonly any?: readonly CreationFlowRuleCondition[];
-} | readonly CreationFlowRuleCondition[];
+export type CreationFlowRuleConditionGroup =
+  | {
+      readonly all?: readonly CreationFlowRuleCondition[];
+      readonly any?: readonly CreationFlowRuleCondition[];
+    }
+  | readonly CreationFlowRuleCondition[];
 
 export type CreationFlowRuleType = "visibility" | "mandatory" | "valueDependency";
 
 export type CreationFlowRuleAction =
-  | { readonly type: "setVariable"; readonly name: string; readonly value: CreationFlowVariableValue }
+  | {
+      readonly type: "setVariable";
+      readonly name: string;
+      readonly value: CreationFlowVariableValue;
+    }
   | { readonly type: "showSurface"; readonly pageId: PageId; readonly surfaceId: SurfaceId }
   | { readonly type: "hideSurface"; readonly pageId: PageId; readonly surfaceId: SurfaceId }
   | { readonly type: "requireVariable"; readonly name: string; readonly message?: string }
@@ -224,6 +240,8 @@ export function isImageElement(element: CreationFlowElement): element is Creatio
   return element.type === "image";
 }
 
-export function isPatternElement(element: CreationFlowElement): element is CreationFlowPatternElement {
+export function isPatternElement(
+  element: CreationFlowElement,
+): element is CreationFlowPatternElement {
   return element.type === "pattern";
 }

@@ -46,24 +46,14 @@ async function buildTestServer(
 
   await registerAuth(server, auth);
 
-  server.get(
-    "/protected",
-    { preHandler: server.auth.requireAuth },
-    async () => ({ status: "ok" }),
-  );
+  server.get("/protected", { preHandler: server.auth.requireAuth }, async () => ({ status: "ok" }));
 
-  server.get(
-    "/health",
-    async () => ({ status: "ok" }),
-  );
+  server.get("/health", async () => ({ status: "ok" }));
 
-  server.get<{ Querystring: { workspaceId?: string } }>(
-    "/by-query",
-    async (request) => ({
-      status: "ok",
-      workspaceId: request.query.workspaceId,
-    }),
-  );
+  server.get<{ Querystring: { workspaceId?: string } }>("/by-query", async (request) => ({
+    status: "ok",
+    workspaceId: request.query.workspaceId,
+  }));
 
   server.post<{ Body: { workspaceId?: string } }>(
     "/by-body",

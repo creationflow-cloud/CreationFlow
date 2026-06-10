@@ -61,7 +61,9 @@ function MultiSelectionSummary({
         available when a single element is selected.
       </p>
       <div className="info-row">
-        <label className="info-label" htmlFor="multi-opacity">Opacity</label>
+        <label className="info-label" htmlFor="multi-opacity">
+          Opacity
+        </label>
         <input
           id="multi-opacity"
           className="info-input"
@@ -78,7 +80,9 @@ function MultiSelectionSummary({
         />
       </div>
       <div className="info-row">
-        <label className="info-label" htmlFor="multi-rotation">Rotation</label>
+        <label className="info-label" htmlFor="multi-rotation">
+          Rotation
+        </label>
         <input
           id="multi-rotation"
           className="info-input"
@@ -95,7 +99,9 @@ function MultiSelectionSummary({
         />
       </div>
       <div className="info-row">
-        <label className="info-label" htmlFor="multi-visible">Visible</label>
+        <label className="info-label" htmlFor="multi-visible">
+          Visible
+        </label>
         <input
           id="multi-visible"
           className="info-input"
@@ -132,10 +138,18 @@ function MultiSelectionSummary({
       <div className="position-controls-section">
         <h3>Quick Position</h3>
         <div className="position-controls">
-          <button className="position-btn up" type="button" onClick={() => onMoveSelected(0, -5)}>↑</button>
-          <button className="position-btn left" type="button" onClick={() => onMoveSelected(-5, 0)}>←</button>
-          <button className="position-btn down" type="button" onClick={() => onMoveSelected(0, 5)}>↓</button>
-          <button className="position-btn right" type="button" onClick={() => onMoveSelected(5, 0)}>→</button>
+          <button className="position-btn up" type="button" onClick={() => onMoveSelected(0, -5)}>
+            ↑
+          </button>
+          <button className="position-btn left" type="button" onClick={() => onMoveSelected(-5, 0)}>
+            ←
+          </button>
+          <button className="position-btn down" type="button" onClick={() => onMoveSelected(0, 5)}>
+            ↓
+          </button>
+          <button className="position-btn right" type="button" onClick={() => onMoveSelected(5, 0)}>
+            →
+          </button>
         </div>
       </div>
     </div>
@@ -202,7 +216,9 @@ export function RightSidebar({
         ) : (
           <div className="property-card empty-state-card">
             <p className="empty-state-text">No element selected</p>
-            <p className="empty-state-hint">Select an element on the canvas or in the layers panel to edit its properties.</p>
+            <p className="empty-state-hint">
+              Select an element on the canvas or in the layers panel to edit its properties.
+            </p>
           </div>
         )}
       </section>

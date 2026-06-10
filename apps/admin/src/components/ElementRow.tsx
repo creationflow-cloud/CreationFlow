@@ -1,7 +1,13 @@
 interface ElementRowProps {
   readonly element: Record<string, unknown>;
   readonly elementIndex: number;
-  readonly onUpdate: (patch: { name?: string; x?: number; y?: number; width?: number; height?: number }) => void;
+  readonly onUpdate: (patch: {
+    name?: string;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+  }) => void;
   readonly onDelete: () => void;
 }
 

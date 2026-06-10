@@ -129,10 +129,7 @@ export async function updateProductTemplate(
   return toProductTemplateDto(updated);
 }
 
-export async function deleteProductTemplate(
-  db: PrismaClient,
-  id: string,
-): Promise<boolean> {
+export async function deleteProductTemplate(db: PrismaClient, id: string): Promise<boolean> {
   const configurations = await db.configuration.count({
     where: { templateId: id },
   });

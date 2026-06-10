@@ -42,10 +42,7 @@ export async function createServer(config: ApiConfig) {
       });
     }
 
-    server.log.error(
-      { requestId: request.requestId ?? "-", err: error },
-      "request error",
-    );
+    server.log.error({ requestId: request.requestId ?? "-", err: error }, "request error");
     if (!reply.sent) {
       return reply.code(500).send({
         status: "error",

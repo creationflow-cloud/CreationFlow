@@ -68,10 +68,7 @@ export function validatePathData(path: string): DimensionValidation {
   return { valid: true, error: null };
 }
 
-export function formatApiErrorMessage(
-  status: number,
-  fallbackMessage: string,
-): string {
+export function formatApiErrorMessage(status: number, fallbackMessage: string): string {
   if (status === 401) return "You are not authenticated. Please sign in again.";
   if (status === 403) return "You do not have permission to perform this action.";
   if (status === 404) return "The requested resource was not found.";

@@ -8,11 +8,11 @@ This package intentionally stays framework-agnostic. It exports pure
 TypeScript modules so admin, editor, and renderer can all use the
 same primitives without pulling in a CSS library.
 
-| Module        | Exports                                                          |
-| ------------- | ---------------------------------------------------------------- |
-| `format`      | `cx`, `cxWith`, `formatNumber`, `formatPercent`, `clamp`, `isShallowEqual` |
-| `timing`      | `debounce`, `leadingDebounce`, `rafThrottle`                     |
-| `events`      | `createEmitter`, `Emitter`, `EventListener` types                |
+| Module   | Exports                                                                    |
+| -------- | -------------------------------------------------------------------------- |
+| `format` | `cx`, `cxWith`, `formatNumber`, `formatPercent`, `clamp`, `isShallowEqual` |
+| `timing` | `debounce`, `leadingDebounce`, `rafThrottle`                               |
+| `events` | `createEmitter`, `Emitter`, `EventListener` types                          |
 
 ## Usage
 

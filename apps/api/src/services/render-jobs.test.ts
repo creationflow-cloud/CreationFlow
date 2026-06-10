@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { PrismaClient } from "@creationflow/database";
 
-import { InvalidRenderJobStatusTransitionError, recordRenderJobAttempt, updateRenderJob } from "./render-jobs.js";
+import {
+  InvalidRenderJobStatusTransitionError,
+  recordRenderJobAttempt,
+  updateRenderJob,
+} from "./render-jobs.js";
 
 function createFakeDb(status: string) {
   const state = {

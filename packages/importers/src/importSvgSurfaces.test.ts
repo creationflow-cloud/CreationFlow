@@ -146,7 +146,7 @@ describe("importSvgSurfaces", () => {
     const result = importSvgSurfaces(svg);
 
     expect(result.surfaces).toHaveLength(0);
-    expect(result.warnings.some(w => w.code === "ignored_transform")).toBe(true);
+    expect(result.warnings.some((w) => w.code === "ignored_transform")).toBe(true);
   });
 
   it("unsupported elements generate warnings", () => {
@@ -160,7 +160,7 @@ describe("importSvgSurfaces", () => {
     const result = importSvgSurfaces(svg);
 
     expect(result.surfaces).toHaveLength(0);
-    expect(result.warnings.some(w => w.code === "unsupported_element")).toBe(true);
+    expect(result.warnings.some((w) => w.code === "unsupported_element")).toBe(true);
   });
 
   it("missing viewBox generates warning but remains deterministic if width/height exist", () => {
@@ -175,7 +175,7 @@ describe("importSvgSurfaces", () => {
     expect(result.width).toBe(500);
     expect(result.height).toBe(600);
     expect(result.surfaces).toHaveLength(1);
-    expect(result.warnings.some(w => w.code === "missing_viewbox")).toBe(true);
+    expect(result.warnings.some((w) => w.code === "missing_viewbox")).toBe(true);
   });
 
   it("empty SVG generates warning", () => {
@@ -184,7 +184,7 @@ describe("importSvgSurfaces", () => {
     const result = importSvgSurfaces(svg);
 
     expect(result.surfaces).toHaveLength(0);
-    expect(result.warnings.some(w => w.code === "empty_svg")).toBe(true);
+    expect(result.warnings.some((w) => w.code === "empty_svg")).toBe(true);
   });
 
   it("path without d attribute generates warning", () => {
@@ -197,7 +197,7 @@ describe("importSvgSurfaces", () => {
     const result = importSvgSurfaces(svg);
 
     expect(result.surfaces).toHaveLength(0);
-    expect(result.warnings.some(w => w.code === "missing_path_d")).toBe(true);
+    expect(result.warnings.some((w) => w.code === "missing_path_d")).toBe(true);
   });
 
   it("uses data-role attribute when present", () => {
@@ -268,7 +268,7 @@ describe("importSvgSurfaces", () => {
     const result = importSvgSurfaces(svg);
 
     expect(result.surfaces).toHaveLength(0);
-    expect(result.warnings.some(w => w.code === "ignored_transform")).toBe(true);
+    expect(result.warnings.some((w) => w.code === "ignored_transform")).toBe(true);
   });
 
   it("polygon generates unsupported warning", () => {
@@ -281,7 +281,11 @@ describe("importSvgSurfaces", () => {
     const result = importSvgSurfaces(svg);
 
     expect(result.surfaces).toHaveLength(0);
-    expect(result.warnings.some(w => w.code === "unsupported_element" && w.message.includes("polygon"))).toBe(true);
+    expect(
+      result.warnings.some(
+        (w) => w.code === "unsupported_element" && w.message.includes("polygon"),
+      ),
+    ).toBe(true);
   });
 
   it("polyline generates unsupported warning", () => {
@@ -294,7 +298,11 @@ describe("importSvgSurfaces", () => {
     const result = importSvgSurfaces(svg);
 
     expect(result.surfaces).toHaveLength(0);
-    expect(result.warnings.some(w => w.code === "unsupported_element" && w.message.includes("polyline"))).toBe(true);
+    expect(
+      result.warnings.some(
+        (w) => w.code === "unsupported_element" && w.message.includes("polyline"),
+      ),
+    ).toBe(true);
   });
 
   it("surface elements array is empty", () => {

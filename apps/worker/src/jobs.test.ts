@@ -20,16 +20,16 @@ describe("performRenderRequest", () => {
 
   it("throws a retryable error on 5xx", async () => {
     const fetchMock = mockFetch(503, "service unavailable");
-    await expect(
-      performRenderRequest("http://api.local", "job-1", fetchMock),
-    ).rejects.toThrow(/503/);
+    await expect(performRenderRequest("http://api.local", "job-1", fetchMock)).rejects.toThrow(
+      /503/,
+    );
   });
 
   it("throws a retryable error on 429", async () => {
     const fetchMock = mockFetch(429, "rate limited");
-    await expect(
-      performRenderRequest("http://api.local", "job-1", fetchMock),
-    ).rejects.toThrow(/429/);
+    await expect(performRenderRequest("http://api.local", "job-1", fetchMock)).rejects.toThrow(
+      /429/,
+    );
   });
 
   it("throws a PermanentRenderError on 4xx", async () => {

@@ -31,12 +31,7 @@ export function PageThumbnailPreview({
       }}
     >
       {pdfUrl ? (
-        <PdfThumbnail
-          pdfUrl={pdfUrl}
-          pageIndex={pageIndex}
-          width={100}
-          height={80}
-        />
+        <PdfThumbnail pdfUrl={pdfUrl} pageIndex={pageIndex} width={100} height={80} />
       ) : (
         <div
           style={{

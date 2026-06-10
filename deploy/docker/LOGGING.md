@@ -33,11 +33,11 @@ the worker, and downstream services.
 
 ### What is logged
 
-| Hook       | When                              | Level  | Fields                                  |
-| ---------- | --------------------------------- | ------ | --------------------------------------- |
-| onRequest  | request received                  | (none) | –                                       |
-| onResponse | response fully sent               | info   | requestId, method, url, status, ms       |
-| onError    | uncaught error during request     | error  | requestId, method, url, err             |
+| Hook       | When                          | Level  | Fields                             |
+| ---------- | ----------------------------- | ------ | ---------------------------------- |
+| onRequest  | request received              | (none) | –                                  |
+| onResponse | response fully sent           | info   | requestId, method, url, status, ms |
+| onError    | uncaught error during request | error  | requestId, method, url, err        |
 
 Body and query parameters are **not** logged to avoid leaking
 secrets or PII. Sensitive data should be redacted at the source if

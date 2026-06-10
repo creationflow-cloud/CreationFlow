@@ -1,9 +1,16 @@
-import type { CreationFlowDocument, CreationFlowElement, CreationFlowSurface } from "@creationflow/schema";
+import type {
+  CreationFlowDocument,
+  CreationFlowElement,
+  CreationFlowSurface,
+} from "@creationflow/schema";
 import { getElementZIndex } from "@creationflow/core";
 
 import type { PdfRenderPlan, PdfRenderPlanElement, PdfRenderPlanPage } from "./types.js";
 
-function toRenderPlanElement(element: CreationFlowElement, surface?: CreationFlowSurface): PdfRenderPlanElement {
+function toRenderPlanElement(
+  element: CreationFlowElement,
+  surface?: CreationFlowSurface,
+): PdfRenderPlanElement {
   const base = {
     elementId: element.id,
     type: element.type,
@@ -37,7 +44,10 @@ function toRenderPlanElement(element: CreationFlowElement, surface?: CreationFlo
   return base;
 }
 
-function collectElements(surfaceElements: readonly CreationFlowElement[], surface?: CreationFlowSurface): PdfRenderPlanElement[] {
+function collectElements(
+  surfaceElements: readonly CreationFlowElement[],
+  surface?: CreationFlowSurface,
+): PdfRenderPlanElement[] {
   const elements: PdfRenderPlanElement[] = [];
 
   for (const element of surfaceElements) {

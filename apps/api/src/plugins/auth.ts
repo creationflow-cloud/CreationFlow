@@ -32,7 +32,9 @@ declare module "fastify" {
   interface FastifyInstance {
     auth: {
       readonly requireAuth: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-      readonly requireRole: (minimum: ApiRole) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+      readonly requireRole: (
+        minimum: ApiRole,
+      ) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
       readonly enforceWorkspaceScope: (workspaceId: string | null | undefined) => void;
     };
   }
@@ -102,10 +104,7 @@ function isApiRole(value: string): value is ApiRole {
   return value === "admin" || value === "editor" || value === "viewer";
 }
 
-function resolveRoleForKey(
-  config: ApiAuthConfig,
-  providedKey: string,
-): ApiRole {
+function resolveRoleForKey(config: ApiAuthConfig, providedKey: string): ApiRole {
   for (const entry of config.apiKeyRoles) {
     if (safeEqual(entry.key, providedKey)) {
       return entry.role;
@@ -250,9 +249,7 @@ export function parseAllowedWorkspaces(value: string | undefined): ReadonlySet<s
   return new Set(entries);
 }
 
-export function parseApiKeyRoles(
-  value: string | undefined,
-): readonly ApiKeyRoleEntry[] {
+export function parseApiKeyRoles(value: string | undefined): readonly ApiKeyRoleEntry[] {
   if (!value) {
     return [];
   }

@@ -199,9 +199,7 @@ export async function registerProductRoutes(server: FastifyInstance): Promise<vo
         const product = await updateProduct(server.db, request.params.id, {
           name: request.body.name,
           externalId:
-            request.body.externalId === undefined
-              ? undefined
-              : (request.body.externalId ?? null),
+            request.body.externalId === undefined ? undefined : (request.body.externalId ?? null),
         });
 
         if (!product) {

@@ -40,6 +40,7 @@ DATABASE_URL=postgresql://creationflow:creationflow_dev_password@localhost:5432/
 ```
 
 Additional environment variables:
+
 - `DEMO_SEED=true` — seed demo data when starting the API
 - `CREATIONFLOW_PDF_DEBUG_SURFACES=true` — enable PDF debug surface output
 
@@ -50,6 +51,7 @@ pnpm --filter @creationflow/database prisma migrate dev
 ```
 
 This creates the database and applies all Prisma migrations. The schema includes:
+
 - Workspace, Product, ProductTemplate, Configuration, RenderJob, Asset
 
 ### 5. Seed Demo Data (Optional)
@@ -95,13 +97,13 @@ pnpm --filter @creationflow/worker dev
 
 ## Accessing the Apps
 
-| App | URL | Description |
-|-----|-----|-------------|
-| API | http://localhost:3000 | REST API |
-| Swagger UI | http://localhost:3000/docs | Interactive API documentation |
-| OpenAPI JSON | http://localhost:3000/openapi.json | OpenAPI specification |
-| Admin UI | http://localhost:5174 | Admin dashboard |
-| Editor UI | http://localhost:5173 | 2D design editor |
+| App          | URL                                | Description                   |
+| ------------ | ---------------------------------- | ----------------------------- |
+| API          | http://localhost:3000              | REST API                      |
+| Swagger UI   | http://localhost:3000/docs         | Interactive API documentation |
+| OpenAPI JSON | http://localhost:3000/openapi.json | OpenAPI specification         |
+| Admin UI     | http://localhost:5174              | Admin dashboard               |
+| Editor UI    | http://localhost:5173              | 2D design editor              |
 
 ## Useful Commands
 
@@ -139,6 +141,7 @@ docker compose up
 ```
 
 This starts:
+
 - PostgreSQL on port 5432
 - Redis on port 6379
 - Placeholder services for api (3000), editor (3001), admin (3002)

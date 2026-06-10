@@ -52,22 +52,15 @@ interface PatternGalleryProps {
   readonly onClose: () => void;
 }
 
-export function PatternGallery({
-  onAddPattern,
-  onClose,
-}: PatternGalleryProps) {
+export function PatternGallery({ onAddPattern, onClose }: PatternGalleryProps) {
   return (
-    <div
-      className="pattern-gallery-overlay"
-      onClick={onClose}
-    >
-      <div
-        className="pattern-gallery"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="pattern-gallery-overlay" onClick={onClose}>
+      <div className="pattern-gallery" onClick={(e) => e.stopPropagation()}>
         <div className="pattern-gallery-header">
           <h3>Muster hinzufügen</h3>
-          <button className="pattern-gallery-close" onClick={onClose}>×</button>
+          <button className="pattern-gallery-close" onClick={onClose}>
+            ×
+          </button>
         </div>
         <div className="pattern-gallery-grid">
           {BUILTIN_PATTERNS.map((pattern) => (

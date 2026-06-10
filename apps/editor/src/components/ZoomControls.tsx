@@ -21,7 +21,9 @@ export function ZoomControls({ view, onZoomIn, onZoomOut, onReset, onFit }: Zoom
       >
         −
       </button>
-      <span className="zoom-level" aria-live="polite">{percent}%</span>
+      <span className="zoom-level" aria-live="polite">
+        {percent}%
+      </span>
       <button
         type="button"
         className="zoom-btn"

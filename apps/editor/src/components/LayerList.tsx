@@ -41,9 +41,7 @@ export function LayerList({
   return (
     <div className="layer-list">
       {selectedElementIds.length > 1 && (
-        <div className="layer-multi-summary">
-          {selectedElementIds.length} layers selected
-        </div>
+        <div className="layer-multi-summary">{selectedElementIds.length} layers selected</div>
       )}
       {sortedElements.map((el) => (
         <div

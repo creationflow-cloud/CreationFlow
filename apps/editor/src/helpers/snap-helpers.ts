@@ -1,7 +1,4 @@
-import type {
-  CreationFlowElement,
-  CreationFlowSurface,
-} from "@creationflow/schema";
+import type { CreationFlowElement, CreationFlowSurface } from "@creationflow/schema";
 
 export interface SnapBounds {
   readonly minX: number;

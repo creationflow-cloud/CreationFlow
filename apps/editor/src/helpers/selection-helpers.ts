@@ -1,4 +1,8 @@
-import type { CreationFlowDocument, CreationFlowElement, CreationFlowSurface } from "@creationflow/schema";
+import type {
+  CreationFlowDocument,
+  CreationFlowElement,
+  CreationFlowSurface,
+} from "@creationflow/schema";
 
 export interface SelectionState {
   readonly selectedPageId: string | null;
@@ -93,7 +97,12 @@ export interface SelectionRect {
   readonly maxY: number;
 }
 
-export function makeSelectionRect(startX: number, startY: number, endX: number, endY: number): SelectionRect {
+export function makeSelectionRect(
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+): SelectionRect {
   return {
     minX: Math.min(startX, endX),
     minY: Math.min(startY, endY),
@@ -113,7 +122,10 @@ export function rectIntersectsElement(rect: SelectionRect, element: CreationFlow
   );
 }
 
-export function rectFullyContainsElement(rect: SelectionRect, element: CreationFlowElement): boolean {
+export function rectFullyContainsElement(
+  rect: SelectionRect,
+  element: CreationFlowElement,
+): boolean {
   return (
     element.x >= rect.minX &&
     element.y >= rect.minY &&

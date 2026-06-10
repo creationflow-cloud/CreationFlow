@@ -37,7 +37,13 @@ export function defaultViewState(): ViewState {
   return { zoom: 1, panX: 0, panY: 0 };
 }
 
-export function fitView(width: number, height: number, viewportWidth: number, viewportHeight: number, padding = 32): ViewState {
+export function fitView(
+  width: number,
+  height: number,
+  viewportWidth: number,
+  viewportHeight: number,
+  padding = 32,
+): ViewState {
   if (width <= 0 || height <= 0 || viewportWidth <= 0 || viewportHeight <= 0) {
     return defaultViewState();
   }
@@ -102,7 +108,10 @@ export function useZoomPan(options: UseZoomPanOptions): UseZoomPanResult {
     function onKeyDown(event: KeyboardEvent) {
       if (event.code !== "Space") return;
       const target = event.target as HTMLElement | null;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+      if (
+        target &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+      ) {
         return;
       }
       if (event.repeat) return;

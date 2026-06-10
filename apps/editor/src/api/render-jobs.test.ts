@@ -61,7 +61,9 @@ describe("getRenderJobPdfOutput", () => {
     );
 
     expect(output).not.toBeNull();
-    expect(output!.downloadUrl).toBe("http://example.com/assets/asset-xyz/file?foo=bar&v=asset-xyz");
+    expect(output!.downloadUrl).toBe(
+      "http://example.com/assets/asset-xyz/file?foo=bar&v=asset-xyz",
+    );
   });
 
   it("uses ? for cache-busting when relative URL has no query string", () => {

@@ -75,10 +75,7 @@
           if (xhr && xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
             message = xhr.responseJSON.data.message;
           }
-          $status
-            .removeClass("notice-info notice-success")
-            .addClass("notice-error")
-            .text(message);
+          $status.removeClass("notice-info notice-success").addClass("notice-error").text(message);
         });
     });
   });

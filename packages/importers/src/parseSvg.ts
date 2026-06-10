@@ -25,7 +25,12 @@ export interface ParsedRect {
 export interface ParsedSvg {
   readonly width: number;
   readonly height: number;
-  readonly viewBox?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+  readonly viewBox?: {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+  };
   readonly paths: ParsedPath[];
   readonly rects: ParsedRect[];
   readonly unsupportedElements: string[];
@@ -85,9 +90,10 @@ export function parseSvg(svgString: string, warnings: SvgSurfaceImportWarning[])
   if (!viewBox) {
     warnings.push({
       code: "missing_viewbox",
-      message: width > 0 && height > 0
-        ? `No viewBox found. Using width=${width} height=${height} as dimensions.`
-        : "No viewBox and no width/height found. Using default 500x600.",
+      message:
+        width > 0 && height > 0
+          ? `No viewBox found. Using width=${width} height=${height} as dimensions.`
+          : "No viewBox and no width/height found. Using default 500x600.",
     });
   }
 
@@ -159,10 +165,10 @@ export function parseSvg(svgString: string, warnings: SvgSurfaceImportWarning[])
       continue;
     }
 
-    const x = parseFloat(elem["@_x"] as string ?? "0");
-    const y = parseFloat(elem["@_y"] as string ?? "0");
-    const rectWidth = parseFloat(elem["@_width"] as string ?? "0");
-    const rectHeight = parseFloat(elem["@_height"] as string ?? "0");
+    const x = parseFloat((elem["@_x"] as string) ?? "0");
+    const y = parseFloat((elem["@_y"] as string) ?? "0");
+    const rectWidth = parseFloat((elem["@_width"] as string) ?? "0");
+    const rectHeight = parseFloat((elem["@_height"] as string) ?? "0");
 
     if (rectWidth === 0 || rectHeight === 0) {
       warnings.push({
@@ -300,7 +306,9 @@ function parseDimension(value: string | number | undefined): number {
 function parseViewBox(
   viewBoxStr: string | undefined,
   warnings: SvgSurfaceImportWarning[],
-): { readonly x: number; readonly y: number; readonly width: number; readonly height: number } | undefined {
+):
+  | { readonly x: number; readonly y: number; readonly width: number; readonly height: number }
+  | undefined {
   if (!viewBoxStr) {
     return undefined;
   }
@@ -318,7 +326,12 @@ function parseViewBox(
 
   const [x, y, width, height] = parts.map(parseFloat);
 
-  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(width) || !Number.isFinite(height)) {
+  if (
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    !Number.isFinite(width) ||
+    !Number.isFinite(height)
+  ) {
     warnings.push({
       code: "missing_viewbox",
       message: `Invalid viewBox values: "${viewBoxStr}".`,

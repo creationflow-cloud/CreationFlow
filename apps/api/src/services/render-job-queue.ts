@@ -16,7 +16,9 @@ interface RedisConnectionOptions {
   readonly db?: number;
 }
 
-function getRedisConnectionOptions(redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379"): RedisConnectionOptions {
+function getRedisConnectionOptions(
+  redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379",
+): RedisConnectionOptions {
   const url = new URL(redisUrl);
 
   return {

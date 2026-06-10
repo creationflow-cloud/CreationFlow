@@ -282,9 +282,7 @@ describe("CreationFlowRule schema", () => {
           type: "mandatory",
           enabled: true,
           condition: { all: [{ kind: "equals", variable: "step", value: "checkout" }] },
-          actions: [
-            { type: "requireVariable", name: "email", message: "Email is required" },
-          ],
+          actions: [{ type: "requireVariable", name: "email", message: "Email is required" }],
         },
       ],
     };

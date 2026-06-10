@@ -430,7 +430,6 @@ button {
   max-width: 100px;
 }
 
-
 /* ── Page Surface List ────────────────────────────────── */
 
 .page-surface-list {
@@ -524,7 +523,9 @@ button {
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 500;
-  transition: background 0.1s ease, border-color 0.1s ease;
+  transition:
+    background 0.1s ease,
+    border-color 0.1s ease;
 }
 
 .tool-button:hover {
@@ -664,8 +665,7 @@ button {
   position: relative;
   background:
     linear-gradient(90deg, rgba(48, 63, 90, 0.05) 1px, transparent 1px),
-    linear-gradient(rgba(48, 63, 90, 0.05) 1px, transparent 1px),
-    #e8ecf2;
+    linear-gradient(rgba(48, 63, 90, 0.05) 1px, transparent 1px), #e8ecf2;
   background-size: 24px 24px;
 }
 

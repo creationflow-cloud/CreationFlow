@@ -384,11 +384,15 @@ function ImageElementProperties({
   }
 
   function enableCrop() {
-    onUpdate({ crop: { x: 0, y: 0, width: 100, height: 100 } } as Partial<CreationFlowImageElement>);
+    onUpdate({
+      crop: { x: 0, y: 0, width: 100, height: 100 },
+    } as Partial<CreationFlowImageElement>);
   }
 
   function disableCrop() {
-    const { crop: _omit, ...rest } = element as CreationFlowImageElement & { crop?: CreationFlowImageCrop };
+    const { crop: _omit, ...rest } = element as CreationFlowImageElement & {
+      crop?: CreationFlowImageCrop;
+    };
     void _omit;
     onUpdate({ ...rest, crop: undefined } as unknown as Partial<CreationFlowImageElement>);
   }
@@ -445,11 +449,7 @@ function ImageElementProperties({
       <div className="image-crop-section">
         <h3>Crop</h3>
         {!hasCrop ? (
-          <button
-            type="button"
-            className="action-btn"
-            onClick={enableCrop}
-          >
+          <button type="button" className="action-btn" onClick={enableCrop}>
             Enable crop
           </button>
         ) : (
@@ -482,11 +482,7 @@ function ImageElementProperties({
               min={1}
               max={100}
             />
-            <button
-              type="button"
-              className="action-btn"
-              onClick={disableCrop}
-            >
+            <button type="button" className="action-btn" onClick={disableCrop}>
               Reset crop
             </button>
           </>
@@ -545,7 +541,9 @@ function PatternElementProperties({
       <TextInput
         label="Asset ID"
         value={element.assetId}
-        onChange={(assetId) => onUpdate({ assetId: assetId as AssetId } as Partial<CreationFlowPatternElement>)}
+        onChange={(assetId) =>
+          onUpdate({ assetId: assetId as AssetId } as Partial<CreationFlowPatternElement>)
+        }
       />
       <SelectInput<"horizontal" | "vertical" | "both">
         label="Wiederholung"

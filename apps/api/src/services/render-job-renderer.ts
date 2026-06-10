@@ -10,9 +10,9 @@ import { getConfigurationById } from "./configurations.js";
 import { getRenderJobById, recordRenderJobAttempt, updateRenderJob } from "./render-jobs.js";
 import type { RenderJobDto } from "./render-jobs.js";
 
-function readRenderVariables(
-  configuration: { readonly variables?: unknown },
-): Record<string, string | number | boolean | null> {
+function readRenderVariables(configuration: {
+  readonly variables?: unknown;
+}): Record<string, string | number | boolean | null> {
   const raw = configuration.variables;
   if (!raw || typeof raw !== "object") {
     return {};
@@ -51,9 +51,10 @@ function classifyRenderError(error: unknown): { code: string; transient: boolean
     const code = error.name && error.name !== "Error" ? error.name : "render_failed";
     return {
       code,
-      transient: error.message.toLowerCase().includes("timeout")
-        || error.message.toLowerCase().includes("storage")
-        || error.message.toLowerCase().includes("network"),
+      transient:
+        error.message.toLowerCase().includes("timeout") ||
+        error.message.toLowerCase().includes("storage") ||
+        error.message.toLowerCase().includes("network"),
     };
   }
 
@@ -156,7 +157,9 @@ export async function renderRenderJobToPdf(
           console.log(`      shape: ${shape ?? "rect"}`);
           console.log(`      role: ${role ?? "default"}`);
           console.log(`      clipContent: ${clipContent ?? false}`);
-          console.log(`      pathData: ${pathData ? "present (" + pathData.length + " chars)" : "absent"}`);
+          console.log(
+            `      pathData: ${pathData ? "present (" + pathData.length + " chars)" : "absent"}`,
+          );
           console.log(`      elements: ${elements.length}`);
           for (const el of elements) {
             const elType = el.type as string;

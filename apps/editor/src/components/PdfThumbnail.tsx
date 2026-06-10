@@ -81,38 +81,44 @@ export function PdfThumbnail({ pdfUrl, pageIndex, width, height }: PdfThumbnailP
     >
       <div className="pdf-thumbnail-container" style={{ position: "relative" }}>
         {loading && (
-          <div className="pdf-thumbnail-loading" style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "#f8fafc",
-            fontSize: "0.65rem",
-            color: "#5f6d82",
-          }}>
+          <div
+            className="pdf-thumbnail-loading"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "#f8fafc",
+              fontSize: "0.65rem",
+              color: "#5f6d82",
+            }}
+          >
             Loading...
           </div>
         )}
         {error && (
-          <div className="pdf-thumbnail-error" style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "#fef0f0",
-            fontSize: "0.6rem",
-            color: "#c0392b",
-            padding: "4px",
-            textAlign: "center",
-          }}>
+          <div
+            className="pdf-thumbnail-error"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "#fef0f0",
+              fontSize: "0.6rem",
+              color: "#c0392b",
+              padding: "4px",
+              textAlign: "center",
+            }}
+          >
             Preview failed
           </div>
         )}

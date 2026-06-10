@@ -13,12 +13,12 @@ Located in `packages/database/prisma/schema.prisma`.
 
 Top-level organizational unit. All other entities belong to a workspace.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | String (cuid) | Primary key |
-| `name` | String | Workspace name |
-| `createdAt` | DateTime | Creation timestamp |
-| `updatedAt` | DateTime | Last update timestamp |
+| Field       | Type          | Description           |
+| ----------- | ------------- | --------------------- |
+| `id`        | String (cuid) | Primary key           |
+| `name`      | String        | Workspace name        |
+| `createdAt` | DateTime      | Creation timestamp    |
+| `updatedAt` | DateTime      | Last update timestamp |
 
 **Relations**: has many Products, Templates, Configurations, RenderJobs, Assets
 
@@ -26,14 +26,14 @@ Top-level organizational unit. All other entities belong to a workspace.
 
 Represents a customizable item (e.g., t-shirt, mug, poster).
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | String (cuid) | Primary key |
-| `workspaceId` | String | Foreign key to Workspace |
-| `externalId` | String? | Optional external system ID (e.g., WooCommerce) |
-| `name` | String | Product name |
-| `createdAt` | DateTime | Creation timestamp |
-| `updatedAt` | DateTime | Last update timestamp |
+| Field         | Type          | Description                                     |
+| ------------- | ------------- | ----------------------------------------------- |
+| `id`          | String (cuid) | Primary key                                     |
+| `workspaceId` | String        | Foreign key to Workspace                        |
+| `externalId`  | String?       | Optional external system ID (e.g., WooCommerce) |
+| `name`        | String        | Product name                                    |
+| `createdAt`   | DateTime      | Creation timestamp                              |
+| `updatedAt`   | DateTime      | Last update timestamp                           |
 
 **Relations**: belongs to Workspace, has many Templates, has many Configurations
 
@@ -43,14 +43,14 @@ Represents a customizable item (e.g., t-shirt, mug, poster).
 
 Defines the design structure for a product. Stores the document schema as JSON.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | String (cuid) | Primary key |
-| `workspaceId` | String | Foreign key to Workspace |
-| `productId` | String? | Optional foreign key to Product |
-| `documentSchema` | Json | The template document structure |
-| `createdAt` | DateTime | Creation timestamp |
-| `updatedAt` | DateTime | Last update timestamp |
+| Field            | Type          | Description                     |
+| ---------------- | ------------- | ------------------------------- |
+| `id`             | String (cuid) | Primary key                     |
+| `workspaceId`    | String        | Foreign key to Workspace        |
+| `productId`      | String?       | Optional foreign key to Product |
+| `documentSchema` | Json          | The template document structure |
+| `createdAt`      | DateTime      | Creation timestamp              |
+| `updatedAt`      | DateTime      | Last update timestamp           |
 
 **Relations**: belongs to Workspace, optionally belongs to Product, has many Configurations
 
@@ -60,16 +60,16 @@ Defines the design structure for a product. Stores the document schema as JSON.
 
 A user-created design instance based on a template. Stores the actual document as JSON.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | String (cuid) | Primary key |
-| `workspaceId` | String | Foreign key to Workspace |
-| `productId` | String? | Optional foreign key to Product |
-| `templateId` | String? | Optional foreign key to ProductTemplate |
-| `document` | Json | The design document content |
-| `status` | ConfigurationStatus | `DRAFT`, `CART`, `ORDERED`, `ARCHIVED` |
-| `createdAt` | DateTime | Creation timestamp |
-| `updatedAt` | DateTime | Last update timestamp |
+| Field         | Type                | Description                             |
+| ------------- | ------------------- | --------------------------------------- |
+| `id`          | String (cuid)       | Primary key                             |
+| `workspaceId` | String              | Foreign key to Workspace                |
+| `productId`   | String?             | Optional foreign key to Product         |
+| `templateId`  | String?             | Optional foreign key to ProductTemplate |
+| `document`    | Json                | The design document content             |
+| `status`      | ConfigurationStatus | `DRAFT`, `CART`, `ORDERED`, `ARCHIVED`  |
+| `createdAt`   | DateTime            | Creation timestamp                      |
+| `updatedAt`   | DateTime            | Last update timestamp                   |
 
 **Relations**: belongs to Workspace, optionally belongs to Product, optionally belongs to Template, has many RenderJobs
 
@@ -79,16 +79,16 @@ A user-created design instance based on a template. Stores the actual document a
 
 Tracks PDF rendering requests for configurations.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | String (cuid) | Primary key |
-| `workspaceId` | String | Foreign key to Workspace |
-| `configurationId` | String? | Optional foreign key to Configuration |
-| `status` | RenderJobStatus | `PENDING`, `PROCESSING`, `DONE`, `FAILED` |
-| `output` | Json? | Render output metadata |
-| `errorMessage` | String? | Error message if failed |
-| `createdAt` | DateTime | Creation timestamp |
-| `updatedAt` | DateTime | Last update timestamp |
+| Field             | Type            | Description                               |
+| ----------------- | --------------- | ----------------------------------------- |
+| `id`              | String (cuid)   | Primary key                               |
+| `workspaceId`     | String          | Foreign key to Workspace                  |
+| `configurationId` | String?         | Optional foreign key to Configuration     |
+| `status`          | RenderJobStatus | `PENDING`, `PROCESSING`, `DONE`, `FAILED` |
+| `output`          | Json?           | Render output metadata                    |
+| `errorMessage`    | String?         | Error message if failed                   |
+| `createdAt`       | DateTime        | Creation timestamp                        |
+| `updatedAt`       | DateTime        | Last update timestamp                     |
 
 **Relations**: belongs to Workspace, optionally belongs to Configuration
 
@@ -98,19 +98,19 @@ Tracks PDF rendering requests for configurations.
 
 Uploaded files (images, fonts, vectors, PDFs) used in designs.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | String (cuid) | Primary key |
-| `workspaceId` | String | Foreign key to Workspace |
-| `type` | AssetType | `IMAGE`, `FONT`, `VECTOR`, `PDF` |
-| `name` | String | Asset name |
-| `source` | String | File source/path |
-| `mimeType` | String? | MIME type |
-| `width` | Int? | Image width in pixels |
-| `height` | Int? | Image height in pixels |
-| `sizeBytes` | BigInt? | File size in bytes |
-| `createdAt` | DateTime | Creation timestamp |
-| `updatedAt` | DateTime | Last update timestamp |
+| Field         | Type          | Description                      |
+| ------------- | ------------- | -------------------------------- |
+| `id`          | String (cuid) | Primary key                      |
+| `workspaceId` | String        | Foreign key to Workspace         |
+| `type`        | AssetType     | `IMAGE`, `FONT`, `VECTOR`, `PDF` |
+| `name`        | String        | Asset name                       |
+| `source`      | String        | File source/path                 |
+| `mimeType`    | String?       | MIME type                        |
+| `width`       | Int?          | Image width in pixels            |
+| `height`      | Int?          | Image height in pixels           |
+| `sizeBytes`   | BigInt?       | File size in bytes               |
+| `createdAt`   | DateTime      | Creation timestamp               |
+| `updatedAt`   | DateTime      | Last update timestamp            |
 
 **Relations**: belongs to Workspace
 
@@ -158,7 +158,7 @@ interface CreationFlowPage {
   name: string;
   width: number;
   height: number;
-  unit: CreationFlowUnit;  // "px" | "mm" | "pt"
+  unit: CreationFlowUnit; // "px" | "mm" | "pt"
   surfaces?: readonly CreationFlowSurface[];
 }
 ```
@@ -172,17 +172,17 @@ interface CreationFlowSurface {
   id: SurfaceId;
   name: string;
   pageId?: PageId;
-  kind?: CreationFlowSurfaceKind;  // "front" | "back" | "left_sleeve" | "right_sleeve" | "custom"
+  kind?: CreationFlowSurfaceKind; // "front" | "back" | "left_sleeve" | "right_sleeve" | "custom"
   width: number;
   height: number;
   unit: CreationFlowUnit;
   printArea?: CreationFlowPrintArea;
   elements: readonly CreationFlowElement[];
-  shape?: CreationFlowSurfaceShape;  // "rect" | "path"
-  role?: CreationFlowSurfaceRole;    // "default" | "colorRegion" | "designRegion" | "overlay"
-  pathData?: string;      // SVG path data for path-shaped surfaces
-  fillColor?: string;     // Fill color for color regions and overlays
-  clipContent?: boolean;  // Whether to clip elements to surface bounds
+  shape?: CreationFlowSurfaceShape; // "rect" | "path"
+  role?: CreationFlowSurfaceRole; // "default" | "colorRegion" | "designRegion" | "overlay"
+  pathData?: string; // SVG path data for path-shaped surfaces
+  fillColor?: string; // Fill color for color regions and overlays
+  clipContent?: boolean; // Whether to clip elements to surface bounds
 }
 ```
 
@@ -195,7 +195,7 @@ Elements are the design objects placed on surfaces. Each element has common prop
 ```typescript
 interface CreationFlowElementBase {
   id: ElementId;
-  type: CreationFlowElementType;  // "text" | "image" | "shape" | "group" | "variable"
+  type: CreationFlowElementType; // "text" | "image" | "shape" | "group" | "variable"
   name?: string;
   x: number;
   y: number;

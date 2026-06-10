@@ -79,19 +79,10 @@ export function ProductEditDialog({
         {validationError && <p className="form-error">{validationError}</p>}
         {errorMessage && <p className="form-error">{errorMessage}</p>}
         <div className="modal-actions">
-          <button
-            type="button"
-            className="modal-cancel-btn"
-            onClick={onCancel}
-            disabled={saving}
-          >
+          <button type="button" className="modal-cancel-btn" onClick={onCancel} disabled={saving}>
             Cancel
           </button>
-          <button
-            type="submit"
-            className="modal-confirm-btn"
-            disabled={saving}
-          >
+          <button type="submit" className="modal-confirm-btn" disabled={saving}>
             {saving ? "Saving..." : "Save"}
           </button>
         </div>
@@ -132,12 +123,7 @@ export function ConfirmDialog({
         <h3 id="confirm-dialog-title">{title}</h3>
         <p className="modal-subtitle">{message}</p>
         <div className="modal-actions">
-          <button
-            type="button"
-            className="modal-cancel-btn"
-            onClick={onCancel}
-            disabled={busy}
-          >
+          <button type="button" className="modal-cancel-btn" onClick={onCancel} disabled={busy}>
             {cancelLabel}
           </button>
           <button

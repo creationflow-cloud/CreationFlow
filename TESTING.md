@@ -76,15 +76,15 @@ apps/editor/src/api/
 
 ## Existing Tests
 
-| File | What It Tests |
-|------|---------------|
-| `packages/schema/src/index.test.ts` | Schema types and document creation |
+| File                                                  | What It Tests                            |
+| ----------------------------------------------------- | ---------------------------------------- |
+| `packages/schema/src/index.test.ts`                   | Schema types and document creation       |
 | `packages/pdf-engine/src/renderDocumentToPdf.test.ts` | PDF generation and coordinate conversion |
-| `packages/importers/src/importSvgSurfaces.test.ts` | SVG parsing and surface extraction |
-| `apps/api/src/routes/asset-file.test.ts` | Asset upload and download endpoints |
-| `apps/api/src/services/render-job-renderer.test.ts` | Render job processing |
-| `apps/editor/src/helpers/selection-helpers.test.ts` | Element selection logic |
-| `apps/editor/src/api/render-jobs.test.ts` | Render job API calls |
+| `packages/importers/src/importSvgSurfaces.test.ts`    | SVG parsing and surface extraction       |
+| `apps/api/src/routes/asset-file.test.ts`              | Asset upload and download endpoints      |
+| `apps/api/src/services/render-job-renderer.test.ts`   | Render job processing                    |
+| `apps/editor/src/helpers/selection-helpers.test.ts`   | Element selection logic                  |
+| `apps/editor/src/api/render-jobs.test.ts`             | Render job API calls                     |
 
 ## Writing Tests
 
@@ -123,7 +123,7 @@ Use in-memory SQLite or mock the Prisma client for database tests:
 const mockPrisma = {
   workspace: {
     findMany: vi.fn().mockResolvedValue([]),
-    create: vi.fn().mockResolvedValue({ id: 'test-id' }),
+    create: vi.fn().mockResolvedValue({ id: "test-id" }),
   },
 };
 ```
@@ -133,8 +133,8 @@ const mockPrisma = {
 Mock external API calls with `vi.mock()`:
 
 ```typescript
-vi.mock('@creationflow/api-client', () => ({
-  createConfiguration: vi.fn().mockResolvedValue({ id: 'config-id' }),
+vi.mock("@creationflow/api-client", () => ({
+  createConfiguration: vi.fn().mockResolvedValue({ id: "config-id" }),
 }));
 ```
 
@@ -143,7 +143,7 @@ vi.mock('@creationflow/api-client', () => ({
 Use `MemoryStorageProvider` for tests instead of filesystem:
 
 ```typescript
-import { MemoryStorageProvider } from '@creationflow/storage';
+import { MemoryStorageProvider } from "@creationflow/storage";
 
 const storage = new MemoryStorageProvider();
 ```
@@ -153,24 +153,24 @@ const storage = new MemoryStorageProvider();
 Create test documents using schema helpers:
 
 ```typescript
-import { createEmptyDocument } from '@creationflow/core';
+import { createEmptyDocument } from "@creationflow/core";
 
 const testDocument = createEmptyDocument({
-  workspaceId: 'test-workspace',
-  productId: 'test-product',
+  workspaceId: "test-workspace",
+  productId: "test-product",
 });
 ```
 
 ## Test Coverage Goals
 
-| Area | Target |
-|------|--------|
-| Schema & Core | 90%+ |
-| PDF Engine | 80%+ |
-| API Routes | 80%+ |
-| Editor Helpers | 70%+ |
-| Importers | 80%+ |
-| Admin UI | 50%+ (growing) |
+| Area           | Target         |
+| -------------- | -------------- |
+| Schema & Core  | 90%+           |
+| PDF Engine     | 80%+           |
+| API Routes     | 80%+           |
+| Editor Helpers | 70%+           |
+| Importers      | 80%+           |
+| Admin UI       | 50%+ (growing) |
 
 ## Continuous Integration
 

@@ -48,13 +48,13 @@ adapters/woocommerce-plugin/
 
 Located in WordPress Admin → WooCommerce → CreationFlow.
 
-| Setting | Type | Description |
-|---------|------|-------------|
-| API URL | text | Base URL of the CreationFlow API (e.g., `https://api.creationflow.example.com`) |
-| API Token | text | Authentication token for API access |
-| Debug Mode | checkbox | Enable verbose logging for troubleshooting |
-| Editor Mode | select | `iframe` (embedded) or `link` (redirect to editor) |
-| Auto Render | checkbox | Automatically create render job on order completion |
+| Setting     | Type     | Description                                                                     |
+| ----------- | -------- | ------------------------------------------------------------------------------- |
+| API URL     | text     | Base URL of the CreationFlow API (e.g., `https://api.creationflow.example.com`) |
+| API Token   | text     | Authentication token for API access                                             |
+| Debug Mode  | checkbox | Enable verbose logging for troubleshooting                                      |
+| Editor Mode | select   | `iframe` (embedded) or `link` (redirect to editor)                              |
+| Auto Render | checkbox | Automatically create render job on order completion                             |
 
 ## API Client
 
@@ -62,17 +62,17 @@ The plugin communicates with the CreationFlow API via a PHP client class.
 
 ### Required API Endpoints
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| `GET` | `/workspaces` | List available workspaces |
-| `GET` | `/products` | List products for mapping |
-| `GET` | `/product-templates` | List templates for mapping |
-| `POST` | `/configurations` | Create a new configuration |
-| `PUT` | `/configurations/:id` | Update an existing configuration |
-| `POST` | `/render-jobs` | Create a render job |
-| `GET` | `/render-jobs/:id` | Check render job status |
-| `GET` | `/render-jobs/:id/output/pdf` | Download rendered PDF |
-| `POST` | `/assets/upload` | Upload asset files |
+| Method | Endpoint                      | Purpose                          |
+| ------ | ----------------------------- | -------------------------------- |
+| `GET`  | `/workspaces`                 | List available workspaces        |
+| `GET`  | `/products`                   | List products for mapping        |
+| `GET`  | `/product-templates`          | List templates for mapping       |
+| `POST` | `/configurations`             | Create a new configuration       |
+| `PUT`  | `/configurations/:id`         | Update an existing configuration |
+| `POST` | `/render-jobs`                | Create a render job              |
+| `GET`  | `/render-jobs/:id`            | Check render job status          |
+| `GET`  | `/render-jobs/:id/output/pdf` | Download rendered PDF            |
+| `POST` | `/assets/upload`              | Upload asset files               |
 
 ### API Client Methods
 
@@ -95,12 +95,12 @@ class CreationFlow_API_Client {
 
 Each WooCommerce product can be linked to a CreationFlow template.
 
-| Meta Key | Type | Description |
-|----------|------|-------------|
-| `_creationflow_enabled` | bool | Enable CreationFlow for this product |
-| `_creationflow_workspace_id` | string | Workspace ID |
-| `_creationflow_template_id` | string | Template ID in CreationFlow |
-| `_creationflow_product_id` | string | Product ID in CreationFlow (optional) |
+| Meta Key                     | Type   | Description                           |
+| ---------------------------- | ------ | ------------------------------------- |
+| `_creationflow_enabled`      | bool   | Enable CreationFlow for this product  |
+| `_creationflow_workspace_id` | string | Workspace ID                          |
+| `_creationflow_template_id`  | string | Template ID in CreationFlow           |
+| `_creationflow_product_id`   | string | Product ID in CreationFlow (optional) |
 
 ### Admin UI for Product Mapping
 
@@ -121,10 +121,10 @@ Two modes supported:
 
 ```html
 <iframe
-    src="https://editor.creationflow.example.com/?templateId={template_id}&woocommerce=true"
-    width="100%"
-    height="800"
-    frameborder="0"
+  src="https://editor.creationflow.example.com/?templateId={template_id}&woocommerce=true"
+  width="100%"
+  height="800"
+  frameborder="0"
 ></iframe>
 ```
 
@@ -261,10 +261,10 @@ In WooCommerce admin order detail:
 For variable products, map variations to template options:
 
 | WooCommerce Variation | CreationFlow Template Option |
-|----------------------|------------------------------|
-| Size: S/M/L/XL | Template variant selection |
-| Color: Red/Blue/Black | Surface color region |
-| Material: Cotton/Poly | Template material preset |
+| --------------------- | ---------------------------- |
+| Size: S/M/L/XL        | Template variant selection   |
+| Color: Red/Blue/Black | Surface color region         |
+| Material: Cotton/Poly | Template material preset     |
 
 ### Implementation
 
@@ -291,11 +291,11 @@ add_filter( 'woocommerce_add_cart_item_data', function( $cart_item_data, $produc
 
 ## Error Handling
 
-| Scenario | Behavior |
-|----------|----------|
-| API unreachable | Show error message, disable customization |
-| Template not found | Log error, fallback to standard product |
-| Render job failed | Notify admin, allow manual retry |
+| Scenario           | Behavior                                     |
+| ------------------ | -------------------------------------------- |
+| API unreachable    | Show error message, disable customization    |
+| Template not found | Log error, fallback to standard product      |
+| Render job failed  | Notify admin, allow manual retry             |
 | Configuration lost | Show warning in cart, allow re-customization |
 
 ## Testing

@@ -20,7 +20,11 @@ const ruleId = (value: string) => value as unknown as RuleId;
 function makeDocument(
   conditions: unknown,
   actions: readonly CreationFlowRuleAction[] = [],
-  options: { readonly enabled?: boolean; readonly name?: string; readonly type?: CreationFlowRule["type"] } = {},
+  options: {
+    readonly enabled?: boolean;
+    readonly name?: string;
+    readonly type?: CreationFlowRule["type"];
+  } = {},
 ): CreationFlowDocument {
   const rule: CreationFlowRule = {
     id: ruleId("r1"),
@@ -114,10 +118,9 @@ describe("evaluateRules", () => {
   });
 
   it("captures errors for unknown action types", () => {
-    const document = makeDocument(
-      { all: [{ kind: "equals", variable: "color", value: "red" }] },
-      [{ type: "launchMissiles" } as unknown as CreationFlowRuleAction],
-    );
+    const document = makeDocument({ all: [{ kind: "equals", variable: "color", value: "red" }] }, [
+      { type: "launchMissiles" } as unknown as CreationFlowRuleAction,
+    ]);
 
     const result = evaluateRules(document, { variables: { color: "red" } });
     expect(result.appliedRules).toEqual([]);
@@ -125,13 +128,10 @@ describe("evaluateRules", () => {
   });
 
   it("returns applied actions alongside their rule", () => {
-    const document = makeDocument(
-      { all: [{ kind: "equals", variable: "color", value: "red" }] },
-      [
-        { type: "setVariable", name: "size", value: "L" },
-        { type: "validate", message: "Pick a size" },
-      ],
-    );
+    const document = makeDocument({ all: [{ kind: "equals", variable: "color", value: "red" }] }, [
+      { type: "setVariable", name: "size", value: "L" },
+      { type: "validate", message: "Pick a size" },
+    ]);
 
     const result = evaluateRules(document, { variables: { color: "red" } });
     expect(result.appliedRules[0]?.actions).toEqual<RuleAction[]>([
@@ -158,8 +158,16 @@ describe("evaluateRules rule types", () => {
     const document = makeDocument(
       { all: [{ kind: "equals", variable: "showFront", value: true }] },
       [
-        { type: "showSurface", pageId: "page-1" as unknown as PageId, surfaceId: "front" as unknown as SurfaceId },
-        { type: "hideSurface", pageId: "page-1" as unknown as PageId, surfaceId: "back" as unknown as SurfaceId },
+        {
+          type: "showSurface",
+          pageId: "page-1" as unknown as PageId,
+          surfaceId: "front" as unknown as SurfaceId,
+        },
+        {
+          type: "hideSurface",
+          pageId: "page-1" as unknown as PageId,
+          surfaceId: "back" as unknown as SurfaceId,
+        },
       ],
       { name: "visibility-rule" },
     );
@@ -167,8 +175,16 @@ describe("evaluateRules rule types", () => {
     const result = evaluateRules(document, { variables: { showFront: true } });
     expect(result.appliedRules).toHaveLength(1);
     expect(result.appliedRules[0]?.actions).toEqual<RuleAction[]>([
-      { type: "showSurface", pageId: "page-1" as unknown as PageId, surfaceId: "front" as unknown as SurfaceId },
-      { type: "hideSurface", pageId: "page-1" as unknown as PageId, surfaceId: "back" as unknown as SurfaceId },
+      {
+        type: "showSurface",
+        pageId: "page-1" as unknown as PageId,
+        surfaceId: "front" as unknown as SurfaceId,
+      },
+      {
+        type: "hideSurface",
+        pageId: "page-1" as unknown as PageId,
+        surfaceId: "back" as unknown as SurfaceId,
+      },
     ]);
     expect(result.mandatoryViolations).toEqual([]);
   });

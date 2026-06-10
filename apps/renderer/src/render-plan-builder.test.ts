@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { CreationFlowDocument, DocumentId, PageId, SurfaceId, WorkspaceId } from "@creationflow/schema";
+import type {
+  CreationFlowDocument,
+  DocumentId,
+  PageId,
+  SurfaceId,
+  WorkspaceId,
+} from "@creationflow/schema";
 
 import { buildRenderPlan } from "./render-plan-builder.js";
 
@@ -58,8 +64,30 @@ describe("buildRenderPlan", () => {
               width: 200,
               height: 100,
               elements: [
-                { id: "e1" as never, type: "text" as const, x: 0, y: 0, width: 10, height: 10, text: "a", fontFamily: "Arial", fontSize: 12, color: "#000" } as never,
-                { id: "e2" as never, type: "text" as const, x: 0, y: 0, width: 10, height: 10, text: "b", fontFamily: "Arial", fontSize: 12, color: "#000" } as never,
+                {
+                  id: "e1" as never,
+                  type: "text" as const,
+                  x: 0,
+                  y: 0,
+                  width: 10,
+                  height: 10,
+                  text: "a",
+                  fontFamily: "Arial",
+                  fontSize: 12,
+                  color: "#000",
+                } as never,
+                {
+                  id: "e2" as never,
+                  type: "text" as const,
+                  x: 0,
+                  y: 0,
+                  width: 10,
+                  height: 10,
+                  text: "b",
+                  fontFamily: "Arial",
+                  fontSize: 12,
+                  color: "#000",
+                } as never,
               ],
             },
             {
@@ -70,7 +98,18 @@ describe("buildRenderPlan", () => {
               width: 200,
               height: 100,
               elements: [
-                { id: "e3" as never, type: "text" as const, x: 0, y: 0, width: 10, height: 10, text: "c", fontFamily: "Arial", fontSize: 12, color: "#000" } as never,
+                {
+                  id: "e3" as never,
+                  type: "text" as const,
+                  x: 0,
+                  y: 0,
+                  width: 10,
+                  height: 10,
+                  text: "c",
+                  fontFamily: "Arial",
+                  fontSize: 12,
+                  color: "#000",
+                } as never,
               ],
             },
           ],
@@ -96,7 +135,9 @@ describe("buildRenderPlan", () => {
 
   it("warns about out-of-range DPI", () => {
     const plan = buildRenderPlan(makeDocument(), { dpi: 30 });
-    expect(plan.preflightWarnings.some((w) => w.code === "render-plan.dpi-out-of-range")).toBe(true);
+    expect(plan.preflightWarnings.some((w) => w.code === "render-plan.dpi-out-of-range")).toBe(
+      true,
+    );
   });
 
   it("clamps the warning list to maxWarnings", () => {

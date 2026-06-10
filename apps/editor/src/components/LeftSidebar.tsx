@@ -114,11 +114,15 @@ export function LeftSidebar({
             selectedElementIds={selection.selectedElementIds}
             onSelectElement={(elementId, modifier) =>
               onSelectionChange(
-                selectElement(elementId, {
-                  selectedPageId: selection.selectedPageId,
-                  selectedSurfaceId: selection.selectedSurfaceId,
-                  selectedElementIds: selection.selectedElementIds,
-                }, modifier),
+                selectElement(
+                  elementId,
+                  {
+                    selectedPageId: selection.selectedPageId,
+                    selectedSurfaceId: selection.selectedSurfaceId,
+                    selectedElementIds: selection.selectedElementIds,
+                  },
+                  modifier,
+                ),
               )
             }
             onDuplicateElement={onDuplicateElement}
@@ -135,19 +139,13 @@ export function LeftSidebar({
 
       <section className="sidebar-section">
         <h2 className="sidebar-heading">Canvas Settings</h2>
-        <CanvasSettingsPanel
-          settings={canvasSettings}
-          onChange={onCanvasSettingsChange}
-        />
+        <CanvasSettingsPanel settings={canvasSettings} onChange={onCanvasSettingsChange} />
       </section>
     </aside>
   );
 }
 
-function getSelectedSurface(
-  document: CreationFlowDocument,
-  surfaceId: string | null,
-) {
+function getSelectedSurface(document: CreationFlowDocument, surfaceId: string | null) {
   if (!surfaceId) return undefined;
   for (const page of document.pages) {
     for (const surface of page.surfaces ?? []) {

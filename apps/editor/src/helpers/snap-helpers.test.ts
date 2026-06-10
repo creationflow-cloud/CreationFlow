@@ -100,7 +100,12 @@ describe("calculateAlignmentGuides", () => {
     );
     const result = calculateAlignmentGuides(
       moving,
-      [{ bounds: other, element: makeElement({ id: OTHER_ID, x: 300, y: 300, width: 40, height: 40 }) }],
+      [
+        {
+          bounds: other,
+          element: makeElement({ id: OTHER_ID, x: 300, y: 300, width: 40, height: 40 }),
+        },
+      ],
       { threshold: DEFAULT_SNAP_THRESHOLD_PX },
     );
     expect(result.dx).toBe(0);
@@ -116,7 +121,12 @@ describe("calculateAlignmentGuides", () => {
     );
     const result = calculateAlignmentGuides(
       moving,
-      [{ bounds: otherBounds, element: makeElement({ id: OTHER_ID, x: 55, y: 58, width: 50, height: 50 }) }],
+      [
+        {
+          bounds: otherBounds,
+          element: makeElement({ id: OTHER_ID, x: 55, y: 58, width: 50, height: 50 }),
+        },
+      ],
       { threshold: 20 },
     );
     expect(result.dx).toBe(5);

@@ -135,10 +135,15 @@ export function TopBar({
                 disabled={renderDisabled}
                 onClick={onRenderPdf}
                 title={
-                  blockHint ?? (dirty ? "Will save and render PDF" : "Render saved configuration to PDF")
+                  blockHint ??
+                  (dirty ? "Will save and render PDF" : "Render saved configuration to PDF")
                 }
               >
-                {rendering ? "Rendering..." : renderJob?.status === "done" ? "PDF Ready" : "Render PDF"}
+                {rendering
+                  ? "Rendering..."
+                  : renderJob?.status === "done"
+                    ? "PDF Ready"
+                    : "Render PDF"}
               </button>
             )}
             {renderJob?.status === "done" && pdfOutput && (

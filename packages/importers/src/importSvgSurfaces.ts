@@ -21,7 +21,12 @@ export function importSvgSurfaces(
 
   for (const path of parsed.paths) {
     const name = path.label || path.id || `Path ${surfaces.length + 1}`;
-    const explicitRole = path.role as "default" | "colorRegion" | "designRegion" | "overlay" | undefined;
+    const explicitRole = path.role as
+      | "default"
+      | "colorRegion"
+      | "designRegion"
+      | "overlay"
+      | undefined;
     const role = explicitRole ?? inferRoleFromName(name);
     const isDesignRegion = role === "designRegion";
 
@@ -42,7 +47,12 @@ export function importSvgSurfaces(
 
   for (const rect of parsed.rects) {
     const name = rect.label || rect.id || `Rect ${surfaces.length + 1}`;
-    const explicitRole = rect.role as "default" | "colorRegion" | "designRegion" | "overlay" | undefined;
+    const explicitRole = rect.role as
+      | "default"
+      | "colorRegion"
+      | "designRegion"
+      | "overlay"
+      | undefined;
     const role = explicitRole ?? inferRoleFromName(name);
     const isDesignRegion = role === "designRegion";
 

@@ -74,9 +74,7 @@ function newRule(): CreationFlowRule {
   };
 }
 
-function summarizeEvaluation(
-  result: RuleEvaluationResult | null,
-): {
+function summarizeEvaluation(result: RuleEvaluationResult | null): {
   errors: readonly RuleEvaluationError[];
   warnings: readonly RuleEvaluationWarning[];
   violations: readonly RuleMandatoryViolation[];
@@ -119,9 +117,7 @@ export function RulesEditor({ document, onChange }: RulesEditorProps) {
   };
 
   const handleUpdateRule = (index: number, patch: Partial<CreationFlowRule>) => {
-    updateRules(
-      rules.map((rule, i) => (i === index ? { ...rule, ...patch } : rule)),
-    );
+    updateRules(rules.map((rule, i) => (i === index ? { ...rule, ...patch } : rule)));
   };
 
   const handleDeleteRule = (index: number) => {
@@ -158,9 +154,7 @@ export function RulesEditor({ document, onChange }: RulesEditorProps) {
       </header>
 
       {rules.length === 0 && (
-        <p className="rules-editor__empty">
-          No rules yet. Add your first rule above.
-        </p>
+        <p className="rules-editor__empty">No rules yet. Add your first rule above.</p>
       )}
 
       {rules.length > 0 && (
@@ -241,10 +235,10 @@ function RuleCard({ index, rule, total, onUpdate, onDelete, onMove }: RuleCardPr
   const conditions = useMemo<CreationFlowRuleCondition[]>(() => {
     if (Array.isArray(rule.condition)) return rule.condition;
     if (rule.condition && Array.isArray((rule.condition as { all?: unknown }).all)) {
-      return ((rule.condition as { all: CreationFlowRuleCondition[] }).all) ?? [];
+      return (rule.condition as { all: CreationFlowRuleCondition[] }).all ?? [];
     }
     if (rule.condition && Array.isArray((rule.condition as { any?: unknown }).any)) {
-      return ((rule.condition as { any: CreationFlowRuleCondition[] }).any) ?? [];
+      return (rule.condition as { any: CreationFlowRuleCondition[] }).any ?? [];
     }
     return [];
   }, [rule.condition]);
@@ -268,7 +262,9 @@ function RuleCard({ index, rule, total, onUpdate, onDelete, onMove }: RuleCardPr
   const updateConditionAt = (conditionIndex: number, patch: Partial<CreationFlowRuleCondition>) => {
     updateConditions(
       conditions.map((condition, i) =>
-        i === conditionIndex ? ({ ...condition, ...patch } as CreationFlowRuleCondition) : condition,
+        i === conditionIndex
+          ? ({ ...condition, ...patch } as CreationFlowRuleCondition)
+          : condition,
       ),
     );
   };
@@ -333,12 +329,7 @@ function RuleCard({ index, rule, total, onUpdate, onDelete, onMove }: RuleCardPr
           >
             ↓
           </button>
-          <button
-            type="button"
-            className="rule-delete-btn"
-            onClick={onDelete}
-            title="Delete rule"
-          >
+          <button type="button" className="rule-delete-btn" onClick={onDelete} title="Delete rule">
             Delete
           </button>
         </div>
@@ -363,7 +354,10 @@ function RuleCard({ index, rule, total, onUpdate, onDelete, onMove }: RuleCardPr
                   kind: e.target.value as CreationFlowRuleCondition["kind"],
                   ...(e.target.value === "present"
                     ? { variable: condition.variable }
-                    : { variable: condition.variable, value: "value" in condition ? condition.value : "" }),
+                    : {
+                        variable: condition.variable,
+                        value: "value" in condition ? condition.value : "",
+                      }),
                 })
               }
             >
@@ -422,7 +416,11 @@ function RuleCard({ index, rule, total, onUpdate, onDelete, onMove }: RuleCardPr
             <button type="button" className="rule-add-btn" onClick={() => addAction("setVariable")}>
               + Set variable
             </button>
-            <button type="button" className="rule-add-btn" onClick={() => addAction("requireVariable")}>
+            <button
+              type="button"
+              className="rule-add-btn"
+              onClick={() => addAction("requireVariable")}
+            >
               + Require variable
             </button>
             <button type="button" className="rule-add-btn" onClick={() => addAction("validate")}>
@@ -521,12 +519,7 @@ function ActionRow({ action, onUpdate, onRemove }: ActionRowProps) {
           onChange={(e) => onUpdate({ message: e.target.value })}
         />
       )}
-      <button
-        type="button"
-        className="rule-remove-btn"
-        onClick={onRemove}
-        title="Remove action"
-      >
+      <button type="button" className="rule-remove-btn" onClick={onRemove} title="Remove action">
         ×
       </button>
     </div>

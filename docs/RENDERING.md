@@ -48,6 +48,7 @@ interface PdfRenderPlanElement {
 ```
 
 The render plan:
+
 - Iterates through all pages and surfaces
 - Collects all elements (including children of group elements)
 - Sorts elements by zIndex for correct rendering order
@@ -63,12 +64,14 @@ The render plan:
 - Renders elements based on their type
 
 **Current status**: The PDF generation code exists and handles:
+
 - Page creation with proper dimensions
 - Coordinate conversion (top-left to PDF Y-axis)
 - Unit conversion (px, mm, pt to PDF points)
 - Basic element rendering
 
 **What is missing for complete PDF output**:
+
 - **Text rendering** — font loading, text layout, text styling (font family, size, weight, color, alignment)
 - **Image rendering** — loading images from assets, embedding images in PDF, fit mode handling
 - **Shape rendering** — drawing rectangles, ellipses, lines with fill and stroke
@@ -110,12 +113,12 @@ The API registers the storage plugin and uses it for asset file uploads and down
 
 Render jobs track their progress through these statuses:
 
-| Status | Description |
-|--------|-------------|
-| `PENDING` | Job created, not yet processed |
-| `PROCESSING` | Job is being rendered |
-| `DONE` | Rendering complete, output available |
-| `FAILED` | Rendering failed, error message stored |
+| Status       | Description                            |
+| ------------ | -------------------------------------- |
+| `PENDING`    | Job created, not yet processed         |
+| `PROCESSING` | Job is being rendered                  |
+| `DONE`       | Rendering complete, output available   |
+| `FAILED`     | Rendering failed, error message stored |
 
 ## Next Steps for Real PDF Output
 

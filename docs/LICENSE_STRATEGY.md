@@ -4,19 +4,19 @@ CreationFlow uses a multi-license strategy to balance open-source community acce
 
 ## License Matrix
 
-| Component | License | Rationale |
-|-----------|---------|-----------|
-| **creationflow-core** (this repo) | AGPL-3.0 | Protects open core, requires sharing modifications |
-| **woocommerce-plugin** | GPL-2.0-or-later | Compatible with WordPress plugin ecosystem |
-| **creationflow-cloud** | Proprietary | Commercial SaaS offering |
-| **creationflow-enterprise** | Proprietary | Commercial add-on modules |
-| **License Server** | Proprietary | Private validation service (separate repo) |
+| Component                         | License          | Rationale                                          |
+| --------------------------------- | ---------------- | -------------------------------------------------- |
+| **creationflow-core** (this repo) | AGPL-3.0         | Protects open core, requires sharing modifications |
+| **woocommerce-plugin**            | GPL-2.0-or-later | Compatible with WordPress plugin ecosystem         |
+| **creationflow-cloud**            | Proprietary      | Commercial SaaS offering                           |
+| **creationflow-enterprise**       | Proprietary      | Commercial add-on modules                          |
+| **License Server**                | Proprietary      | Private validation service (separate repo)         |
 
 ## Core Repository: AGPL-3.0
 
 ### Why AGPL-3.0?
 
-The Affero GPL is chosen because CreationFlow is primarily a server-side/self-hosted platform. Standard GPL only requires source distribution when software is *distributed*, but AGPL closes the "SaaS loophole":
+The Affero GPL is chosen because CreationFlow is primarily a server-side/self-hosted platform. Standard GPL only requires source distribution when software is _distributed_, but AGPL closes the "SaaS loophole":
 
 - If someone modifies the core and runs it as a network service, they must make the modified source available to users
 - Prevents taking the core, modifying it, and running it as a closed SaaS
@@ -25,14 +25,14 @@ The Affero GPL is chosen because CreationFlow is primarily a server-side/self-ho
 
 ### What AGPL-3.0 Means for Users
 
-| Use Case | Allowed? | Obligation |
-|----------|----------|------------|
-| Self-host for own use | Yes | None (unless you modify and serve it) |
-| Modify and self-host internally | Yes | Keep modifications available to internal users |
-| Modify and offer as SaaS | Yes | Must publish modified source code |
-| Use as basis for commercial product | Yes | Must publish source, comply with AGPL |
-| Remove AGPL and close-source | No | Violation of license |
-| Link proprietary software to it | No | AGPL "viral" effect applies |
+| Use Case                            | Allowed? | Obligation                                     |
+| ----------------------------------- | -------- | ---------------------------------------------- |
+| Self-host for own use               | Yes      | None (unless you modify and serve it)          |
+| Modify and self-host internally     | Yes      | Keep modifications available to internal users |
+| Modify and offer as SaaS            | Yes      | Must publish modified source code              |
+| Use as basis for commercial product | Yes      | Must publish source, comply with AGPL          |
+| Remove AGPL and close-source        | No       | Violation of license                           |
+| Link proprietary software to it     | No       | AGPL "viral" effect applies                    |
 
 ### What AGPL-3.0 Means for Contributors
 
@@ -124,11 +124,11 @@ A separate private service that validates licenses and usage:
 
 ## Compatibility Matrix
 
-| Component | AGPL-3.0 | GPL-2.0 | GPL-3.0 | MIT | Apache-2.0 | Proprietary |
-|-----------|----------|---------|---------|-----|------------|-------------|
-| AGPL-3.0 core | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
-| GPL-2.0 plugin | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Proprietary module | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
+| Component          | AGPL-3.0 | GPL-2.0 | GPL-3.0 | MIT | Apache-2.0 | Proprietary |
+| ------------------ | -------- | ------- | ------- | --- | ---------- | ----------- |
+| AGPL-3.0 core      | ✓        | ✓       | ✓       | ✓   | ✓          | ✗           |
+| GPL-2.0 plugin     | ✓        | ✓       | ✓       | ✓   | ✓          | ✗           |
+| Proprietary module | ✗        | ✗       | ✗       | ✗   | ✗          | ✓           |
 
 **Note:** AGPL-3.0 is compatible with GPL-3.0 but not with GPL-2.0-only. The WooCommerce plugin uses GPL-2.0-**or-later**, which allows compatibility with GPL-3.0 and thus AGPL-3.0.
 

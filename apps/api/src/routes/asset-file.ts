@@ -55,8 +55,7 @@ export async function registerAssetFileRoutes(server: FastifyInstance): Promise<
           key: asset.source,
         });
 
-        const response = reply
-          .header("Content-Type", asset.mimeType ?? "application/octet-stream");
+        const response = reply.header("Content-Type", asset.mimeType ?? "application/octet-stream");
 
         if (asset.type === "pdf") {
           response
