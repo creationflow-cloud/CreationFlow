@@ -18,6 +18,29 @@ describe("performRenderRequest", () => {
     );
   });
 
+  it("forwards the X-API-Key header when an apiKey is provided", async () => {
+    const fetchMock = mockFetch(200, "");
+    await expect(
+      performRenderRequest("http://api.local", "job-1", fetchMock, { apiKey: "secret-key" }),
+    ).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://api.local/render-jobs/job-1/render",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ "X-API-Key": "secret-key" }),
+      }),
+    );
+  });
+
+  it("omits the X-API-Key header when no apiKey is provided", async () => {
+    const fetchMock = mockFetch(200, "");
+    await expect(
+      performRenderRequest("http://api.local", "job-1", fetchMock),
+    ).resolves.toBeUndefined();
+    const call = vi.mocked(fetchMock).mock.calls[0]?.[1] as RequestInit | undefined;
+    expect(call?.headers).toEqual({});
+  });
+
   it("throws a retryable error on 5xx", async () => {
     const fetchMock = mockFetch(503, "service unavailable");
     await expect(performRenderRequest("http://api.local", "job-1", fetchMock)).rejects.toThrow(

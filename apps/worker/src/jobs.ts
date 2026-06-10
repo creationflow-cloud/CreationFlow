@@ -9,6 +9,7 @@ export interface RenderJobQueuePayload {
 export interface RenderWorkerOptions {
   readonly maxAttempts?: number;
   readonly backoffMs?: number;
+  readonly apiKey?: string;
 }
 
 interface RedisConnectionOptions {
@@ -53,11 +54,12 @@ export function createRenderWorker(
   const apiUrl = (process.env.API_URL ?? "http://localhost:3000").replace(/\/+$/, "");
   const maxAttempts = options.maxAttempts ?? readEnvInt("RENDER_JOB_MAX_ATTEMPTS", 3);
   const backoffMs = options.backoffMs ?? readEnvInt("RENDER_JOB_BACKOFF_MS", 2_000);
+  const apiKey = options.apiKey ?? process.env.CREATIONFLOW_API_KEY?.trim();
 
   return new Worker<RenderJobQueuePayload>(
     RENDER_JOB_QUEUE_NAME,
     async (job) => {
-      await performRenderRequest(apiUrl, job.data.jobId, fetch);
+      await performRenderRequest(apiUrl, job.data.jobId, fetch, { apiKey });
     },
     {
       connection: getRedisConnectionOptions(),
@@ -70,13 +72,27 @@ export function createRenderWorker(
   );
 }
 
+export interface PerformRenderRequestOptions {
+  readonly apiKey?: string | undefined;
+}
+
+function buildRenderHeaders(options: PerformRenderRequestOptions): HeadersInit {
+  const headers: Record<string, string> = {};
+  if (options.apiKey) {
+    headers["X-API-Key"] = options.apiKey;
+  }
+  return headers;
+}
+
 export async function performRenderRequest(
   apiUrl: string,
   jobId: string,
   fetcher: typeof fetch = fetch,
+  options: PerformRenderRequestOptions = {},
 ): Promise<void> {
   const response = await fetcher(`${apiUrl}/render-jobs/${jobId}/render`, {
     method: "POST",
+    headers: buildRenderHeaders(options),
   });
 
   if (!response.ok) {
