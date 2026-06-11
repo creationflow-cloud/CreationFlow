@@ -24,6 +24,7 @@ import {
 } from "../helpers/snap-helpers.js";
 
 import { ElementView } from "./ElementView.js";
+import { applyResize, MIN_DIMENSION, type ResizeDirection } from "./resize-math.js";
 
 interface DragState {
   readonly elementId: string;
@@ -32,6 +33,8 @@ interface DragState {
   readonly startPositions: ReadonlyMap<string, { x: number; y: number }>;
   readonly startSizes: ReadonlyMap<string, { width: number; height: number }>;
   readonly mode: "move" | "resize";
+  readonly resizeDirection?: ResizeDirection;
+  readonly aspectLocked?: boolean;
 }
 
 interface RubberBandState {
@@ -155,7 +158,7 @@ export function SurfaceCanvas({
   );
 
   const handleResizeMouseDown = useCallback(
-    (elementId: string, e: React.MouseEvent) => {
+    (elementId: string, direction: ResizeDirection, e: React.MouseEvent) => {
       if (e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
@@ -171,8 +174,8 @@ export function SurfaceCanvas({
       const startSizes = new Map<string, { width: number; height: number }>();
       startPositions.set(elementId, { x: element.x, y: element.y });
       startSizes.set(elementId, {
-        width: Math.max(element.width, 10),
-        height: Math.max(element.height, 10),
+        width: Math.max(element.width, MIN_DIMENSION),
+        height: Math.max(element.height, MIN_DIMENSION),
       });
 
       setDragState({
@@ -182,6 +185,8 @@ export function SurfaceCanvas({
         startPositions,
         startSizes,
         mode: "resize",
+        resizeDirection: direction,
+        aspectLocked: e.shiftKey,
       });
       setSnapGuides(null);
     },
@@ -279,12 +284,22 @@ export function SurfaceCanvas({
             }
             setSnapGuides(null);
           }
-        } else if (dragState.elementId) {
-          const size = dragState.startSizes.get(dragState.elementId) ?? { width: 10, height: 10 };
-          patches.set(dragState.elementId, {
-            width: Math.max(size.width + dx, 10),
-            height: Math.max(size.height + dy, 10),
-          });
+        } else if (dragState.elementId && dragState.resizeDirection) {
+          const start = dragState.startPositions.get(dragState.elementId);
+          const size = dragState.startSizes.get(dragState.elementId) ?? {
+            width: MIN_DIMENSION,
+            height: MIN_DIMENSION,
+          };
+          if (start) {
+            const next = applyResize(
+              { x: start.x, y: start.y, width: size.width, height: size.height },
+              dragState.resizeDirection,
+              dx,
+              dy,
+              dragState.aspectLocked === true,
+            );
+            patches.set(dragState.elementId, next);
+          }
           setSnapGuides(null);
         }
         onUpdateElements(patches);
@@ -570,18 +585,125 @@ export function SurfaceCanvas({
       </div>
 
       {singleSelected && primarySelectedId && dragState?.mode !== "move" && (
-        <div
-          className="resize-handle"
-          style={{
-            left: `${singleSelected.x * previewScale + singleSelected.width * previewScale - 6}px`,
-            top: `${singleSelected.y * previewScale + singleSelected.height * previewScale - 6}px`,
-          }}
-          onMouseDown={(e) => handleResizeMouseDown(primarySelectedId, e)}
+        <ResizeHandles
+          element={singleSelected}
+          scale={previewScale}
+          onResizeStart={(direction, e) => handleResizeMouseDown(primarySelectedId, direction, e)}
         />
       )}
 
       {renderRubberBand()}
       {renderSnapGuides()}
+    </div>
+  );
+}
+
+interface ResizeHandlesProps {
+  readonly element: CreationFlowElement;
+  readonly scale: number;
+  readonly onResizeStart: (direction: ResizeDirection, e: React.MouseEvent<HTMLDivElement>) => void;
+}
+
+type ResizeHandlePosition = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
+
+const RESIZE_DIRECTIONS: ReadonlyArray<{
+  readonly direction: ResizeHandlePosition;
+  readonly cursor: string;
+  readonly side: ResizeHandlePosition;
+}> = [
+  { direction: "nw", cursor: "nwse-resize", side: "nw" },
+  { direction: "n", cursor: "ns-resize", side: "n" },
+  { direction: "ne", cursor: "nesw-resize", side: "ne" },
+  { direction: "e", cursor: "ew-resize", side: "e" },
+  { direction: "se", cursor: "nwse-resize", side: "se" },
+  { direction: "s", cursor: "ns-resize", side: "s" },
+  { direction: "sw", cursor: "nesw-resize", side: "sw" },
+  { direction: "w", cursor: "ew-resize", side: "w" },
+];
+
+function ResizeHandles({ element, scale, onResizeStart }: ResizeHandlesProps) {
+  const containerStyle: React.CSSProperties = {
+    position: "absolute",
+    left: `${element.x * scale}px`,
+    top: `${element.y * scale}px`,
+    width: `${element.width * scale}px`,
+    height: `${element.height * scale}px`,
+    pointerEvents: "none",
+    zIndex: 9999,
+  };
+
+  return (
+    <div className="resize-handles" style={containerStyle} aria-hidden="true">
+      <div
+        className="resize-selection-outline"
+        style={{
+          position: "absolute",
+          inset: 0,
+          border: "1px solid var(--color-primary)",
+          pointerEvents: "none",
+        }}
+      />
+      {RESIZE_DIRECTIONS.map((handle) => {
+        const offset = -6;
+        const style: React.CSSProperties = {
+          position: "absolute",
+          width: 12,
+          height: 12,
+          borderRadius: 2,
+          background: "var(--color-primary)",
+          border: "2px solid var(--color-bg-white)",
+          cursor: handle.cursor,
+          pointerEvents: "auto",
+          boxShadow: "0 1px 4px rgba(0, 0, 0, 0.2)",
+        };
+        switch (handle.side) {
+          case "nw":
+            style.left = offset;
+            style.top = offset;
+            break;
+          case "n":
+            style.left = "50%";
+            style.top = offset;
+            style.transform = "translateX(-50%)";
+            break;
+          case "ne":
+            style.right = offset;
+            style.top = offset;
+            break;
+          case "e":
+            style.right = offset;
+            style.top = "50%";
+            style.transform = "translateY(-50%)";
+            break;
+          case "se":
+            style.right = offset;
+            style.bottom = offset;
+            break;
+          case "s":
+            style.left = "50%";
+            style.bottom = offset;
+            style.transform = "translateX(-50%)";
+            break;
+          case "sw":
+            style.left = offset;
+            style.bottom = offset;
+            break;
+          case "w":
+            style.left = offset;
+            style.top = "50%";
+            style.transform = "translateY(-50%)";
+            break;
+        }
+        return (
+          <div
+            key={handle.direction}
+            className={`resize-handle resize-handle-${handle.direction}`}
+            style={style}
+            data-resize-direction={handle.direction}
+            onMouseDown={(e) => onResizeStart(handle.direction, e)}
+          />
+        );
+      })}
     </div>
   );
 }

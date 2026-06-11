@@ -807,6 +807,20 @@ button {
   transform: scale(1.2);
 }
 
+.resize-handles {
+  --resize-handle-size: 12px;
+}
+
+.resize-handle-n,
+.resize-handle-s {
+  margin-left: calc(var(--resize-handle-size) / -2);
+}
+
+.resize-handle-e,
+.resize-handle-w {
+  margin-top: calc(var(--resize-handle-size) / -2);
+}
+
 .canvas-element-absolute {
   transition:
     border-color 0.15s ease,
