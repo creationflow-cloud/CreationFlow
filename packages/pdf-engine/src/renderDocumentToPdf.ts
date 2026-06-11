@@ -203,9 +203,11 @@ export function toPdfUnits(value: number, unit: CreationFlowUnit | undefined): n
 }
 
 export function convertTopLeftToPdfY(
+  /* eslint-disable @typescript-eslint/no-unused-vars */
   _pageHeight: number,
   y: number,
   _elementHeight: number,
+  /* eslint-enable @typescript-eslint/no-unused-vars */
 ): number {
   return y;
 }
@@ -508,7 +510,9 @@ async function renderTextElement(
 
   await setTextFont(doc, element, options, state);
   doc.fontSize(fontSize);
-  setFillColor(doc, element.color) || doc.fillColor("black");
+  if (!setFillColor(doc, element.color)) {
+    doc.fillColor("black");
+  }
   doc.text(element.text ?? "", x, y, {
     width,
     height,
@@ -1474,7 +1478,6 @@ export function runDocumentPreflight(
   const options = context.options ?? {};
   const minDpi =
     options.minAssetDpi ?? context.document.metadata.minAssetDpi ?? DEFAULT_MIN_ASSET_DPI;
-  const targetDpi = options.targetDpi ?? context.document.metadata.dpi ?? DEFAULT_TARGET_DPI;
 
   for (const page of context.document.pages) {
     const unit = page.unit;
@@ -1539,7 +1542,6 @@ export function runDocumentPreflight(
   }
 
   if (typeof minDpi === "number" && minDpi > 0) {
-    const minWidthInches = (1 / targetDpi) * 96;
     for (const asset of context.document.assets) {
       if (asset.type !== "image" || !asset.width || !asset.height) {
         continue;

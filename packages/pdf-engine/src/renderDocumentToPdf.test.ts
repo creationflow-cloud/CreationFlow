@@ -20,7 +20,6 @@ import type {
 import {
   buildRuleEffectSummary,
   convertTopLeftToPdfY,
-  DEFAULT_TARGET_DPI,
   isValidImageCrop,
   parseColor,
   renderDocumentToPdf,
@@ -697,25 +696,6 @@ describe("PDF coordinate helpers", () => {
 });
 
 describe("path-based surfaces", () => {
-  function createPathSurface(
-    id: string,
-    pathData: string,
-    elements: readonly CreationFlowElement[] = [],
-    offset: { readonly x?: number; readonly y?: number } = {},
-  ): CreationFlowSurface {
-    return {
-      id: id as SurfaceId,
-      name: id,
-      width: 300,
-      height: 200,
-      unit: "pt",
-      elements,
-      shape: "path",
-      pathData,
-      ...offset,
-    } as CreationFlowSurface;
-  }
-
   function createColorRegionSurface(
     id: string,
     pathData: string,

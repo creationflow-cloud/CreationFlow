@@ -56,7 +56,6 @@ import type { CanvasSettings } from "./components/CanvasSettingsPanel.js";
 import {
   clearElementSelection,
   getSelectionPrimaryElementId,
-  isElementSelected,
   NO_MODIFIER,
   selectElement,
   selectElementsInRect,
@@ -1085,11 +1084,6 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   }, [pdfPreviewUrl]);
 
   const noIdProvided = !templateId && !configurationId && !loading && !configurationLoading;
-
-  const isElementSelectedCallback = useCallback(
-    (id: string) => isElementSelected(id, selection),
-    [selection],
-  );
 
   return (
     <main className="editor-shell">

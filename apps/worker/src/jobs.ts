@@ -7,7 +7,6 @@ export interface RenderJobQueuePayload {
 }
 
 export interface RenderWorkerOptions {
-  readonly maxAttempts?: number;
   readonly backoffMs?: number;
   readonly apiKey?: string;
 }
@@ -52,7 +51,6 @@ export function createRenderWorker(
   options: RenderWorkerOptions = {},
 ): Worker<RenderJobQueuePayload> {
   const apiUrl = (process.env.API_URL ?? "http://localhost:3000").replace(/\/+$/, "");
-  const maxAttempts = options.maxAttempts ?? readEnvInt("RENDER_JOB_MAX_ATTEMPTS", 3);
   const backoffMs = options.backoffMs ?? readEnvInt("RENDER_JOB_BACKOFF_MS", 2_000);
   const apiKey = options.apiKey ?? process.env.CREATIONFLOW_API_KEY?.trim();
 

@@ -14,7 +14,7 @@ export interface Emitter<TEventMap extends Record<string, readonly unknown[]>> {
   listenerCount<K extends keyof TEventMap>(event: K): number;
 }
 
-type AnyListener = (...args: any[]) => void;
+type AnyListener = (...args: ReadonlyArray<unknown>) => void;
 type ListenerSet = Set<AnyListener>;
 
 export function createEmitter<

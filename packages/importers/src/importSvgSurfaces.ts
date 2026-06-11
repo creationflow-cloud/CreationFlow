@@ -5,8 +5,10 @@ import { inferRoleFromName } from "./roleMapper.js";
 
 export function importSvgSurfaces(
   svgString: string,
-  options?: SvgImportOptions,
+  options: SvgImportOptions = {},
 ): SvgSurfaceImportResult {
+  // options reserved for future per-import configuration (unit, default role)
+  void options;
   const warnings: SvgSurfaceImportWarning[] = [];
   const parsed = parseSvg(svgString, warnings);
 

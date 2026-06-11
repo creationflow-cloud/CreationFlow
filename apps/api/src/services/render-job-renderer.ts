@@ -35,13 +35,6 @@ export class RenderJobTransientError extends Error {
   }
 }
 
-const TRANSIENT_ERROR_CODES: ReadonlySet<string> = new Set([
-  "storage_unavailable",
-  "asset_resolve_failed",
-  "render_failed",
-  "internal_error",
-]);
-
 function classifyRenderError(error: unknown): { code: string; transient: boolean } {
   if (error instanceof RenderJobTransientError) {
     return { code: error.code, transient: true };
