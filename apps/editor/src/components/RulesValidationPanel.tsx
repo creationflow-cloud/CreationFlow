@@ -1,115 +1,52 @@
-import { useMemo } from "react";
-import { evaluateRules } from "@creationflow/rules-engine";
-import type {
-  RuleEvaluationError,
-  RuleEvaluationResult,
-  RuleEvaluationWarning,
-  RuleMandatoryViolation,
-  RuleVariableValue,
-} from "@creationflow/rules-engine";
-import type { CreationFlowDocument } from "@creationflow/schema";
+import type { RuleEvaluationWarning, RuleMandatoryViolation } from "@creationflow/rules-engine";
 
 interface RulesValidationPanelProps {
-  readonly document: CreationFlowDocument | null;
-  readonly variables: Readonly<Record<string, RuleVariableValue>>;
+  readonly mandatoryViolations: readonly RuleMandatoryViolation[];
+  readonly warnings: readonly RuleEvaluationWarning[];
 }
 
-function formatEvaluation(result: RuleEvaluationResult | null) {
-  if (!result) {
-    return { errors: [], warnings: [], violations: [] };
-  }
-  return {
-    errors: result.errors,
-    warnings: result.warnings,
-    violations: result.mandatoryViolations,
-  };
-}
-
-export function RulesValidationPanel({ document, variables }: RulesValidationPanelProps) {
-  const result = useMemo(() => {
-    if (!document) return null;
-    return evaluateRules(document, { variables });
-  }, [document, variables]);
-
-  const { errors, warnings, violations } = formatEvaluation(result);
-  const hasIssues = errors.length + warnings.length + violations.length > 0;
-
-  if (!document) {
-    return (
-      <section className="rules-validation rules-validation--empty">
-        <h3 className="rules-validation__heading">Rules</h3>
-        <p className="rules-validation__hint">No document loaded.</p>
-      </section>
-    );
-  }
+export function RulesValidationPanel({ mandatoryViolations, warnings }: RulesValidationPanelProps) {
+  const hasIssues = mandatoryViolations.length > 0 || warnings.length > 0;
 
   if (!hasIssues) {
     return (
-      <section className="rules-validation rules-validation--ok">
-        <h3 className="rules-validation__heading">Rules</h3>
-        <p className="rules-validation__hint">
-          All {document.rules.length} rule{document.rules.length === 1 ? "" : "s"} pass.
-        </p>
-      </section>
+      <div className="property-card">
+        <h3>Rule validation</h3>
+        <p className="empty-state-text">All rules satisfied.</p>
+      </div>
     );
   }
 
   return (
-    <section className="rules-validation" aria-live="polite">
-      <h3 className="rules-validation__heading">Rules</h3>
-
-      {violations.length > 0 && (
-        <div className="rules-validation__group rules-validation__group--error">
-          <h4>
-            {violations.length} mandatory violation{violations.length === 1 ? "" : "s"}
+    <div className="property-card">
+      <h3>Rule validation</h3>
+      {mandatoryViolations.length > 0 && (
+        <section className="rules-violations-section">
+          <h4 className="rules-violations-heading">
+            Mandatory violations ({mandatoryViolations.length})
           </h4>
-          <ul>
-            {violations.map((violation: RuleMandatoryViolation, index: number) => (
-              <li key={`${violation.ruleId}-${violation.variableName}-${index}`}>
-                <code>{violation.variableName}</code>
-                {violation.message ? `: ${violation.message}` : " is required."}
+          <ul className="rules-violations-list">
+            {mandatoryViolations.map((violation) => (
+              <li key={`${violation.ruleId}-${violation.variableName}`}>
+                <strong>{violation.ruleId}</strong> ({violation.variableName}):{" "}
+                {violation.message ?? "Required value missing"}
               </li>
             ))}
           </ul>
-          <p className="rules-validation__note">
-            Save and render are blocked until these variables are filled in.
-          </p>
-        </div>
+        </section>
       )}
-
-      {errors.length > 0 && (
-        <div className="rules-validation__group rules-validation__group--error">
-          <h4>
-            {errors.length} rule error{errors.length === 1 ? "" : "s"}
-          </h4>
-          <ul>
-            {errors.map((error: RuleEvaluationError, index: number) => (
-              <li key={`${error.ruleId ?? "global"}-${index}`}>
-                {error.ruleId ? <code>{error.ruleId}</code> : "Rule"}
-                {": "}
-                {error.message}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       {warnings.length > 0 && (
-        <div className="rules-validation__group rules-validation__group--warning">
-          <h4>
-            {warnings.length} warning{warnings.length === 1 ? "" : "s"}
-          </h4>
-          <ul>
-            {warnings.map((warning: RuleEvaluationWarning, index: number) => (
-              <li key={`${warning.ruleId}-${index}`}>
-                <code>{warning.ruleId}</code>
-                {": "}
-                {warning.message}
+        <section className="rules-warnings-section">
+          <h4 className="rules-warnings-heading">Warnings ({warnings.length})</h4>
+          <ul className="rules-warnings-list">
+            {warnings.map((warning) => (
+              <li key={warning.ruleId}>
+                <strong>{warning.ruleId}</strong>: {warning.message}
               </li>
             ))}
           </ul>
-        </div>
+        </section>
       )}
-    </section>
+    </div>
   );
 }

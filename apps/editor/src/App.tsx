@@ -1192,6 +1192,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
             templateId={templateId}
             loading={loading}
             configurationCreating={configurationCreating}
+            ruleEvaluation={ruleEvaluation}
             error={error}
             configurationError={configurationError}
             currentDocument={currentDocument}

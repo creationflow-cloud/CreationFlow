@@ -17,7 +17,9 @@ describe("render pipeline integration", () => {
   });
 
   it("performRenderRequest posts to the render endpoint with auth header", async () => {
-    const fetchMock = vi.fn(async () => new Response("", { status: 200 })) as unknown as typeof fetch;
+    const fetchMock = vi.fn(
+      async () => new Response("", { status: 200 }),
+    ) as unknown as typeof fetch;
 
     await performRenderRequest("http://api.local", "job-42", fetchMock, {
       apiKey: "test-key",
@@ -32,7 +34,9 @@ describe("render pipeline integration", () => {
   });
 
   it("performRenderRequest omits the X-API-Key header when none is provided", async () => {
-    const fetchMock = vi.fn(async () => new Response("", { status: 200 })) as unknown as typeof fetch;
+    const fetchMock = vi.fn(
+      async () => new Response("", { status: 200 }),
+    ) as unknown as typeof fetch;
 
     await performRenderRequest("http://api.local", "job-99", fetchMock);
 
@@ -46,9 +50,9 @@ describe("render pipeline integration", () => {
       async () => new Response("service unavailable", { status: 503 }),
     ) as unknown as typeof fetch;
 
-    await expect(
-      performRenderRequest("http://api.local", "job-1", fetchMock),
-    ).rejects.toThrow(/503/);
+    await expect(performRenderRequest("http://api.local", "job-1", fetchMock)).rejects.toThrow(
+      /503/,
+    );
   });
 
   it("performRenderRequest treats 4xx as a permanent error", async () => {
@@ -56,8 +60,8 @@ describe("render pipeline integration", () => {
       async () => new Response("not found", { status: 404 }),
     ) as unknown as typeof fetch;
 
-    await expect(
-      performRenderRequest("http://api.local", "job-1", fetchMock),
-    ).rejects.toThrow(/404/);
+    await expect(performRenderRequest("http://api.local", "job-1", fetchMock)).rejects.toThrow(
+      /404/,
+    );
   });
 });

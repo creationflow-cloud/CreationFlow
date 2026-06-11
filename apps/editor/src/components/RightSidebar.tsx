@@ -1,7 +1,8 @@
 import type { CreationFlowDocument, CreationFlowElement } from "@creationflow/schema";
-import type { RuleVariableValue } from "@creationflow/rules-engine";
+import type { RuleEvaluationResult, RuleVariableValue } from "@creationflow/rules-engine";
 import { ElementProperties } from "./ElementProperties.js";
 import { DocumentInfo } from "./DocumentInfo.js";
+import { RulesValidationPanel } from "./RulesValidationPanel.js";
 import type { ConfigurationDto } from "../api/configurations.js";
 import type { ProductTemplateDto } from "../api/product-templates.js";
 
@@ -28,6 +29,7 @@ interface RightSidebarProps {
   readonly configurationError: string | null;
   readonly currentDocument: CreationFlowDocument | null;
   readonly editorVariables: Readonly<Record<string, RuleVariableValue>>;
+  readonly ruleEvaluation: RuleEvaluationResult | null;
 }
 
 function MultiSelectionSummary({
@@ -179,6 +181,7 @@ export function RightSidebar({
   configurationError,
   currentDocument,
   editorVariables,
+  ruleEvaluation,
 }: RightSidebarProps) {
   const isMulti = selectedElementCount > 1;
 
@@ -234,6 +237,15 @@ export function RightSidebar({
           configurationError={configurationError}
         />
       </section>
+
+      {ruleEvaluation && (
+        <section className="sidebar-section sidebar-section-rules">
+          <RulesValidationPanel
+            mandatoryViolations={ruleEvaluation.mandatoryViolations}
+            warnings={ruleEvaluation.warnings}
+          />
+        </section>
+      )}
     </aside>
   );
 }
