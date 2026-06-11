@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { sanitizeSvg } from "./asset-upload.js";
+import { PdfValidationError, sanitizeSvg, validatePdf } from "./asset-upload.js";
 
 function toBytes(svg: string): Uint8Array {
   return new TextEncoder().encode(svg);
@@ -53,5 +53,50 @@ describe("SVG sanitization", () => {
     const text = new TextDecoder().decode(result);
     expect(text).toContain("stop");
     expect(text).toContain("rect");
+  });
+});
+
+function padBytes(data: Uint8Array, length: number): Uint8Array {
+  if (data.byteLength >= length) return data;
+  const padded = new Uint8Array(length);
+  padded.set(data);
+  return padded;
+}
+
+function makeMinimalPdf(): Uint8Array {
+  const header = "%PDF-1.4\n";
+  const body = "%¥±ë\n1 0 obj\n<<>>\nendobj\n";
+  const filler = "0".repeat(500);
+  const trailer = "trailer\n<<>>\nstartxref\n0\n%%EOF";
+  return new TextEncoder().encode(header + body + filler + trailer);
+}
+
+describe("PDF validation", () => {
+  it("accepts a minimal valid PDF", () => {
+    expect(() => validatePdf(makeMinimalPdf())).not.toThrow();
+  });
+
+  it("rejects file without %PDF- header", () => {
+    const fake = new TextEncoder().encode("not a pdf");
+    expect(() => validatePdf(padBytes(fake, 300))).toThrow(PdfValidationError);
+  });
+
+  it("rejects file without %%EOF trailer", () => {
+    const body = "%PDF-1.4\nblah";
+    expect(() => validatePdf(padBytes(new TextEncoder().encode(body), 300))).toThrow(
+      PdfValidationError,
+    );
+  });
+
+  it("rejects too-small files", () => {
+    const tiny = new TextEncoder().encode("%PDF-1.4\n%%EOF");
+    expect(() => validatePdf(tiny)).toThrow(PdfValidationError);
+  });
+
+  it("accepts PDF with CRLF line endings before %%EOF", () => {
+    const header = "%PDF-1.4\n";
+    const filler = "x".repeat(250);
+    const trailer = "%%EOF\r\n";
+    expect(() => validatePdf(new TextEncoder().encode(header + filler + trailer))).not.toThrow();
   });
 });

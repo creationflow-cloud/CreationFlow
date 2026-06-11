@@ -91,6 +91,63 @@ const SVG_SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
 
 const MAX_TEXT_DECODER_BYTES = 10 * 1024 * 1024;
 
+export class SvgSanitizationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SvgSanitizationError";
+  }
+}
+
+export class PdfValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PdfValidationError";
+  }
+}
+
+const PDF_MAGIC = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]); // %PDF-
+const PDF_EOF = new Uint8Array([0x25, 0x25, 0x45, 0x4f, 0x46]); // %%EOF
+const PDF_EOF_CR_LF = new Uint8Array([0x25, 0x25, 0x45, 0x4f, 0x46, 0x0d, 0x0a]);
+const MAX_PDF_TAIL_SCAN = 1024;
+
+function startsWithMagic(data: Uint8Array): boolean {
+  if (data.byteLength < PDF_MAGIC.byteLength) return false;
+  for (let i = 0; i < PDF_MAGIC.byteLength; i++) {
+    if (data[i] !== PDF_MAGIC[i]) return false;
+  }
+  return true;
+}
+
+function endsWithSequence(haystack: Uint8Array, needle: Uint8Array): boolean {
+  if (haystack.byteLength < needle.byteLength) return false;
+  const offset = haystack.byteLength - needle.byteLength;
+  for (let i = 0; i < needle.byteLength; i++) {
+    if (haystack[offset + i] !== needle[i]) return false;
+  }
+  return true;
+}
+
+function endsWithEof(data: Uint8Array): boolean {
+  if (data.byteLength < PDF_EOF.byteLength) return false;
+  const tailStart = Math.max(0, data.byteLength - MAX_PDF_TAIL_SCAN);
+  const tail = data.subarray(tailStart);
+  if (endsWithSequence(tail, PDF_EOF_CR_LF)) return true;
+  if (endsWithSequence(tail, PDF_EOF)) return true;
+  return false;
+}
+
+export function validatePdf(data: Uint8Array): void {
+  if (!startsWithMagic(data)) {
+    throw new PdfValidationError("File is not a valid PDF: missing %PDF- header.");
+  }
+  if (!endsWithEof(data)) {
+    throw new PdfValidationError("File is not a valid PDF: missing %%EOF trailer.");
+  }
+  if (data.byteLength < 200) {
+    throw new PdfValidationError("File is too small to be a valid PDF.");
+  }
+}
+
 export function sanitizeSvg(data: Uint8Array): Uint8Array {
   const decoder = new TextDecoder("utf-8", { fatal: false });
   const raw =
@@ -122,7 +179,12 @@ export async function uploadAsset(
     throw new Error(`File size exceeds maximum allowed size of ${config.maxUploadBytes} bytes.`);
   }
 
-  const sanitizedData = input.type === "vector" ? sanitizeSvg(input.file.data) : input.file.data;
+  const sanitizedData =
+    input.type === "vector"
+      ? sanitizeSvg(input.file.data)
+      : input.type === "pdf"
+        ? (validatePdf(input.file.data), input.file.data)
+        : input.file.data;
 
   const storageKey = crypto.randomUUID();
   const bucket = `assets/${input.workspaceId}`;
