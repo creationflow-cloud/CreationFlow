@@ -63,8 +63,8 @@ const SVG_SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
     polyline: ["points"],
     polygon: ["points"],
     text: ["x", "y", "font-size", "font-family", "text-anchor", "font-weight"],
-    linearGradient: ["x1", "y1", "x2", "y2", "gradientUnits", "gradientTransform"],
-    radialGradient: ["cx", "cy", "r", "fx", "fy", "gradientUnits", "gradientTransform"],
+    lineargradient: ["x1", "y1", "x2", "y2", "gradientunits", "gradienttransform"],
+    radialgradient: ["cx", "cy", "r", "fx", "fy", "gradientunits", "gradienttransform"],
     stop: ["offset", "stop-color", "stop-opacity"],
     clipPath: ["id"],
     mask: ["id"],
@@ -91,7 +91,7 @@ const SVG_SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
 
 const MAX_TEXT_DECODER_BYTES = 10 * 1024 * 1024;
 
-function sanitizeSvg(data: Uint8Array): Uint8Array {
+export function sanitizeSvg(data: Uint8Array): Uint8Array {
   const decoder = new TextDecoder("utf-8", { fatal: false });
   const raw =
     data.byteLength > MAX_TEXT_DECODER_BYTES
