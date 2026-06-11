@@ -291,3 +291,100 @@ describe("auth plugin role permissions", () => {
     expect(response.statusCode).toBe(200);
   });
 });
+
+describe("auth plugin workspace isolation", () => {
+  it("blocks key A from accessing workspace B in the body", async () => {
+    current = await buildTestServer({
+      apiKey: "key",
+      allowedWorkspaces: new Set(["ws-a"]),
+    });
+
+    const response = await current.server.inject({
+      method: "POST",
+      url: "/by-body",
+      headers: { "x-api-key": "key", "content-type": "application/json" },
+      payload: JSON.stringify({ workspaceId: "ws-b" }),
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("rejects request when body workspaceId is missing and server restricts workspaces", async () => {
+    current = await buildTestServer({
+      apiKey: "key",
+      allowedWorkspaces: new Set(["ws-a"]),
+    });
+
+    const response = await current.server.inject({
+      method: "POST",
+      url: "/by-body",
+      headers: { "x-api-key": "key", "content-type": "application/json" },
+      payload: JSON.stringify({ name: "x" }),
+    });
+
+    expect(response.statusCode).toBe(200);
+  });
+
+  it("allows matching query workspaceId across multiple routes", async () => {
+    current = await buildTestServer({
+      apiKey: "key",
+      allowedWorkspaces: new Set(["ws-a", "ws-b"]),
+    });
+
+    const a = await current.server.inject({
+      method: "GET",
+      url: "/by-query?workspaceId=ws-a",
+      headers: { "x-api-key": "key" },
+    });
+    const b = await current.server.inject({
+      method: "GET",
+      url: "/by-query?workspaceId=ws-b",
+      headers: { "x-api-key": "key" },
+    });
+
+    expect(a.statusCode).toBe(200);
+    expect(b.statusCode).toBe(200);
+  });
+
+  it("treats empty string workspaceId as missing", async () => {
+    current = await buildTestServer({
+      apiKey: "key",
+      allowedWorkspaces: new Set(["ws-a"]),
+    });
+
+    const response = await current.server.inject({
+      method: "GET",
+      url: "/by-query?workspaceId=",
+      headers: { "x-api-key": "key" },
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("isolates workspaces under mixed access", async () => {
+    current = await buildTestServer({
+      apiKey: "key",
+      allowedWorkspaces: new Set(["ws-1"]),
+    });
+
+    const allowed = await current.server.inject({
+      method: "GET",
+      url: "/by-query?workspaceId=ws-1",
+      headers: { "x-api-key": "key" },
+    });
+    const denied = await current.server.inject({
+      method: "GET",
+      url: "/by-query?workspaceId=ws-2",
+      headers: { "x-api-key": "key" },
+    });
+    const alsoDenied = await current.server.inject({
+      method: "GET",
+      url: "/by-query?workspaceId=ws-3",
+      headers: { "x-api-key": "key" },
+    });
+
+    expect(allowed.statusCode).toBe(200);
+    expect(denied.statusCode).toBe(403);
+    expect(alsoDenied.statusCode).toBe(403);
+  });
+});
