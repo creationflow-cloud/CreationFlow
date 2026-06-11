@@ -1,5 +1,7 @@
 import { Queue } from "bullmq";
 
+import type { FastifyInstance } from "fastify";
+
 export const RENDER_JOB_QUEUE_NAME = "creationflow-render-jobs";
 
 export interface RenderJobQueuePayload {
@@ -78,4 +80,19 @@ export async function enqueueRenderJob(jobId: string): Promise<void> {
 export async function closeRenderJobQueue(): Promise<void> {
   await queue?.close();
   queue = undefined;
+}
+
+/**
+ * Refresh the BullMQ queue gauges on the supplied Fastify instance's
+ * metrics store. Best-effort: callers are expected to swallow errors
+ * so that a Redis outage cannot break the `/metrics` endpoint.
+ */
+export async function refreshQueueSizeMetrics(server: FastifyInstance): Promise<void> {
+  if (!server.metrics) {
+    return;
+  }
+  const counts = await getRenderJobQueue().getJobCounts();
+  for (const [state, count] of Object.entries(counts)) {
+    server.metrics.setQueueSize(state, count);
+  }
 }

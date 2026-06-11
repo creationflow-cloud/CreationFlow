@@ -9,7 +9,71 @@ export interface RenderJobQueuePayload {
 export interface RenderWorkerOptions {
   readonly backoffMs?: number;
   readonly apiKey?: string;
+  readonly log?: WorkerLogger;
 }
+
+const SENSITIVE_LOG_KEYS = new Set([
+  "x-api-key",
+  "authorization",
+  "api_token",
+  "password",
+  "secret",
+  "credentials",
+  "document",
+  "body",
+  "payload",
+  "data",
+]);
+
+const REDACTED = "[REDACTED]";
+
+export interface WorkerLogger {
+  info: (bindings: Record<string, unknown>, message: string) => void;
+  warn: (bindings: Record<string, unknown>, message: string) => void;
+  error: (bindings: Record<string, unknown>, message: string) => void;
+}
+
+function redact(bindings: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(bindings)) {
+    if (SENSITIVE_LOG_KEYS.has(key.toLowerCase())) {
+      out[key] = REDACTED;
+      continue;
+    }
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      out[key] = redact(value as Record<string, unknown>);
+      continue;
+    }
+    out[key] = value;
+  }
+  return out;
+}
+
+function writeLog(
+  level: "info" | "warn" | "error",
+  bindings: Record<string, unknown>,
+  message: string,
+): void {
+  const payload = {
+    level,
+    time: new Date().toISOString(),
+    component: "creationflow-worker",
+    ...redact(bindings),
+    message,
+  };
+  const line = JSON.stringify(payload);
+  if (level === "error") {
+    process.stderr.write(line + "\n");
+  } else {
+    process.stdout.write(line + "\n");
+  }
+}
+
+const defaultLogger: WorkerLogger = {
+  info: (bindings, message) => writeLog("info", bindings, message),
+  warn: (bindings, message) => writeLog("warn", bindings, message),
+  error: (bindings, message) => writeLog("error", bindings, message),
+};
 
 interface RedisConnectionOptions {
   readonly host: string;
@@ -53,11 +117,33 @@ export function createRenderWorker(
   const apiUrl = (process.env.API_URL ?? "http://localhost:3000").replace(/\/+$/, "");
   const backoffMs = options.backoffMs ?? readEnvInt("RENDER_JOB_BACKOFF_MS", 2_000);
   const apiKey = options.apiKey ?? process.env.CREATIONFLOW_API_KEY?.trim();
+  const logger = options.log ?? defaultLogger;
 
   return new Worker<RenderJobQueuePayload>(
     RENDER_JOB_QUEUE_NAME,
     async (job) => {
-      await performRenderRequest(apiUrl, job.data.jobId, fetch, { apiKey });
+      const bindings = { jobId: job.data.jobId, attempt: job.attemptsMade + 1 };
+      const startedAt = process.hrtime.bigint();
+      logger.info({ ...bindings, event: "render.worker.start" }, "worker received render job");
+      try {
+        await performRenderRequest(apiUrl, job.data.jobId, fetch, { apiKey });
+        const durationSeconds = Number(process.hrtime.bigint() - startedAt) / 1e9;
+        logger.info(
+          { ...bindings, event: "render.worker.done", durationSeconds },
+          "render request completed",
+        );
+      } catch (error) {
+        const durationSeconds = Number(process.hrtime.bigint() - startedAt) / 1e9;
+        const err =
+          error instanceof Error
+            ? { name: error.name, message: error.message }
+            : { message: String(error) };
+        logger.error(
+          { ...bindings, event: "render.worker.failed", durationSeconds, err },
+          "render request failed",
+        );
+        throw error;
+      }
     },
     {
       connection: getRedisConnectionOptions(),

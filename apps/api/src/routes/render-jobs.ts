@@ -9,6 +9,8 @@ import {
 import { RenderJobNotFoundError, renderRenderJobToPdf } from "../services/render-job-renderer.js";
 import { enqueueRenderJob } from "../services/render-job-queue.js";
 import type { ApiRenderJobStatus } from "../mappers/render-job-status.js";
+import { resolveMetrics } from "../plugins/metrics.js";
+import { getChildLogger, redactSensitive } from "../plugins/logging.js";
 
 const renderJobOutputSchema = {
   type: "object",
@@ -189,7 +191,21 @@ export async function registerRenderJobRoutes(server: FastifyInstance): Promise<
         }
         server.auth.enforceWorkspaceScope(existing.workspaceId);
 
-        return await renderRenderJobToPdf(server.db, server.storage, request.params.id);
+        const logger = getChildLogger({
+          requestId: request.requestId ?? "-",
+          jobId: existing.id,
+          workspaceId: existing.workspaceId,
+          component: "render-jobs.route",
+        });
+        logger.info(
+          redactSensitive({ event: "render.route.start", status: existing.status }),
+          "render route triggered",
+        );
+
+        return await renderRenderJobToPdf(server.db, server.storage, request.params.id, {
+          metrics: resolveMetrics(server),
+          logger,
+        });
       } catch (error) {
         server.log.error(error);
 

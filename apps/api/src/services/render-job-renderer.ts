@@ -9,6 +9,8 @@ import { getAssetById } from "./assets.js";
 import { getConfigurationById } from "./configurations.js";
 import { getRenderJobById, recordRenderJobAttempt, updateRenderJob } from "./render-jobs.js";
 import type { RenderJobDto } from "./render-jobs.js";
+import { resolveMetrics } from "../plugins/metrics.js";
+import { getChildLogger } from "../plugins/logging.js";
 
 function readRenderVariables(configuration: {
   readonly variables?: unknown;
@@ -90,6 +92,22 @@ export async function renderRenderJobToPdf(
   db: PrismaClient,
   storage: StorageProvider,
   jobId: string,
+  options: {
+    readonly metrics?: {
+      recordRenderJob: (
+        labels: { status: string; workspaceId: string },
+        durationSeconds: number,
+        pdfSizeBytes: number,
+      ) => void;
+      recordPreflightWarning: (code: string) => void;
+      recordStoragePut: (durationSeconds: number) => void;
+    };
+    readonly logger?: {
+      info: (obj: Record<string, unknown>, msg: string) => void;
+      warn: (obj: Record<string, unknown>, msg: string) => void;
+      error: (obj: Record<string, unknown>, msg: string) => void;
+    };
+  } = {},
 ): Promise<RenderJobDto> {
   const job = await getRenderJobById(db, jobId);
 
@@ -110,6 +128,12 @@ export async function renderRenderJobToPdf(
     status: "processing",
     errorMessage: null,
   });
+
+  const startedAt = process.hrtime.bigint();
+  const logger = options.logger ?? getChildLogger({ jobId, workspaceId: job.workspaceId });
+  const metrics = options.metrics ?? resolveMetrics();
+
+  logger.info({ event: "render.start" }, "starting render");
 
   try {
     const configuration = await getConfigurationById(db, job.configurationId);
@@ -170,6 +194,9 @@ export async function renderRenderJobToPdf(
 
     runDocumentPreflight({ document: renderDocument }, (warning) => {
       renderWarnings.push(warning);
+      if (typeof metrics.recordPreflightWarning === "function") {
+        metrics.recordPreflightWarning(warning.code);
+      }
     });
     const debugSurfaces = process.env.CREATIONFLOW_PDF_DEBUG_SURFACES === "true";
     const pdf = await renderDocumentToPdf(renderDocument, {
@@ -231,12 +258,17 @@ export async function renderRenderJobToPdf(
     const filename = getPdfFilename(configuration.id, job.id);
     const bucket = `assets/${job.workspaceId}`;
 
+    const storageStartedAt = process.hrtime.bigint();
     await storage.putObject({
       bucket,
       key: storageKey,
       body: pdf,
       contentType: "application/pdf",
     });
+    if (typeof metrics.recordStoragePut === "function") {
+      const seconds = Number(process.hrtime.bigint() - storageStartedAt) / 1e9;
+      metrics.recordStoragePut(seconds);
+    }
 
     const asset = await createAsset(db, {
       workspaceId: job.workspaceId,
@@ -270,6 +302,25 @@ export async function renderRenderJobToPdf(
       throw new RenderJobNotFoundError();
     }
 
+    const durationSeconds = Number(process.hrtime.bigint() - startedAt) / 1e9;
+    if (typeof metrics.recordRenderJob === "function") {
+      metrics.recordRenderJob(
+        { status: "done", workspaceId: job.workspaceId },
+        durationSeconds,
+        pdf.byteLength,
+      );
+    }
+    logger.info(
+      {
+        event: "render.done",
+        status: "done",
+        durationSeconds,
+        pdfSizeBytes: pdf.byteLength,
+        warningCount: renderWarnings.length,
+      },
+      "render completed",
+    );
+
     return completed;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to render PDF.";
@@ -291,7 +342,48 @@ export async function renderRenderJobToPdf(
     }
 
     if (recorded && classification.transient) {
+      const durationSeconds = Number(process.hrtime.bigint() - startedAt) / 1e9;
+      if (typeof metrics.recordRenderJob === "function") {
+        metrics.recordRenderJob(
+          { status: "failed", workspaceId: job.workspaceId },
+          durationSeconds,
+          0,
+        );
+      }
+      logger.error(
+        {
+          event: "render.failed",
+          status: "failed",
+          durationSeconds,
+          code: classification.code,
+          transient: true,
+          err: error,
+        },
+        "render failed (transient)",
+      );
       throw new RenderJobTransientError(message, classification.code);
+    }
+
+    {
+      const durationSeconds = Number(process.hrtime.bigint() - startedAt) / 1e9;
+      if (typeof metrics.recordRenderJob === "function") {
+        metrics.recordRenderJob(
+          { status: "failed", workspaceId: job.workspaceId },
+          durationSeconds,
+          0,
+        );
+      }
+      logger.error(
+        {
+          event: "render.failed",
+          status: "failed",
+          durationSeconds,
+          code: classification.code,
+          transient: false,
+          err: error,
+        },
+        "render failed (permanent)",
+      );
     }
 
     return failed;
