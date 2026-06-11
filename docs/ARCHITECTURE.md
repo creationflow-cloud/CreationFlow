@@ -8,6 +8,7 @@ CreationFlow is structured as a TypeScript monorepo managed with pnpm workspaces
 - **Apps orchestrate, packages implement** — apps handle user flows and API integration; packages contain domain logic.
 - **Self-hosted first** — no external SaaS dependencies; customer data stays with the customer.
 - **No license server in this repo** — license validation is handled by a separate private service.
+- **Renderer independence** — the document model must remain renderable by canvas, SVG, PDF, PNG, and (later) 3D textures.
 
 ## Apps
 
@@ -18,9 +19,10 @@ The central backend service providing REST endpoints for all platform operations
 - **Framework**: Fastify with TypeScript
 - **Database**: PostgreSQL via Prisma ORM
 - **API Documentation**: OpenAPI/Swagger at `/docs` and `/openapi.json`
+- **Auth**: API-key + Bearer via `X-API-Key` / `Authorization` header, role model `admin` / `editor` / `viewer`, workspace isolation enforced as a global `preHandler` (`apps/api/src/plugins/auth.ts`)
 - **Features**:
   - CRUD for workspaces, products, templates, configurations, render jobs, assets
-  - File upload for assets (multipart)
+  - File upload for assets (multipart) with SVG sanitization and PDF magic-byte validation (`apps/api/src/services/asset-upload.ts`)
   - File serving for uploaded assets
   - CORS enabled for frontend apps
   - Demo data seeding via `DEMO_SEED=true`
@@ -31,12 +33,13 @@ The central backend service providing REST endpoints for all platform operations
 React/Vite admin UI for managing products, templates, and configurations.
 
 - **Framework**: React 19 with Vite
+- **Auth**: `AuthGate` with API-key login + `pingWithApiKey` validation (`apps/admin/src/AuthGate.tsx`)
 - **Features**:
   - Load workspace data (products, templates, configurations)
   - Create products, templates, configurations
   - Edit template pages and surfaces (name, dimensions, shape, role, path data, fill color, clip content)
   - Add/delete surfaces (cannot delete last surface on a page)
-  - SVG import workflow to add surfaces from SVG files
+  - SVG import workflow
   - Open configurations in the editor
 - **Dependencies**: `@creationflow/importers`, `@creationflow/schema`
 
@@ -45,25 +48,35 @@ React/Vite admin UI for managing products, templates, and configurations.
 React/Vite editor for creating and editing design configurations.
 
 - **Framework**: React 19 with Vite, Canvas-based rendering
+- **Auth**: `EditorAuthGate` mirrors the admin login flow (`apps/editor/src/EditorAuthGate.tsx`)
 - **Features**:
   - Load templates or configurations via URL parameters (`?templateId=` or `?configurationId=`)
   - Add text, shape, and image elements
-  - Move and scale elements via canvas interaction
+  - Move and scale elements via canvas interaction and the properties panel
   - Delete and duplicate elements
   - Layer ordering (bring forward/backward, to front/back)
   - Undo/redo via history stack
   - Save configurations back to API
-  - Create render jobs
+  - Create render jobs and download the rendered PDF
   - Page/surface switching
-- **Dependencies**: `@creationflow/core`, `@creationflow/schema`
+  - Rules validation panel in the right sidebar
+- **Dependencies**: `@creationflow/core`, `@creationflow/schema`, `@creationflow/rules-engine`
 
-### `apps/renderer` — Rendering Service (Placeholder)
+### `apps/renderer`
 
-Minimal placeholder for the rendering service. Not yet connected to the render job workflow.
+Standalone render-plan builder and render-job-status helpers.
 
-### `apps/worker` — Background Worker (Placeholder)
+- `render-plan-builder.ts` — builds `PdfRenderPlan` from a `CreationFlowDocument`
+- `render-job-status.ts` — typed enum/helpers for the `RenderJob` state machine
+- Both ship with unit tests in `apps/renderer/src/*.test.ts`
 
-Minimal placeholder for background job processing. No queue or Redis integration yet.
+### `apps/worker`
+
+Background-worker entry that consumes render jobs.
+
+- `RenderWorkerOptions.apiKey` propagates an `X-API-Key` to the API
+- `performRenderRequest` posts to the render route with the auth header
+- `render-pipeline.test.ts` exercises the end-to-end render flow
 
 ## Packages
 
@@ -99,13 +112,16 @@ Prisma schema and database client for PostgreSQL.
 
 PDF render plan and pdfkit-based PDF generation.
 
-- `createPdfRenderPlan()` — convert a CreationFlowDocument to a render plan with pages, surfaces, and elements sorted by zIndex
-- `renderDocumentToPdf()` — generate a PDF using pdfkit (in progress)
+- `createPdfRenderPlan()` — convert a `CreationFlowDocument` to a render plan
+- `renderDocumentToPdf()` — generate a PDF using pdfkit (text, shape, image, group, surface roles)
 - **PDF utilities**: `toPdfUnits()`, `convertTopLeftToPdfY()`
+- **Golden tests**: 95 tests pin the byte output
 
-### `@creationflow/rules-engine` — Rule Evaluation (Placeholder)
+### `@creationflow/rules-engine` — Rule Evaluation
 
-Basic rule evaluation function. Not yet integrated into the document workflow.
+- `evaluateRules()` — evaluate conditions and actions, surface mandatory violations, warnings, and errors
+- Typed `RuleAction`, `RuleCondition`, `RuleEvaluationResult`
+- Editor integration via the right-sidebar `RulesValidationPanel`
 
 ### `@creationflow/importers` — SVG Importer
 
@@ -122,9 +138,11 @@ Abstraction for file storage with multiple backends.
 - **MemoryStorageProvider** — in-memory storage for testing
 - **StorageProvider interface** — pluggable storage abstraction
 
-### `@creationflow/ui` — Shared UI Components (Placeholder)
+### `@creationflow/ui` — Shared UI Utilities
 
-Placeholder for shared UI components.
+- `format`: `cx`, `cxWith`, `clamp`, `formatNumber`, `formatPercent`, `noop`, `isShallowEqual`
+- `timing`: `debounce`, `leadingDebounce`, `rafThrottle`
+- `events`: typed event emitter
 
 ## Adapters
 
@@ -132,16 +150,19 @@ Placeholder for shared UI components.
 
 Installable WordPress plugin skeleton for connecting WooCommerce to a CreationFlow server.
 
+- Plugin header and settings page
 - Stores placeholder settings for API URL, API token, debug mode
-- No real API connection implemented yet
+- No real API connection yet (tracked in P2-001)
 - Must not contain central editor, renderer, pricing, or license logic
 
 ## Deployment
 
 ### `deploy/docker` — Docker Compose Setup
 
-Local development infrastructure.
+Local development infrastructure plus a production-style reverse-proxy profile.
 
 - PostgreSQL on port 5432
 - Redis on port 6379
-- Placeholder services for api, editor, admin, renderer, worker
+- App services with real Dockerfiles: `api.Dockerfile`, `admin.Dockerfile` (+ `admin.nginx.conf`), `editor.Dockerfile` (+ `editor.nginx.conf`), `renderer.Dockerfile`, `worker.Dockerfile`
+- `docker-compose.proxy.yml` adds a Traefik-based reverse proxy profile
+- `LOGGING.md` and `PROXY.md` document operational concerns

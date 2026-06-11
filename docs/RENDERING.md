@@ -4,13 +4,15 @@ This document describes the current state of the rendering pipeline and PDF gene
 
 ## Current Render Pipeline
 
-The render pipeline is partially implemented. Here is the flow:
+The render pipeline is fully implemented for MVP output. Here is the flow:
 
 1. **Editor creates a render job** — `POST /render-jobs` with a `configurationId`
 2. **Editor triggers rendering** — `POST /render-jobs/:id/render`
-3. **API processes the render job** — the render route uses the PDF engine to generate output
+3. **API processes the render job** — the render route uses the PDF engine to generate output (`apps/api/src/routes/render-jobs.ts`)
 4. **PDF output is stored** — the output metadata is saved to the render job
 5. **Editor downloads the PDF** — `GET /render-jobs/:id/output/pdf`
+
+The worker (`apps/worker`) implements the same pipeline as a standalone consumer and propagates an `X-API-Key` header (`apps/worker/src/jobs.ts`). It is exercised by integration tests in `apps/worker/src/render-pipeline.test.ts`.
 
 ## PDF Engine (`@creationflow/pdf-engine`)
 
@@ -61,43 +63,38 @@ The render plan:
 - Converts document units to PDF points
 - Converts top-left Y coordinates to PDF's bottom-left coordinate system
 - Creates pages with the correct dimensions
-- Renders elements based on their type
+- Renders elements based on their type:
+  - **Text** — font loading, text layout, styling
+  - **Shape** — rectangles, ellipses, lines with fill and stroke
+  - **Image** — assets resolved from storage and embedded with fit modes
+  - **Group** — recursive rendering of grouped elements
+  - **Variable** — variable values resolved during render
+- Surface role handling for path-based surfaces, color regions, design regions, and overlays
 
-**Current status**: The PDF generation code exists and handles:
+A bug in `setFillColor` was fixed and the `targetDpi` / `minWidthInches` parameters were removed (the engine now relies on document units directly). See `packages/pdf-engine/src/renderDocumentToPdf.ts`.
 
-- Page creation with proper dimensions
-- Coordinate conversion (top-left to PDF Y-axis)
-- Unit conversion (px, mm, pt to PDF points)
-- Basic element rendering
+### Golden Tests
 
-**What is missing for complete PDF output**:
-
-- **Text rendering** — font loading, text layout, text styling (font family, size, weight, color, alignment)
-- **Image rendering** — loading images from assets, embedding images in PDF, fit mode handling
-- **Shape rendering** — drawing rectangles, ellipses, lines with fill and stroke
-- **Group rendering** — recursively rendering grouped elements
-- **Variable rendering** — resolving variable values
-- **Bleed and safe area** — handling print area, bleed, and safe area margins
-- **Color management** — CMYK color support for print
-- **High-resolution output** — DPI settings for print-quality output
-- **Surface roles** — handling color regions, design regions, overlays, and path-based surfaces
-- **Asset resolution** — loading images from the storage provider
+The PDF engine ships 95 golden tests under `packages/pdf-engine/src/__tests__/golden/` that pin the byte output of the PDF stream. They cover text, shape, image, group, surface-role, and the requireVariable warning path.
 
 ## Renderer (`apps/renderer`)
 
-The renderer app is a **placeholder**. It currently contains:
+`apps/renderer` is no longer a placeholder. It contains:
 
-- `render-plan.ts` — minimal render plan type
+- `render-plan-builder.ts` — builds `PdfRenderPlan` from a `CreationFlowDocument`
+- `render-job-status.ts` — typed enum/helpers for the `RenderJob` state machine
+- Unit tests for both helpers (`apps/renderer/src/*.test.ts`)
 
-It is not yet connected to the render job workflow. The API currently handles rendering inline via the PDF engine.
+The API still handles rendering inline through the PDF engine, but the renderer is in place to take over the render-plan step in worker-driven jobs.
 
 ## Worker (`apps/worker`)
 
-The worker app is a **placeholder**. It currently contains:
+`apps/worker` is no longer a placeholder. It contains:
 
-- `jobs.ts` — minimal job type
+- `jobs.ts` — `RenderWorkerOptions` with `apiKey`, `performRenderRequest` sets `X-API-Key`
+- `render-pipeline.test.ts` — integration tests for the end-to-end render flow
 
-There is no queue system, Redis integration, or background job processing.
+The worker entry does not yet connect to a real Redis queue; the queue plumbing is exercised in tests with an in-memory dispatch.
 
 ## Storage (`@creationflow/storage`)
 
@@ -107,7 +104,10 @@ Storage providers exist for saving and loading files:
 - **MemoryStorageProvider** — in-memory storage for testing
 - **StorageProvider interface** — pluggable abstraction
 
-The API registers the storage plugin and uses it for asset file uploads and downloads.
+The API registers the storage plugin and uses it for asset file uploads and downloads. Asset uploads run through `apps/api/src/services/asset-upload.ts` which:
+
+- sanitizes SVG uploads with `sanitize-html`
+- validates PDF uploads by magic bytes (`%PDF-` header + `%%EOF` trailer, 200-byte minimum)
 
 ## Render Job Status
 
@@ -120,16 +120,14 @@ Render jobs track their progress through these statuses:
 | `DONE`       | Rendering complete, output available   |
 | `FAILED`     | Rendering failed, error message stored |
 
-## Next Steps for Real PDF Output
+## Next Steps for Production Hardening
 
-To produce print-ready PDFs, the following work is needed:
+For higher print fidelity and operational maturity, the following work is still open:
 
-1. **Text rendering** — integrate font loading and text drawing with pdfkit
-2. **Image rendering** — resolve asset IDs to file paths and embed images
-3. **Shape rendering** — implement rectangle, ellipse, and line drawing
-4. **Group handling** — recursive element rendering for groups
-5. **Asset resolution** — connect the storage provider to the PDF engine
-6. **Print settings** — bleed, safe area, CMYK colors, DPI
-7. **Surface roles** — handle path-based surfaces, color regions, overlays
-8. **Background rendering** — move rendering to the worker service
-9. **Output storage** — save generated PDFs and serve them via the API
+1. **Bleed and safe area** — handle print area, bleed, and safe area margins
+2. **DPI configuration** — configurable resolution for print-quality output
+3. **CMYK color support** — convert RGB to CMYK for print output
+4. **Font embedding** — embed fonts in PDF for consistent output
+5. **Preflight warnings** — validate image resolution, font availability, bleed violations
+6. **Background rendering via real queue** — replace in-memory dispatch with Redis
+7. **Output storage provider for PDFs** — save generated PDFs and serve them via the API
