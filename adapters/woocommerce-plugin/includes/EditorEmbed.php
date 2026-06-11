@@ -162,7 +162,29 @@ final class EditorEmbed
             return false;
         }
 
+        if (! self::is_valid_configuration_id($configuration_id)) {
+            wc_add_notice(
+                __('The configuration ID provided for this product is invalid.', 'creationflow-woocommerce'),
+                'error'
+            );
+            return false;
+        }
+
         return $passed;
+    }
+
+    /**
+     * A configurationId is a CreationFlow branded ID. It is short, base32
+     * (or base32hex) and at most 64 characters. We accept either flavour
+     * but enforce shape, length, and an optional prefix separator.
+     */
+    public static function is_valid_configuration_id(string $value): bool
+    {
+        if ('' === $value || strlen($value) > 64) {
+            return false;
+        }
+
+        return (bool) preg_match('/^[A-Za-z0-9][A-Za-z0-9_-]{1,63}$/', $value);
     }
 
     private function build_iframe_url(string $editor_base, string $template_id, string $workspace_id, int $product_id): string

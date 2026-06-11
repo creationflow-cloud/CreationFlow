@@ -127,6 +127,15 @@ final class RenderOrderListener
                 continue;
             }
 
+            if (! EditorEmbed::is_valid_configuration_id($config_id)) {
+                $log[] = sprintf(
+                    /* translators: %s configuration id. */
+                    __('Skipped render for configuration %s: invalid id format.', 'creationflow-woocommerce'),
+                    $config_id
+                );
+                continue;
+            }
+
             $workspace_id = (string) $item->get_meta(CartMeta::ORDER_ITEM_WORKSPACE_KEY, true);
             if ('' === $workspace_id) {
                 $workspace_id = isset($settings['default_workspace_id'])
@@ -152,6 +161,16 @@ final class RenderOrderListener
                 $log[] = sprintf(
                     /* translators: 1: configuration id, 2: render job id. */
                     __('Skipped render for configuration %1$s: render job %2$s already in flight.', 'creationflow-woocommerce'),
+                    $config_id,
+                    $existing_for_item['job_id']
+                );
+                continue;
+            }
+
+            if ($existing_for_item && isset($existing_for_item['config_id']) && $existing_for_item['config_id'] === $config_id) {
+                $log[] = sprintf(
+                    /* translators: 1: configuration id, 2: render job id. */
+                    __('Skipped render for configuration %1$s: render job %2$s already exists.', 'creationflow-woocommerce'),
                     $config_id,
                     $existing_for_item['job_id']
                 );

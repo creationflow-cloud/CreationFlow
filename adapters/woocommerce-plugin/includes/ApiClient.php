@@ -291,6 +291,10 @@ final class ApiClient
             return $this->error_response(0, __('Missing URL or destination path.', 'creationflow-woocommerce'));
         }
 
+        if (! $this->is_same_host_url($url)) {
+            return $this->error_response(0, __('Refusing to download binaries from an external host.', 'creationflow-woocommerce'));
+        }
+
         $settings  = $this->settings->get();
         $api_token = isset($settings['api_token']) ? (string) $settings['api_token'] : '';
 
@@ -340,5 +344,26 @@ final class ApiClient
             'status'  => $status,
             'message' => $message,
         ];
+    }
+
+    /**
+     * Reject URLs that resolve to a different host than the configured API
+     * base. Prevents SSRF when the API ever echoes a redirector.
+     */
+    public function is_same_host_url(string $url): bool
+    {
+        $settings = $this->settings->get();
+        $base     = isset($settings['api_url']) ? (string) $settings['api_url'] : '';
+        if ('' === $base || '' === $url) {
+            return false;
+        }
+
+        $base_host = wp_parse_url($base, PHP_URL_HOST);
+        $url_host  = wp_parse_url($url, PHP_URL_HOST);
+        if (! is_string($base_host) || ! is_string($url_host)) {
+            return false;
+        }
+
+        return strcasecmp($base_host, $url_host) === 0;
     }
 }

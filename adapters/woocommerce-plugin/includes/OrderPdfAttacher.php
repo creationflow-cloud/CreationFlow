@@ -124,6 +124,7 @@ final class OrderPdfAttacher
                 'file'        => $attach['file'],
                 'size'        => $attach['size'],
                 'mime'        => $attach['mime'],
+                'token'       => isset($attach['token']) ? (string) $attach['token'] : '',
                 'attached_at' => current_time('mysql', true),
             ];
         }
@@ -239,9 +240,13 @@ final class OrderPdfAttacher
     }
 
     /**
-     * Store a binary blob in the WordPress uploads directory and return a public URL.
+     * Store a binary blob outside the public uploads tree and return a
+     * token-gated download URL. Files are never served directly by the
+     * web server; they must be retrieved through the
+     * `creationflow_download_pdf` endpoint, which checks the token and the
+     * order ownership before streaming the file.
      *
-     * @return array{url: string, file: string, size: int, mime: string}|WP_Error
+     * @return array{url: string, file: string, size: int, mime: string, token: string}|WP_Error
      */
     private function store_binary_for_order(WC_Order $order, string $body, string $filename)
     {
@@ -265,14 +270,46 @@ final class OrderPdfAttacher
             return new WP_Error('write_failed', __('Could not write the PDF to disk.', 'creationflow-woocommerce'));
         }
 
-        $relative = 'creationflow-orders/' . (int) $order->get_id() . '/' . $filename;
-        $url      = trailingslashit((string) $uploads['baseurl']) . $relative;
+        $this->protect_directory($base);
+
+        $token = bin2hex(random_bytes(16));
+        $url = add_query_arg(
+            [
+                'action'  => 'creationflow_download_pdf',
+                'order'   => (int) $order->get_id(),
+                'file'    => $filename,
+                'token'   => $token,
+            ],
+            admin_url('admin-post.php')
+        );
 
         return [
-            'url'  => $url,
-            'file' => $file,
-            'size' => (int) $written,
-            'mime' => 'application/pdf',
+            'url'   => $url,
+            'file'  => $file,
+            'size'  => (int) $written,
+            'mime'  => 'application/pdf',
+            'token' => $token,
         ];
+    }
+
+    /**
+     * Drop an .htaccess into the per-order directory that forbids direct
+     * web access. Servers that ignore .htaccess fall back to a deny-all
+     * index.html file so directory listings are not exposed either.
+     */
+    private function protect_directory(string $base): void
+    {
+        $htaccess = $base . '/.htaccess';
+        if (! file_exists($htaccess)) {
+            file_put_contents(
+                $htaccess,
+                "Order deny,allow\nDeny from all\n"
+            );
+        }
+
+        $index = $base . '/index.html';
+        if (! file_exists($index)) {
+            file_put_contents($index, '');
+        }
     }
 }

@@ -4,5 +4,5 @@ build/
 coverage/
 .pnpm-store/
 pnpm-lock.yaml
-adapters/woocommerce-plugin/**/*.php
+adapters/woocommerce-plugin/**
 deploy/docker/MIGRATIONS.md

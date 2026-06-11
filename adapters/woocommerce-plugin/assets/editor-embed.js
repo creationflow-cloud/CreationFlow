@@ -66,8 +66,30 @@
     form.addEventListener("submit", handleAddToCartIntercept, true);
   }
 
+  function isAllowedOrigin(origin) {
+    if (!origin || typeof origin !== "string") {
+      return false;
+    }
+    if (origin === window.location.origin) {
+      return true;
+    }
+    var expected = (config.apiUrl || "").replace(/\/+$/, "");
+    if (!expected) {
+      return false;
+    }
+    try {
+      var expectedUrl = new URL(expected);
+      return origin === expectedUrl.origin;
+    } catch (error) {
+      return false;
+    }
+  }
+
   function handlePostMessage(event) {
     if (!event || !event.data || typeof event.data !== "object") {
+      return;
+    }
+    if (!isAllowedOrigin(event.origin)) {
       return;
     }
     if (event.data.type === "creationflow:resize" && typeof event.data.height === "number") {
