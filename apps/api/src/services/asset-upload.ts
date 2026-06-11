@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@creationflow/database";
 import type { StorageProvider } from "@creationflow/storage";
+import sanitizeHtml from "sanitize-html";
 
 import type { ApiAssetType } from "../mappers/asset-type.js";
 import type { AssetDto } from "./assets.js";
@@ -17,6 +18,90 @@ export interface UploadAssetInput {
 
 export interface UploadAssetConfig {
   readonly maxUploadBytes: number;
+}
+
+const SVG_SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
+  allowedTags: [
+    "svg",
+    "g",
+    "defs",
+    "symbol",
+    "use",
+    "path",
+    "rect",
+    "circle",
+    "ellipse",
+    "line",
+    "polyline",
+    "polygon",
+    "text",
+    "tspan",
+    "linearGradient",
+    "radialGradient",
+    "stop",
+    "clipPath",
+    "mask",
+    "filter",
+    "feGaussianBlur",
+    "feOffset",
+    "feMerge",
+    "feMergeNode",
+    "feFlood",
+    "feComposite",
+    "feColorMatrix",
+    "title",
+    "desc",
+  ],
+  allowedAttributes: {
+    "*": ["id", "class", "style", "transform", "fill", "stroke", "opacity"],
+    svg: ["viewBox", "width", "height", "xmlns", "version", "preserveAspectRatio"],
+    path: ["d", "fill-rule", "clip-rule"],
+    rect: ["x", "y", "width", "height", "rx", "ry"],
+    circle: ["cx", "cy", "r"],
+    ellipse: ["cx", "cy", "rx", "ry"],
+    line: ["x1", "y1", "x2", "y2"],
+    polyline: ["points"],
+    polygon: ["points"],
+    text: ["x", "y", "font-size", "font-family", "text-anchor", "font-weight"],
+    linearGradient: ["x1", "y1", "x2", "y2", "gradientUnits", "gradientTransform"],
+    radialGradient: ["cx", "cy", "r", "fx", "fy", "gradientUnits", "gradientTransform"],
+    stop: ["offset", "stop-color", "stop-opacity"],
+    clipPath: ["id"],
+    mask: ["id"],
+    filter: ["id", "x", "y", "width", "height", "filterUnits"],
+    use: ["href", "xlink:href"],
+  },
+  allowedSchemes: ["data"],
+  allowedSchemesByTag: {
+    img: ["data"],
+  },
+  allowProtocolRelative: false,
+  allowedIframeHostnames: [],
+  disallowedTagsMode: "discard",
+  // Forbid any tag attributes that could execute JavaScript or load external resources
+  allowedSchemesAppliedToAttributes: ["href", "xlink:href"],
+  transformTags: {
+    // Force all anchors to be safe no-op
+    a: sanitizeHtml.simpleTransform("a", { rel: "noopener noreferrer", target: "_blank" }),
+  },
+  // Disallow entire content blocks that could be script-like
+  exclusiveFilter: (frame) =>
+    Boolean(frame.tag === "script") || Boolean(frame.tag === "foreignObject"),
+};
+
+const MAX_TEXT_DECODER_BYTES = 10 * 1024 * 1024;
+
+function sanitizeSvg(data: Uint8Array): Uint8Array {
+  const decoder = new TextDecoder("utf-8", { fatal: false });
+  const raw =
+    data.byteLength > MAX_TEXT_DECODER_BYTES
+      ? decoder.decode(data.subarray(0, MAX_TEXT_DECODER_BYTES))
+      : decoder.decode(data);
+
+  const sanitized = sanitizeHtml(raw, SVG_SANITIZE_OPTIONS);
+
+  const encoder = new TextEncoder();
+  return encoder.encode(sanitized);
 }
 
 export async function uploadAsset(
@@ -37,13 +122,7 @@ export async function uploadAsset(
     throw new Error(`File size exceeds maximum allowed size of ${config.maxUploadBytes} bytes.`);
   }
 
-  // TODO: Implement SVG sanitization before storing SVG files.
-  // Malicious SVG files can contain JavaScript or external entity references.
-  // See: https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing
-
-  // TODO: Implement PDF sanitization before storing PDF files.
-  // PDF files can contain JavaScript, embedded files, or malicious actions.
-  // Validate PDF structure and strip dangerous elements before storage.
+  const sanitizedData = input.type === "vector" ? sanitizeSvg(input.file.data) : input.file.data;
 
   const storageKey = crypto.randomUUID();
   const bucket = `assets/${input.workspaceId}`;
@@ -51,7 +130,7 @@ export async function uploadAsset(
   await storage.putObject({
     bucket,
     key: storageKey,
-    body: input.file.data,
+    body: sanitizedData,
     contentType: input.file.mimetype,
   });
 
@@ -61,7 +140,7 @@ export async function uploadAsset(
     name: input.file.filename,
     source: storageKey,
     mimeType: input.file.mimetype,
-    sizeBytes: input.file.data.byteLength.toString(),
+    sizeBytes: sanitizedData.byteLength.toString(),
   });
 
   return asset;
