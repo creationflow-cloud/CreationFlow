@@ -51,7 +51,7 @@ import {
 import { useKeyboardShortcuts } from "./helpers/use-keyboard-shortcuts.js";
 import { useZoomPan } from "./helpers/use-zoom-pan.js";
 import { PatternGallery } from "./components/PatternGallery.js";
-import { CanvasSettingsPanel, DEFAULT_CANVAS_SETTINGS } from "./components/CanvasSettingsPanel.js";
+import { DEFAULT_CANVAS_SETTINGS } from "./components/CanvasSettingsPanel.js";
 import type { CanvasSettings } from "./components/CanvasSettingsPanel.js";
 import {
   clearElementSelection,
@@ -73,7 +73,6 @@ import { LeftSidebar } from "./components/LeftSidebar.js";
 import { CanvasWorkspace } from "./components/CanvasWorkspace.js";
 import { RightSidebar } from "./components/RightSidebar.js";
 import { PageFooter } from "./components/PageFooter.js";
-import { RulesValidationPanel } from "./components/RulesValidationPanel.js";
 
 function getQueryParam(param: string): string | null {
   const params = new URLSearchParams(window.location.search);
@@ -392,7 +391,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     setInlineEditingElementId(null);
   }
 
-  function handleCancelInlineTextEdit(_elementId: string) {
+  function handleCancelInlineTextEdit() {
     setInlineEditingElementId(null);
   }
 
@@ -941,8 +940,10 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       return;
     }
 
-    void refreshPdfPreview();
     lastPreviewConfigIdRef.current = configuration.id;
+    queueMicrotask(() => {
+      void refreshPdfPreview();
+    });
   }, [
     configuration,
     currentDocument,

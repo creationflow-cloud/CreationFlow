@@ -51,10 +51,10 @@ function createPage(id: string, surfaces: CreationFlowSurface[]): CreationFlowPa
 
 function createDocument(pages: CreationFlowPage[]): CreationFlowDocument {
   return {
-    id: "doc-1" as any,
+    id: "doc-1" as CreationFlowDocument["id"],
     version: "1.0.0",
     metadata: {
-      workspaceId: "ws-1" as any,
+      workspaceId: "ws-1" as CreationFlowDocument["metadata"]["workspaceId"],
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     },

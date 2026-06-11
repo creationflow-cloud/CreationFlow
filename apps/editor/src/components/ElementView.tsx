@@ -1,4 +1,5 @@
 import type {
+  CreationFlowDocument,
   CreationFlowElement,
   CreationFlowImageElement,
   CreationFlowPatternElement,
@@ -34,7 +35,7 @@ interface ElementViewProps {
   readonly onStartInlineTextEdit?: (elementId: string) => void;
   readonly onCommitInlineTextEdit?: (elementId: string, text: string) => void;
   readonly onCancelInlineTextEdit?: (elementId: string) => void;
-  readonly document: import("@creationflow/schema").CreationFlowDocument;
+  readonly document: CreationFlowDocument;
   readonly variables: Readonly<Record<string, RuleVariableValue>>;
 }
 

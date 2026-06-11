@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState, useId } from "react";
 
-import type { CreationFlowElement, CreationFlowSurface } from "@creationflow/schema";
+import type {
+  CreationFlowDocument,
+  CreationFlowElement,
+  CreationFlowSurface,
+} from "@creationflow/schema";
 import { getElementZIndex } from "@creationflow/core";
+import type { RuleVariableValue } from "@creationflow/rules-engine";
 
 import type { CanvasSettings } from "./CanvasSettingsPanel.js";
 import {
@@ -51,10 +56,8 @@ interface SurfaceCanvasProps {
   readonly onStartInlineTextEdit?: (elementId: string) => void;
   readonly onCommitInlineTextEdit?: (elementId: string, text: string) => void;
   readonly onCancelInlineTextEdit?: (elementId: string) => void;
-  readonly flowDocument: import("@creationflow/schema").CreationFlowDocument;
-  readonly variables: Readonly<
-    Record<string, import("@creationflow/rules-engine").RuleVariableValue>
-  >;
+  readonly flowDocument: CreationFlowDocument;
+  readonly variables: Readonly<Record<string, RuleVariableValue>>;
 }
 
 export function SurfaceCanvas({
@@ -338,8 +341,6 @@ export function SurfaceCanvas({
       ? surface.elements.find((el) => el.id === selectedElementIds[0])
       : undefined;
   const primarySelectedId = selectedElementIds[0] ?? null;
-
-  const surfaceRole = surface.role ?? "default";
 
   const getSurfaceStyle = (): React.CSSProperties => {
     const baseStyle: React.CSSProperties = {

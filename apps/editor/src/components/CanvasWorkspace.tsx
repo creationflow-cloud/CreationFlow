@@ -60,7 +60,8 @@ export function CanvasWorkspace({
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [zoomPan.containerRef, onViewportSizeChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoomPan.containerRef]);
 
   if (!surface) {
     return (
