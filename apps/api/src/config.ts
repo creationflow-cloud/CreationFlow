@@ -24,15 +24,31 @@ export interface ApiConfig {
   readonly allowedWorkspaces: ReadonlySet<string> | "all";
   readonly apiKeyRoles: readonly ApiKeyRoleEntry[];
   readonly defaultRole: ApiRole;
+  readonly assetSigningSecret: string;
   readonly logLevel: "fatal" | "error" | "warn" | "info" | "debug" | "trace" | "silent";
   readonly nodeEnv: "development" | "production" | "test";
 }
 
 function readPackageVersion(): string {
-  const packageJsonUrl = new URL("../package.json", import.meta.url);
-  const packageJson = JSON.parse(readFileSync(packageJsonUrl, "utf8")) as ApiPackageJson;
+  const apiPackageJsonUrl = new URL("../package.json", import.meta.url);
+  const apiPackageJson = JSON.parse(readFileSync(apiPackageJsonUrl, "utf8")) as ApiPackageJson;
 
-  return packageJson.version ?? "0.0.0";
+  return apiPackageJson.version ?? "0.0.0";
+}
+
+const DEV_ASSET_SIGNING_SECRET = "dev-asset-signing-secret-change-in-production";
+
+function resolveAssetSigningSecret(nodeEnv: "development" | "production" | "test"): string {
+  const configured = process.env.ASSET_SIGNING_SECRET?.trim();
+  if (configured && configured.length > 0) {
+    return configured;
+  }
+  if (nodeEnv === "production") {
+    throw new Error(
+      "ASSET_SIGNING_SECRET environment variable is required in production for asset signed URLs.",
+    );
+  }
+  return DEV_ASSET_SIGNING_SECRET;
 }
 
 export function getApiConfig(): ApiConfig {
@@ -66,6 +82,7 @@ export function getApiConfig(): ApiConfig {
     allowedWorkspaces: parseAllowedWorkspaces(process.env.CREATIONFLOW_API_WORKSPACES),
     apiKeyRoles: parseApiKeyRoles(process.env.CREATIONFLOW_API_KEYS),
     defaultRole: parseDefaultRole(process.env.CREATIONFLOW_API_DEFAULT_ROLE),
+    assetSigningSecret: resolveAssetSigningSecret(nodeEnv),
     logLevel,
     nodeEnv,
   };
