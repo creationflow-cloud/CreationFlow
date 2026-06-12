@@ -111,6 +111,30 @@ function readEnvInt(name: string, fallback: number): number {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
+const TRANSIENT_NETWORK_ERROR_CODES = new Set([
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "ENOTFOUND",
+  "ECONNREFUSED",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "EAI_AGAIN",
+  "EPIPE",
+  "EAI_FAIL",
+  "ECONNABORTED",
+]);
+
+function isTransientNetworkError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = (error as { code?: unknown }).code;
+  if (typeof code === "string") {
+    return TRANSIENT_NETWORK_ERROR_CODES.has(code);
+  }
+  return false;
+}
+
+const MAX_BACKOFF_MS = 60_000;
+
 export function createRenderWorker(
   options: RenderWorkerOptions = {},
 ): Worker<RenderJobQueuePayload> {
@@ -149,8 +173,11 @@ export function createRenderWorker(
       connection: getRedisConnectionOptions(),
       concurrency: readEnvInt("WORKER_CONCURRENCY", 2),
       settings: {
-        backoffStrategy: (attemptsMade: number) =>
-          backoffMs * Math.pow(2, Math.max(0, attemptsMade - 1)),
+        backoffStrategy: (attemptsMade: number) => {
+          const exponential = backoffMs * Math.pow(2, Math.max(0, attemptsMade - 1));
+          const jitter = Math.random() * 1000;
+          return Math.min(exponential + jitter, MAX_BACKOFF_MS);
+        },
       },
     },
   );
@@ -174,10 +201,23 @@ export async function performRenderRequest(
   fetcher: typeof fetch = fetch,
   options: PerformRenderRequestOptions = {},
 ): Promise<void> {
-  const response = await fetcher(`${apiUrl}/render-jobs/${jobId}/render`, {
-    method: "POST",
-    headers: buildRenderHeaders(options),
-  });
+  let response: Response;
+  try {
+    response = await fetcher(`${apiUrl}/render-jobs/${jobId}/render`, {
+      method: "POST",
+      headers: buildRenderHeaders(options),
+    });
+  } catch (error) {
+    if (isTransientNetworkError(error)) {
+      const code = (error as { code?: string }).code ?? "UNKNOWN";
+      throw new Error(
+        `Render job ${jobId} hit transient network error (${code}): ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    throw new PermanentRenderError(
+      `Render job ${jobId} hit permanent network error: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 
   if (!response.ok) {
     const body = await response.text();
