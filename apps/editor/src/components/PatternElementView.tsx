@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import type { CreationFlowPatternElement } from "@creationflow/schema";
 import { getAssetUrl } from "../api/assets.js";
 import { BUILTIN_PATTERNS } from "./PatternGallery.js";
@@ -94,7 +96,29 @@ export function PatternElementView({
   onSelect,
 }: PatternElementViewProps) {
   const builtinPattern = BUILTIN_PATTERNS.find((p) => p.id === element.assetId);
-  const assetUrl = !builtinPattern && element.assetId ? getAssetUrl(element.assetId) : null;
+  const [assetUrl, setAssetUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!builtinPattern && element.assetId) {
+      getAssetUrl(element.assetId)
+        .then((url) => {
+          if (!cancelled) {
+            setAssetUrl(url);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setAssetUrl(null);
+          }
+        });
+    } else {
+      setAssetUrl(null);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [builtinPattern, element.assetId]);
 
   const scaledWidth = surfaceWidth * previewScale;
   const scaledHeight = surfaceHeight * previewScale;

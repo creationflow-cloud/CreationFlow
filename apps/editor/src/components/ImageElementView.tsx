@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import type { CreationFlowImageCrop, CreationFlowImageElement } from "@creationflow/schema";
 
 import { getAssetUrl } from "../api/assets.js";
@@ -28,8 +30,30 @@ function buildObjectSize(crop: CreationFlowImageCrop): string {
 }
 
 export function ImageElementView({ element }: ImageElementViewProps) {
-  const imageUrl = element.assetId ? getAssetUrl(element.assetId) : null;
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const crop = isValidCrop(element.crop) ? element.crop : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (element.assetId) {
+      getAssetUrl(element.assetId)
+        .then((url) => {
+          if (!cancelled) {
+            setImageUrl(url);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setImageUrl(null);
+          }
+        });
+    } else {
+      setImageUrl(null);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [element.assetId]);
 
   if (crop) {
     return (
