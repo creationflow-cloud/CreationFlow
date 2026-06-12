@@ -219,6 +219,37 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
   const [svgImportPreview, setSvgImportPreview] = useState<SvgSurfaceImportResult | null>(null);
   const [svgImportTargetPage, setSvgImportTargetPage] = useState<number | null>(null);
 
+  const [alertDialog, setAlertDialog] = useState<{ title: string; message: string } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    tone: "default" | "danger";
+    onConfirm: () => void;
+  } | null>(null);
+
+  function showAlert(title: string, message: string) {
+    setAlertDialog({ title, message });
+  }
+
+  function showConfirm(
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    options: { confirmLabel?: string; tone?: "default" | "danger" } = {},
+  ) {
+    setConfirmDialog({
+      title,
+      message,
+      confirmLabel: options.confirmLabel ?? "Confirm",
+      tone: options.tone ?? "danger",
+      onConfirm: () => {
+        setConfirmDialog(null);
+        onConfirm();
+      },
+    });
+  }
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -480,7 +511,10 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     const page = detailPages[pageIndex];
     if (!page) return;
     if (detailPages.length === 1) {
-      window.alert("Cannot delete the last page. Add another page first or edit this one instead.");
+      showAlert(
+        "Cannot delete the last page",
+        "Add another page first or edit this one instead.",
+      );
       return;
     }
     const surfaceCount = page.surfaces.length;
@@ -495,9 +529,14 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
           (elementCount > 0 ? ` and ${elementCount} element(s).` : "."),
       );
     }
-    const confirmed = window.confirm(parts.join(" "));
-    if (!confirmed) return;
-    setDetailPages((prev) => prev.filter((_, i) => i !== pageIndex));
+    showConfirm(
+      "Delete page",
+      parts.join(" "),
+      () => {
+        setDetailPages((prev) => prev.filter((_, i) => i !== pageIndex));
+      },
+      { confirmLabel: "Delete", tone: "danger" },
+    );
   };
 
   const handleMovePage = (pageIndex: number, direction: "up" | "down") => {
@@ -627,8 +666,9 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     if (!surface) return;
 
     if (page.surfaces.length === 1) {
-      window.alert(
-        "Cannot delete the last surface on a page. Add another surface first or delete the entire page.",
+      showAlert(
+        "Cannot delete the last surface",
+        "Add another surface first or delete the entire page.",
       );
       return;
     }
@@ -636,17 +676,22 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
     const elementCount = surface.elements?.length ?? 0;
     const message =
       elementCount > 0
-        ? `Delete surface "${surface.name}"?\n\nThis will also delete ${elementCount} element(s) on this surface. This action cannot be undone.`
-        : `Delete surface "${surface.name}"? This action cannot be undone.`;
+        ? `This will also delete ${elementCount} element(s) on this surface. This action cannot be undone.`
+        : "This action cannot be undone.";
 
-    const confirmed = window.confirm(message);
-
-    if (!confirmed) return;
-
-    setDetailPages((prev) =>
-      prev.map((p, i) =>
-        i === pageIndex ? { ...p, surfaces: p.surfaces.filter((_, j) => j !== surfaceIndex) } : p,
-      ),
+    showConfirm(
+      `Delete surface "${surface.name}"?`,
+      message,
+      () => {
+        setDetailPages((prev) =>
+          prev.map((p, i) =>
+            i === pageIndex
+              ? { ...p, surfaces: p.surfaces.filter((_, j) => j !== surfaceIndex) }
+              : p,
+          ),
+        );
+      },
+      { confirmLabel: "Delete", tone: "danger" },
     );
   };
 
@@ -1746,6 +1791,29 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
               setDeletingTemplate(null);
               setTemplateDeleteError(null);
             }}
+          />
+        )}
+
+        {alertDialog && (
+          <ConfirmDialog
+            title={alertDialog.title}
+            message={alertDialog.message}
+            confirmLabel="OK"
+            cancelLabel="Dismiss"
+            tone="default"
+            onConfirm={() => setAlertDialog(null)}
+            onCancel={() => setAlertDialog(null)}
+          />
+        )}
+
+        {confirmDialog && (
+          <ConfirmDialog
+            title={confirmDialog.title}
+            message={confirmDialog.message}
+            confirmLabel={confirmDialog.confirmLabel}
+            tone={confirmDialog.tone}
+            onConfirm={confirmDialog.onConfirm}
+            onCancel={() => setConfirmDialog(null)}
           />
         )}
       </section>
