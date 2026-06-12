@@ -1,5 +1,7 @@
 const BASE_URL = import.meta.env.VITE_CREATIONFLOW_API_URL ?? "http://localhost:3000";
 
+import { getStoredApiKey } from "./client.js";
+
 export interface UploadAssetResponse {
   readonly id: string;
   readonly workspaceId: string;
@@ -20,8 +22,15 @@ export async function uploadAsset(file: File, workspaceId: string): Promise<Uplo
   formData.append("workspaceId", workspaceId);
   formData.append("type", "image");
 
+  const apiKey = getStoredApiKey();
+  const headers: Record<string, string> = {};
+  if (apiKey) {
+    headers["X-API-Key"] = apiKey;
+  }
+
   const response = await fetch(`${BASE_URL}/assets/upload`, {
     method: "POST",
+    headers,
     body: formData,
   });
 
