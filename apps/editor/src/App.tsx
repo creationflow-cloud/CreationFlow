@@ -27,6 +27,7 @@ import type {
 } from "@creationflow/schema";
 
 import { uploadAsset } from "./api/assets.js";
+import { getStoredApiKey } from "./api/client.js";
 import type { ConfigurationDto } from "./api/configurations.js";
 import { getConfiguration, updateConfiguration } from "./api/configurations.js";
 import { createConfigurationFromTemplate, getProductTemplate } from "./api/product-templates.js";
@@ -916,7 +917,12 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
             URL.revokeObjectURL(pdfPreviewUrl);
           }
 
-          const response = await fetch(pdfOutput.downloadUrl);
+          const apiKey = getStoredApiKey();
+          const pdfHeaders: Record<string, string> = {};
+          if (apiKey) {
+            pdfHeaders["X-API-Key"] = apiKey;
+          }
+          const response = await fetch(pdfOutput.downloadUrl, { headers: pdfHeaders });
           if (!response.ok) {
             throw new Error(`Failed to fetch PDF: ${response.status}`);
           }
@@ -1111,6 +1117,7 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
         renderJob={renderJob}
         renderError={renderError}
         pdfOutput={pdfOutput}
+        pdfPreviewUrl={pdfPreviewUrl}
         blockingIssues={ruleEvaluation?.mandatoryViolations.length ?? 0}
         canGroup={canGroupSelected}
         canUngroup={canUngroupSelected}

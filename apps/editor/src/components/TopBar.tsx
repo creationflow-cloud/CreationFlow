@@ -15,6 +15,7 @@ interface TopBarProps {
   readonly renderJob: RenderJobDto | null;
   readonly renderError: string | null;
   readonly pdfOutput: { downloadUrl: string; filename: string } | null;
+  readonly pdfPreviewUrl: string | null;
   readonly blockingIssues: number;
   readonly canGroup: boolean;
   readonly canUngroup: boolean;
@@ -41,6 +42,7 @@ export function TopBar({
   renderJob,
   renderError,
   pdfOutput,
+  pdfPreviewUrl,
   blockingIssues,
   canGroup,
   canUngroup,
@@ -148,7 +150,7 @@ export function TopBar({
             )}
             {renderJob?.status === "done" && pdfOutput && (
               <a
-                href={pdfOutput.downloadUrl}
+                href={pdfPreviewUrl ?? pdfOutput.downloadUrl}
                 className="render-download-link"
                 target="_blank"
                 rel="noopener noreferrer"
