@@ -1,4 +1,5 @@
 import type { ConfigurationDto } from "../api/configurations.js";
+import { getStoredApiKey } from "../api/client.js";
 import type { RenderJobDto } from "../api/render-jobs.js";
 
 interface TopBarProps {
@@ -149,15 +150,31 @@ export function TopBar({
               </button>
             )}
             {renderJob?.status === "done" && pdfOutput && (
-              <a
-                href={pdfPreviewUrl ?? pdfOutput.downloadUrl}
+              <button
+                type="button"
                 className="render-download-link"
-                target="_blank"
-                rel="noopener noreferrer"
                 title={`Download ${pdfOutput.filename}`}
+                onClick={async () => {
+                  const apiKey = getStoredApiKey();
+                  const headers: Record<string, string> = {};
+                  if (apiKey) {
+                    headers["X-API-Key"] = apiKey;
+                  }
+                  const response = await fetch(pdfOutput.downloadUrl, { headers });
+                  if (!response.ok) {
+                    throw new Error(`Download failed: ${response.status}`);
+                  }
+                  const blob = await response.blob();
+                  const blobUrl = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = blobUrl;
+                  a.download = pdfOutput.filename;
+                  a.click();
+                  URL.revokeObjectURL(blobUrl);
+                }}
               >
                 {pdfOutput.filename}
-              </a>
+              </button>
             )}
             {renderError && (
               <span className="render-error-badge" title={renderError}>

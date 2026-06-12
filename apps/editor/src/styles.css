@@ -1440,6 +1440,8 @@ button {
   font-size: 0.78rem;
   font-weight: 600;
   text-decoration: none;
+  cursor: pointer;
+  font-family: inherit;
   transition: background 0.15s ease;
 }
 
