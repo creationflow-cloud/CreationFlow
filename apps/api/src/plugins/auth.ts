@@ -71,6 +71,9 @@ function safeEqual(a: string, b: string): boolean {
   const bBuf = Buffer.from(b, "utf8");
 
   if (aBuf.length !== bBuf.length) {
+    const aCopy = Buffer.alloc(aBuf.length);
+    aBuf.copy(aCopy);
+    timingSafeEqual(aCopy, aCopy);
     return false;
   }
 
