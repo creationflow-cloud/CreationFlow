@@ -252,8 +252,20 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       }
     }
     if (nextIds.length !== selection.selectedElementIds.length) {
-      queueMicrotask(() => {
-        setSelection((prev) => ({ ...prev, selectedElementIds: nextIds }));
+      setSelection((prev) => {
+        if (prev.selectedElementIds.length === nextIds.length) {
+          const prevSet = new Set(prev.selectedElementIds);
+          const nextSet = new Set(nextIds);
+          let allEqual = prevSet.size === nextSet.size;
+          for (const id of prevSet) {
+            if (!nextSet.has(id)) {
+              allEqual = false;
+              break;
+            }
+          }
+          if (allEqual) return prev;
+        }
+        return { ...prev, selectedElementIds: nextIds };
       });
     }
   }, [currentDocument, selection.selectedElementIds]);
@@ -267,14 +279,12 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
       first.selectedPageId !== selection.selectedPageId ||
       first.selectedSurfaceId !== selection.selectedSurfaceId
     ) {
-      queueMicrotask(() => {
-        setSelection((prev) =>
-          prev.selectedPageId === first.selectedPageId &&
-          prev.selectedSurfaceId === first.selectedSurfaceId
-            ? prev
-            : first,
-        );
-      });
+      setSelection((prev) =>
+        prev.selectedPageId === first.selectedPageId &&
+        prev.selectedSurfaceId === first.selectedSurfaceId
+          ? prev
+          : first,
+      );
     }
   }, [currentDocument, selection.selectedPageId, selection.selectedSurfaceId]);
 
