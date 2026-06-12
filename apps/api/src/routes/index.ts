@@ -50,8 +50,9 @@ export async function registerRoutes(server: FastifyInstance, config: ApiConfig)
     await registerProductTemplateRoutes(protectedScope);
     await registerRenderJobRoutes(protectedScope);
     await registerAssetRoutes(protectedScope);
-    await registerAssetFileRoutes(protectedScope);
   });
+
+  await registerAssetFileRoutes(server);
 
   // Future API groups:
   // - /orders

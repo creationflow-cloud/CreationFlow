@@ -8,6 +8,7 @@ import {
   updateAsset,
 } from "../services/assets.js";
 import { uploadAsset } from "../services/asset-upload.js";
+import { generateAssetSignedUrl } from "../services/signed-urls.js";
 import type { ApiAssetType } from "../mappers/asset-type.js";
 
 const assetSchema = {
@@ -297,6 +298,73 @@ export async function registerAssetRoutes(server: FastifyInstance): Promise<void
         return reply.code(500).send({
           status: "error",
           message: "Unable to get asset.",
+        });
+      }
+    },
+  );
+
+  server.get<{ Params: AssetParams }>(
+    "/assets/:id/signed-url",
+    {
+      schema: {
+        tags: ["Assets"],
+        summary: "Generate a signed download URL for an asset",
+        params: {
+          type: "object",
+          required: ["id"],
+          properties: {
+            id: { type: "string", minLength: 1 },
+          },
+        },
+        response: {
+          200: {
+            type: "object",
+            required: ["signedUrl", "expiresAt"],
+            properties: {
+              signedUrl: { type: "string" },
+              expiresAt: { type: "string", format: "date-time" },
+            },
+          },
+          404: errorSchema,
+          500: errorSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const asset = await getAssetById(server.db, request.params.id);
+
+        if (!asset) {
+          return reply.code(404).send({
+            status: "error",
+            message: "Asset not found.",
+          });
+        }
+
+        server.auth.enforceWorkspaceScope(asset.workspaceId);
+
+        const { signedUrl, expiresAt } = generateAssetSignedUrl(
+          asset.id,
+          asset.workspaceId,
+          server.config.assetSigningSecret,
+        );
+
+        return {
+          signedUrl,
+          expiresAt: new Date(expiresAt).toISOString(),
+        };
+      } catch (error) {
+        if (error instanceof Error && error.name === "WorkspaceScopeError") {
+          return reply.code(403).send({
+            status: "error",
+            message: error.message,
+          });
+        }
+        server.log.error(error);
+
+        return reply.code(500).send({
+          status: "error",
+          message: "Unable to generate signed URL.",
         });
       }
     },

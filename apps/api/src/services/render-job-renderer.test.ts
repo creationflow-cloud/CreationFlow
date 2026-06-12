@@ -242,6 +242,20 @@ describe("renderRenderJobToPdf", () => {
 
     server.decorate("storage", storage);
     server.decorate("db", db);
+    server.decorate("config", {
+      assetSigningSecret: "test-signing-secret-must-be-long-enough",
+    });
+    server.decorate("auth", {
+      requireAuth: async () => {
+        throw new Error("auth should not be required when using signed URLs");
+      },
+      requireRole: () => async () => {
+        throw new Error("role should not be required when using signed URLs");
+      },
+      enforceWorkspaceScope: () => {
+        throw new Error("scope should not be enforced when using signed URLs");
+      },
+    });
     await registerAssetFileRoutes(server);
 
     try {
@@ -251,9 +265,15 @@ describe("renderRenderJobToPdf", () => {
       expect(result.output?.downloadUrl).toBe("/assets/asset-1/file");
       expect(state.assets).toHaveLength(1);
 
+      const { generateAssetSignedUrl } = await import("../services/signed-urls.js");
+      const { signedUrl } = generateAssetSignedUrl(
+        "asset-1",
+        "workspace-1",
+        "test-signing-secret-must-be-long-enough",
+      );
       const response = await server.inject({
         method: "GET",
-        url: result.output?.downloadUrl as string,
+        url: signedUrl,
       });
 
       expect(response.statusCode).toBe(200);
