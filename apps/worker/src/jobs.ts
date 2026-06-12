@@ -143,6 +143,12 @@ export function createRenderWorker(
   const apiKey = options.apiKey ?? process.env.CREATIONFLOW_API_KEY?.trim();
   const logger = options.log ?? defaultLogger;
 
+  if (!apiKey) {
+    throw new Error(
+      "CREATIONFLOW_API_KEY environment variable is required (or pass apiKey via options)",
+    );
+  }
+
   return new Worker<RenderJobQueuePayload>(
     RENDER_JOB_QUEUE_NAME,
     async (job) => {
