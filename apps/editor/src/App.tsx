@@ -27,7 +27,7 @@ import type {
 } from "@creationflow/schema";
 
 import { uploadAsset } from "./api/assets.js";
-import { getStoredApiKey } from "./api/client.js";
+import { getStoredApiKey, clearStoredApiKey } from "./api/client.js";
 import type { ConfigurationDto } from "./api/configurations.js";
 import { getConfiguration, updateConfiguration } from "./api/configurations.js";
 import { createConfigurationFromTemplate, getProductTemplate } from "./api/product-templates.js";
@@ -923,6 +923,10 @@ export function App({ onSignOut }: { readonly onSignOut?: () => void } = {}) {
             pdfHeaders["X-API-Key"] = apiKey;
           }
           const response = await fetch(pdfOutput.downloadUrl, { headers: pdfHeaders });
+          if (response.status === 401) {
+            clearStoredApiKey();
+            throw new Error("API credentials are invalid. Please sign in again.");
+          }
           if (!response.ok) {
             throw new Error(`Failed to fetch PDF: ${response.status}`);
           }
