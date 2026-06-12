@@ -54,6 +54,52 @@ describe("SVG sanitization", () => {
     expect(text).toContain("stop");
     expect(text).toContain("rect");
   });
+
+  it("strips style attribute to prevent CSS injection", () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg"><rect style="background:url(javascript:alert(1))" width="10" height="10"/></svg>`;
+    const result = sanitizeSvg(toBytes(svg));
+    const text = new TextDecoder().decode(result);
+    expect(text).not.toContain("style=");
+    expect(text).not.toContain("javascript:");
+  });
+
+  it("strips animate elements that can carry event handlers", () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg"><animate attributeName="x" onBegin="alert(1)" to="100"/><rect/></svg>`;
+    const result = sanitizeSvg(toBytes(svg));
+    const text = new TextDecoder().decode(result);
+    expect(text).not.toContain("animate");
+    expect(text).not.toContain("onBegin");
+  });
+
+  it("strips iframe, embed, object, form, input, button, textarea", () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg"><iframe src="javascript:alert(1)"/><embed src="x"/><object data="x"/><form><input/><button/><textarea/><select><option/></select></form><link rel="x"/><meta/><base href="x"/><video src="x"/><audio src="x"/><source src="x"/><track/></svg>`;
+    const result = sanitizeSvg(toBytes(svg));
+    const text = new TextDecoder().decode(result);
+    expect(text).not.toContain("iframe");
+    expect(text).not.toContain("embed");
+    expect(text).not.toContain("object");
+    expect(text).not.toContain("form");
+    expect(text).not.toContain("input");
+    expect(text).not.toContain("button");
+    expect(text).not.toContain("textarea");
+    expect(text).not.toContain("select");
+    expect(text).not.toContain("option");
+    expect(text).not.toContain("link");
+    expect(text).not.toContain("meta");
+    expect(text).not.toContain("base");
+    expect(text).not.toContain("video");
+    expect(text).not.toContain("audio");
+    expect(text).not.toContain("source");
+    expect(text).not.toContain("track");
+  });
+
+  it("strips data: URLs in href and xlink:href", () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg"><a href="data:text/html,<script>alert(1)</script>"><rect/></a><use xlink:href="data:image/svg+xml,<svg/>"/></svg>`;
+    const result = sanitizeSvg(toBytes(svg));
+    const text = new TextDecoder().decode(result);
+    expect(text).not.toContain("data:text/html");
+    expect(text).not.toContain("data:image/svg");
+  });
 });
 
 function padBytes(data: Uint8Array, length: number): Uint8Array {

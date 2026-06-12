@@ -53,7 +53,7 @@ const SVG_SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
     "desc",
   ],
   allowedAttributes: {
-    "*": ["id", "class", "style", "transform", "fill", "stroke", "opacity"],
+    "*": ["id", "class", "transform", "fill", "stroke", "opacity"],
     svg: ["viewBox", "width", "height", "xmlns", "version", "preserveAspectRatio"],
     path: ["d", "fill-rule", "clip-rule"],
     rect: ["x", "y", "width", "height", "rx", "ry"],
@@ -71,22 +71,41 @@ const SVG_SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
     filter: ["id", "x", "y", "width", "height", "filterUnits"],
     use: ["href", "xlink:href"],
   },
-  allowedSchemes: ["data"],
+  allowedSchemes: [],
   allowedSchemesByTag: {
-    img: ["data"],
+    img: [],
   },
   allowProtocolRelative: false,
   allowedIframeHostnames: [],
   disallowedTagsMode: "discard",
-  // Forbid any tag attributes that could execute JavaScript or load external resources
   allowedSchemesAppliedToAttributes: ["href", "xlink:href"],
   transformTags: {
-    // Force all anchors to be safe no-op
     a: sanitizeHtml.simpleTransform("a", { rel: "noopener noreferrer", target: "_blank" }),
   },
-  // Disallow entire content blocks that could be script-like
   exclusiveFilter: (frame) =>
-    Boolean(frame.tag === "script") || Boolean(frame.tag === "foreignObject"),
+    Boolean(frame.tag === "script") ||
+    Boolean(frame.tag === "foreignObject") ||
+    Boolean(frame.tag === "animate") ||
+    Boolean(frame.tag === "set") ||
+    Boolean(frame.tag === "animatetransform") ||
+    Boolean(frame.tag === "animatemotion") ||
+    Boolean(frame.tag === "iframe") ||
+    Boolean(frame.tag === "embed") ||
+    Boolean(frame.tag === "object") ||
+    Boolean(frame.tag === "applet") ||
+    Boolean(frame.tag === "form") ||
+    Boolean(frame.tag === "input") ||
+    Boolean(frame.tag === "button") ||
+    Boolean(frame.tag === "textarea") ||
+    Boolean(frame.tag === "select") ||
+    Boolean(frame.tag === "option") ||
+    Boolean(frame.tag === "link") ||
+    Boolean(frame.tag === "meta") ||
+    Boolean(frame.tag === "base") ||
+    Boolean(frame.tag === "video") ||
+    Boolean(frame.tag === "audio") ||
+    Boolean(frame.tag === "source") ||
+    Boolean(frame.tag === "track"),
 };
 
 const MAX_TEXT_DECODER_BYTES = 10 * 1024 * 1024;
